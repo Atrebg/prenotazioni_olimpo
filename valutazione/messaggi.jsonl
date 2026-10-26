@@ -1,0 +1,45 @@
+{"id": 1, "testo": "Rossi 4 sab 20:30", "ricevuto_il": "2026-10-27T10:15", "atteso": {"intento": "nuova", "nome": "Rossi", "coperti": 4, "data": "2026-10-31", "orario": "20:30"}, "nota": "formato compatto"}
+{"id": 2, "testo": "Rossi 4 sab 20.30", "ricevuto_il": "2026-10-27T10:15", "atteso": {"intento": "nuova", "nome": "Rossi", "coperti": 4, "data": "2026-10-31", "orario": "20:30"}, "nota": "compatto con il punto"}
+{"id": 3, "testo": "Bianchi 2 31/10 21", "ricevuto_il": "2026-10-27T10:15", "atteso": {"intento": "nuova", "nome": "Bianchi", "coperti": 2, "data": "2026-10-31", "orario": "21:00"}, "nota": "compatto con data numerica"}
+{"id": 4, "testo": "domani sera in 2 verso le 8 e mezza, Bianchi", "ricevuto_il": "2026-10-27T10:15", "atteso": {"intento": "nuova", "nome": "Bianchi", "coperti": 2, "data": "2026-10-28", "orario": "20:30"}}
+{"id": 5, "testo": "x 4 sabato alle 9, Verdi", "ricevuto_il": "2026-10-27T10:15", "atteso": {"intento": "nuova", "nome": "Verdi", "coperti": 4, "data": "2026-10-31", "orario": "21:00"}}
+{"id": 6, "testo": "4 pax venerdì 20:00 Esposito", "ricevuto_il": "2026-10-27T10:15", "atteso": {"intento": "nuova", "nome": "Esposito", "coperti": 4, "data": "2026-10-30", "orario": "20:00"}}
+{"id": 7, "testo": "Ferrari diventano 6", "ricevuto_il": "2026-10-27T10:15", "atteso": {"intento": "modifica", "riferimento_nome": "Ferrari", "coperti": 6, "orario": null}}
+{"id": 8, "testo": "annulla i Rossi di sabato", "ricevuto_il": "2026-10-27T10:15", "atteso": {"intento": "annulla", "riferimento_nome": "Rossi", "riferimento_data": "2026-10-31"}}
+{"id": 9, "testo": "sabato c'è posto per 8 alle 9?", "ricevuto_il": "2026-10-27T10:15", "atteso": {"intento": "disponibilita", "coperti": 8, "data": "2026-10-31", "orario": "21:00"}}
+{"id": 10, "testo": "chi c'è stasera?", "ricevuto_il": "2026-10-27T10:15", "atteso": {"intento": "riepilogo", "data": "2026-10-27"}}
+{"id": 11, "testo": "ricordati il pesce", "ricevuto_il": "2026-10-27T10:15", "atteso": {"intento": "non_capito"}, "nota": "non è una prenotazione"}
+{"id": 12, "testo": "Colombo stasera 3 persone alle 21", "ricevuto_il": "2026-10-27T10:15", "atteso": {"intento": "nuova", "nome": "Colombo", "coperti": 3, "data": "2026-10-27", "orario": "21:00"}}
+{"id": 13, "testo": "prenota Greco per sabato, 5 persone, alle 20, hanno un bambino piccolo serve il seggiolone", "ricevuto_il": "2026-10-27T10:15", "atteso": {"intento": "nuova", "nome": "Greco", "coperti": 5, "data": "2026-10-31", "orario": "20:00"}}
+{"id": 14, "testo": "Marino sabato alle 8", "ricevuto_il": "2026-10-27T10:15", "atteso": {"intento": "nuova", "nome": "Marino", "coperti": null, "data": "2026-10-31", "orario": "20:00"}, "nota": "coperti mancanti: va chiesto"}
+{"id": 15, "testo": "tavolo per 6 sabato alle 21", "ricevuto_il": "2026-10-27T10:15", "atteso": {"intento": "nuova", "nome": null, "coperti": 6, "data": "2026-10-31", "orario": "21:00"}, "nota": "nome mancante"}
+{"id": 16, "testo": "Conti 2 domenica", "ricevuto_il": "2026-10-27T10:15", "atteso": {"intento": "nuova", "nome": "Conti", "coperti": 2, "data": "2026-11-01", "orario": null}, "nota": "orario mancante"}
+{"id": 17, "testo": "sposta Rossi alle 21", "ricevuto_il": "2026-10-27T10:15", "atteso": {"intento": "modifica", "riferimento_nome": "Rossi", "orario": "21:00", "coperti": null}}
+{"id": 18, "testo": "i Gallo sabato diventano 7", "ricevuto_il": "2026-10-27T10:15", "atteso": {"intento": "modifica", "riferimento_nome": "Gallo", "riferimento_data": "2026-10-31", "coperti": 7}}
+{"id": 19, "testo": "Ricci annulla venerdì", "ricevuto_il": "2026-10-27T10:15", "atteso": {"intento": "annulla", "riferimento_nome": "Ricci", "riferimento_data": "2026-10-30"}}
+{"id": 20, "testo": "cancella la prenotazione di De Luca", "ricevuto_il": "2026-10-27T10:15", "atteso": {"intento": "annulla", "riferimento_nome": "De Luca"}}
+{"id": 21, "testo": "21", "ricevuto_il": "2026-10-27T10:20", "contesto": "Proposta in sospeso: Bianchi · 2 persone · 2026-10-31, orari proposti 20:15, 21:00.", "atteso": {"intento": "conferma_proposta"}, "nota": "in chat si legge senza LLM"}
+{"id": 22, "testo": "la seconda", "ricevuto_il": "2026-10-27T10:20", "contesto": "Proposta in sospeso: Bianchi · 2 persone · 2026-10-31, orari proposti 20:15, 21:00.", "atteso": {"intento": "conferma_proposta"}}
+{"id": 23, "testo": "ok 20:15", "ricevuto_il": "2026-10-27T10:20", "contesto": "Proposta in sospeso: Bianchi · 2 persone · 2026-10-31, orari proposti 20:15, 21:00.", "atteso": {"intento": "conferma_proposta"}}
+{"id": 24, "testo": "c'è posto domani per 2 alle 20?", "ricevuto_il": "2026-10-27T10:15", "atteso": {"intento": "disponibilita", "coperti": 2, "data": "2026-10-28", "orario": "20:00"}}
+{"id": 25, "testo": "quanti siamo sabato?", "ricevuto_il": "2026-10-27T10:15", "atteso": {"intento": "riepilogo", "data": "2026-10-31"}}
+{"id": 26, "testo": "Moretti 4 sbato 20:30", "ricevuto_il": "2026-10-27T10:15", "atteso": {"intento": "nuova", "nome": "Moretti", "coperti": 4, "data": "2026-10-31", "orario": "20:30"}, "nota": "refuso"}
+{"id": 27, "testo": "Barbieri 3 per giovedi alle 7 e mezza", "ricevuto_il": "2026-10-27T10:15", "atteso": {"intento": "nuova", "nome": "Barbieri", "coperti": 3, "data": "2026-10-29", "orario": "19:30"}}
+{"id": 28, "testo": "Fontana due persone sabato ore 22", "ricevuto_il": "2026-10-27T10:15", "atteso": {"intento": "nuova", "nome": "Fontana", "coperti": 2, "data": "2026-10-31", "orario": "22:00"}}
+{"id": 29, "testo": "Santoro 4 il 7 novembre alle 20:30", "ricevuto_il": "2026-10-27T10:15", "atteso": {"intento": "nuova", "nome": "Santoro", "coperti": 4, "data": "2026-11-07", "orario": "20:30"}}
+{"id": 30, "testo": "Mariani 6 sabato 31 alle 20", "ricevuto_il": "2026-10-27T10:15", "atteso": {"intento": "nuova", "nome": "Mariani", "coperti": 6, "data": "2026-10-31", "orario": "20:00"}}
+{"id": 31, "testo": "Rinaldi 2 venerdì 31/10 alle 21", "ricevuto_il": "2026-10-27T10:15", "atteso": {"intento": "nuova", "nome": "Rinaldi", "coperti": 2, "data": null, "orario": "21:00"}, "nota": "il 31/10 è sabato: data da chiedere"}
+{"id": 32, "testo": "Caruso 4 ieri alle 20", "ricevuto_il": "2026-10-27T10:15", "atteso": {"intento": "nuova", "nome": "Caruso", "coperti": 4, "data": null, "orario": "20:00"}, "nota": "data passata: va chiesta"}
+{"id": 33, "testo": "Galli 2 sab 20:40", "ricevuto_il": "2026-10-27T10:15", "atteso": {"intento": "nuova", "nome": "Galli", "coperti": 2, "data": "2026-10-31", "orario": "20:45"}, "nota": "compatto, orario arrotondato"}
+{"id": 34, "testo": "Leone 5 domani alle 19.15 compleanno", "ricevuto_il": "2026-10-27T10:15", "atteso": {"intento": "nuova", "nome": "Leone", "coperti": 5, "data": "2026-10-28", "orario": "19:15"}}
+{"id": 35, "testo": "Lombardi per 2 stasera alle 23", "ricevuto_il": "2026-10-27T10:15", "atteso": {"intento": "nuova", "nome": "Lombardi", "coperti": 2, "data": "2026-10-27", "orario": "23:00"}}
+{"id": 36, "testo": "buongiorno, avete posto per 10 sabato sera?", "ricevuto_il": "2026-10-27T10:15", "atteso": {"intento": "disponibilita", "coperti": 10, "data": "2026-10-31", "orario": null}}
+{"id": 37, "testo": "Rossi diventano 3 e spostali alle 20", "ricevuto_il": "2026-10-27T10:15", "atteso": {"intento": "modifica", "riferimento_nome": "Rossi", "coperti": 3, "orario": "20:00"}}
+{"id": 38, "testo": "Bruno 2 dom 20:00", "ricevuto_il": "2026-10-27T10:15", "atteso": {"intento": "nuova", "nome": "Bruno", "coperti": 2, "data": "2026-11-01", "orario": "20:00"}, "nota": "formato compatto"}
+{"id": 39, "testo": "chi c'è venerdì", "ricevuto_il": "2026-10-27T10:15", "atteso": {"intento": "riepilogo", "data": "2026-10-30"}}
+{"id": 40, "testo": "domani arriva il fornitore del vino", "ricevuto_il": "2026-10-27T10:15", "atteso": {"intento": "non_capito"}, "nota": "non è una prenotazione"}
+{"id": 41, "testo": "Costa 4 sabato prossimo alle 20", "ricevuto_il": "2026-10-27T10:15", "atteso": {"intento": "nuova", "nome": "Costa", "coperti": 4, "data": "2026-10-31", "orario": "20:00"}, "nota": "convenzione: 'sabato prossimo' detto di martedì = il primo sabato che viene"}
+{"id": 42, "testo": "Giordano 8 il 2/11 alle 21", "ricevuto_il": "2026-10-27T10:15", "atteso": {"intento": "nuova", "nome": "Giordano", "coperti": 8, "data": "2026-11-02", "orario": "21:00"}}
+{"id": 43, "testo": "annulla Rossi sab", "ricevuto_il": "2026-10-27T10:15", "atteso": {"intento": "annulla", "riferimento_nome": "Rossi", "data": "2026-10-31"}, "nota": "formato compatto"}
+{"id": 44, "testo": "riepilogo sab", "ricevuto_il": "2026-10-27T10:15", "atteso": {"intento": "riepilogo", "data": "2026-10-31"}, "nota": "formato compatto"}
+{"id": 45, "testo": "Pellegrini 4 sab 20:30", "ricevuto_il": "2026-10-31T11:00", "atteso": {"intento": "nuova", "nome": "Pellegrini", "coperti": 4, "data": null, "orario": "20:30"}, "nota": "'sab' scritto di sabato: stasera o sabato prossimo?"}

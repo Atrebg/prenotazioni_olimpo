@@ -1,0 +1,29 @@
+{
+  "serata": "Sabato 31 ottobre 2026",
+  "prenotazioni": [
+    {"id": "P01", "nome": "Martini"   , "coperti":  2, "orario": "19:00", "prenotata_il": "2026-10-30T20:20"},
+    {"id": "P02", "nome": "Fumagalli" , "coperti":  2, "orario": "19:00", "prenotata_il": "2026-10-29T17:47"},
+    {"id": "P03", "nome": "Leone"     , "coperti":  4, "orario": "19:30", "prenotata_il": "2026-10-28T12:05"},
+    {"id": "P04", "nome": "Ferrari"   , "coperti":  8, "orario": "19:30", "prenotata_il": "2026-10-31T12:47", "note": "compleanno"},
+    {"id": "P05", "nome": "Marino"    , "coperti":  6, "orario": "19:30", "prenotata_il": "2026-10-31T13:06"},
+    {"id": "P06", "nome": "Rossi"     , "coperti":  2, "orario": "19:30", "prenotata_il": "2026-10-27T17:55"},
+    {"id": "P07", "nome": "Russo"     , "coperti":  4, "orario": "19:30", "prenotata_il": "2026-10-30T11:51"},
+    {"id": "P08", "nome": "Esposito"  , "coperti":  2, "orario": "19:30", "prenotata_il": "2026-10-30T19:11"},
+    {"id": "P09", "nome": "Greco"     , "coperti":  4, "orario": "19:30", "prenotata_il": "2026-10-27T19:51", "note": "seggiolone"},
+    {"id": "P10", "nome": "Colombo"   , "coperti":  3, "orario": "19:30", "prenotata_il": "2026-10-30T11:41"},
+    {"id": "P11", "nome": "Gallo"     , "coperti":  5, "orario": "20:00", "prenotata_il": "2026-10-31T14:42"},
+    {"id": "P12", "nome": "Ricci"     , "coperti":  2, "orario": "20:15", "prenotata_il": "2026-10-31T10:01"},
+    {"id": "P13", "nome": "Bruno"     , "coperti":  2, "orario": "20:15", "prenotata_il": "2026-10-31T13:53"},
+    {"id": "P14", "nome": "Rizzo"     , "coperti": 10, "orario": "21:00", "prenotata_il": "2026-10-25T10:12"},
+    {"id": "P15", "nome": "Costa"     , "coperti":  4, "orario": "21:00", "prenotata_il": "2026-10-31T13:31"},
+    {"id": "P16", "nome": "Moretti"   , "coperti":  4, "orario": "21:15", "prenotata_il": "2026-10-27T20:05"},
+    {"id": "P17", "nome": "Barbieri"  , "coperti":  4, "orario": "21:15", "prenotata_il": "2026-10-31T14:21"},
+    {"id": "P18", "nome": "Fontana"   , "coperti":  3, "orario": "21:15", "prenotata_il": "2026-10-29T18:48"},
+    {"id": "P19", "nome": "Mariani"   , "coperti":  6, "orario": "21:30", "prenotata_il": "2026-10-27T17:12"},
+    {"id": "P20", "nome": "Rinaldi"   , "coperti":  4, "orario": "21:30", "prenotata_il": "2026-10-30T21:59"},
+    {"id": "P21", "nome": "Galli"     , "coperti":  4, "orario": "21:45", "prenotata_il": "2026-10-30T11:30"},
+    {"id": "P22", "nome": "Giordano"  , "coperti":  4, "orario": "22:00", "prenotata_il": "2026-10-28T18:47"},
+    {"id": "P23", "nome": "Ferrara"   , "coperti":  2, "orario": "22:30", "prenotata_il": "2026-10-27T11:12"},
+    {"id": "P24", "nome": "Pellegrini", "coperti":  2, "orario": "22:30", "prenotata_il": "2026-10-30T17:29"}
+  ]
+}

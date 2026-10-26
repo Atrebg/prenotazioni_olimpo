@@ -1,0 +1,26 @@
+# Ambiente Python
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+
+# Risultati generati e dati locali
+out/
+dati/cache/
+dati/serate/
+
+# Temporanei
+*.tmp
+
+# Editor
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Sistema operativo
+.DS_Store
+Thumbs.db
+desktop.ini
