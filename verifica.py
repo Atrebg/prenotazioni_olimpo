@@ -2,8 +2,10 @@
 
 Non importa nulla del pacchetto `ristorante`: rilegge sala, prenotazioni e soluzione dai JSON e rifà i
 controlli con geometria in centimetri e aritmetica dei minuti proprie (niente griglia del solver).
-Copre la disposizione "fissa" e "variabile" (tavoli con esistenza [esiste_dal, esiste_al)) e il registro
-dell'accettazione in ordine di arrivo. Stampa PASS/FAIL per controllo con i conteggi; exit code 0 se tutto PASS.
+Copre la disposizione "fissa" e "variabile" (tavoli con esistenza [esiste_dal, esiste_al)), il registro
+dell'accettazione in ordine di arrivo e la modalità a turni (turni della sala; ogni prenotazione occupa il tavolo per
+tutto il suo turno, al più una per turno su ogni tavolo, turno finale = turno promesso, in "fissa" gli stessi tavoli in
+tutti i turni). Stampa PASS/FAIL per controllo con i conteggi; exit code 0 se tutto PASS.
 
 Limite dichiarato: il verificatore controlla che la soluzione sia AMMISSIBILE e coerente; non può dimostrare
 che un rifiuto fosse inevitabile né che la piantina sia ottima.
@@ -26,7 +28,26 @@ M_FUORI_ORARIO = "nessun orario ammesso entro la chiusura del servizio"
 M_TEMPO = "spazio non trovato entro il tempo limite"
 M_NESSUNA_SOL = "nessuna soluzione trovata entro il tempo limite"
 M_PROPOSTA_RIFIUTATA = "proposta non accettata dal cliente"
+M_TURNO_PIENO = "turno pieno, con le prenotazioni già accettate"
+M_TURNI_PIENI = "tutti i turni pieni, con le prenotazioni già accettate"
 ACCETTATE = ("accettata", "accettata su proposta")
+
+
+def _turni(sala: dict) -> list[tuple[str, int, int]]:
+    return [(str(t["nome"]), _min(t["inizio"]), _min(t["fine"])) for t in sala.get("turni") or []]
+
+
+def _turno_chiesto(p: dict, turni: list, a_parita: str) -> str | None:
+    """Turno chiesto da una prenotazione in ingresso: quello esplicito, altrimenti il più vicino all'orario
+    (distanza dall'inizio; a metà strada il turno prima, o quello dopo se `a_parita` = "dopo")."""
+    if p.get("turno"):
+        return str(p["turno"])
+    if not turni:
+        return None
+    o = _min(p["orario"])
+    dopo = a_parita == "dopo"
+    k = min(range(len(turni)), key=lambda k: (abs(turni[k][1] - o), -k if dopo else k))
+    return turni[k][0]
 
 
 def _m_nessun_orario(n: int) -> str:
@@ -140,6 +161,10 @@ def verifica(sala: dict, prenotazioni: dict, sol: dict) -> list[Esito]:
     prop_max = int(sala.get("proposta_max_distanza_min", 120))
     su_proposta = {r["id"] for r in (registro or []) if r.get("esito") == "accettata su proposta"}
     input_pr = {p["id"]: p for p in prenotazioni["prenotazioni"]}
+    turni = _turni(sala)
+    a_turni = bool(turni) or bool(modalita.get("turni"))
+    per_nome_turno = {t[0]: t for t in turni}
+    t_parita = sala.get("turno_a_parita", "prima")
     per_id_tav = {t["id"]: t for t in tavoli}
     # esistenza in minuti: [dal, al). Default (soluzioni senza i campi): tutta la serata
     esist = {t["id"]: (_min(t.get("esiste_dal", sala["servizio"]["inizio"])),
@@ -154,6 +179,23 @@ def verifica(sala: dict, prenotazioni: dict, sol: dict) -> list[Esito]:
             e.errore(f"{r.get('id')}: tavolo inesistente {r.get('tavolo')!r}")
     e.dettaglio = f"{len(tavoli)} tavoli, {len(ass)} assegnazioni, {len(nons)} non sistemate"
     esiti.append(e)
+
+    if a_turni:
+        e = Esito("turni (consecutivi, senza sovrapposizioni, dentro il servizio, gli stessi della sala)")
+        dichiarati = [(str(t["nome"]), _min(t["inizio"]), _min(t["fine"])) for t in modalita.get("turni") or []]
+        if dichiarati != turni:
+            e.errore(f"turni dichiarati nella soluzione {dichiarati} diversi da quelli della sala {turni}")
+        for i, (nome, a, b) in enumerate(turni):
+            if not (inizio <= a < b <= fine):
+                e.errore(f"turno {nome}: {_hhmm(a)}-{_hhmm(b)} fuori dal servizio")
+            if (a - inizio) % passo or (b - inizio) % passo:
+                e.errore(f"turno {nome}: fuori griglia di {passo} min")
+            if i and a < turni[i - 1][2]:
+                e.errore(f"turno {nome} comincia alle {_hhmm(a)}, prima della fine del turno {turni[i - 1][0]}")
+        if len({t[0] for t in turni}) != len(turni):
+            e.errore("nomi dei turni duplicati")
+        e.dettaglio = ", ".join(f"{n} {_hhmm(a)}-{_hhmm(b)}" for n, a, b in turni)
+        esiti.append(e)
 
     # 2. ogni prenotazione esattamente una volta, dati coerenti con l'input
     e = Esito("ogni prenotazione presente esattamente una volta")
@@ -207,15 +249,38 @@ def verifica(sala: dict, prenotazioni: dict, sol: dict) -> list[Esito]:
     # 4. esistenza dei tavoli
     e = Esito("esistenza dei tavoli (griglia, servizio, disposizione)")
     fissa = modalita.get("disposizione", "fissa") == "fissa"
-    for tid, (dal, al) in esist.items():
+    if a_turni and turni:
+        inizi, fini = {t[1] for t in turni}, {t[2] for t in turni}
+        for tid, (dal, al) in esist.items():
+            if dal not in inizi or al not in fini or al <= dal:
+                e.errore(f"{tid}: esistenza {_hhmm(dal)}-{_hhmm(al)} non fatta di turni interi")
+            serviti = [t[0] for t in turni if dal <= t[1] and t[2] <= al]
+            if "turni" in per_id_tav[tid] and per_id_tav[tid]["turni"] != serviti:
+                e.errore(f"{tid}: turni dichiarati {per_id_tav[tid]['turni']} invece di {serviti}")
+        montati = sum(1 for dal, _ in esist.values() if dal > turni[0][1])
+        e.dettaglio = f"{len(esist)} tavoli, {montati} montati dopo il primo turno"
+        esiti.append(e)
+        e = Esito("disposizione fissa: stessi tavoli e stessi accostamenti in tutti i turni" if fissa else
+                  "disposizione variabile: tavoli rifatti tra un turno e l'altro")
+        if fissa:
+            for tid, (dal, al) in esist.items():
+                if (dal, al) != (turni[0][1], turni[-1][2]):
+                    e.errore(f"{tid}: disposizione fissa ma il tavolo c'è solo {_hhmm(dal)}-{_hhmm(al)} "
+                             f"(accostamento cambiato tra i turni)")
+        e.dettaglio = (f"{len(esist)} tavoli presenti in tutti i {len(turni)} turni" if fissa else
+                       f"{montati} tavoli montati a servizio iniziato")
+    for tid, (dal, al) in ([] if a_turni else esist.items()):
         if not (inizio <= dal < al <= fine + riapp):
             e.errore(f"{tid}: esistenza {_hhmm(dal)}-{_hhmm(al)} fuori da {_hhmm(inizio)}-{_hhmm(fine + riapp)}")
         if (dal - inizio) % passo or (al - inizio) % passo:
             e.errore(f"{tid}: esistenza {_hhmm(dal)}-{_hhmm(al)} fuori griglia di {passo} min")
         if fissa and (dal, al) != (inizio, fine + riapp):
             e.errore(f"{tid}: disposizione fissa ma il tavolo esiste solo {_hhmm(dal)}-{_hhmm(al)}")
-    montati = sum(1 for dal, _ in esist.values() if dal > inizio)
-    e.dettaglio = f"{len(esist)} tavoli, {montati} montati a servizio iniziato"
+    if a_turni and turni:
+        montati = sum(1 for dal, _ in esist.values() if dal > turni[0][1])
+    else:
+        montati = sum(1 for dal, _ in esist.values() if dal > inizio)
+        e.dettaglio = f"{len(esist)} tavoli, {montati} montati a servizio iniziato"
     esiti.append(e)
 
     # 5. inventario in ogni istante
@@ -281,10 +346,12 @@ def verifica(sala: dict, prenotazioni: dict, sol: dict) -> list[Esito]:
     e.dettaglio = f"{len(ass)} assegnazioni"
     esiti.append(e)
 
+    if a_turni:
+        esiti += _controlli_turni(ass, input_pr, su_proposta, turni, per_nome_turno, t_parita, esist)
     # 11. orari: spostamento ammesso, griglia, durata, servizio
     e = Esito("orari (spostamenti ammessi, durata, entro il servizio)")
     spostate = 0
-    for r in ass:
+    for r in ([] if a_turni else ass):
         rich, asg = _min(r["orario_richiesto"]), _min(r["orario_assegnato"])
         sp = asg - rich
         spostate += sp != 0
@@ -308,10 +375,12 @@ def verifica(sala: dict, prenotazioni: dict, sol: dict) -> list[Esito]:
     e.dettaglio = f"{len(ass)} assegnazioni, {spostate} spostate, {len(su_proposta)} su proposta"
     esiti.append(e)
 
+    if a_turni:
+        esiti.pop()                        # il controllo degli orari è sostituito da quello dei turni
     # 12. nessuna sovrapposizione temporale sullo stesso tavolo (con riapparecchiatura)
     e = Esito("nessuna sovrapposizione sullo stesso tavolo (con riapparecchiatura)")
     per_tav: dict[str, list] = {}
-    for r in ass:
+    for r in ([] if a_turni else ass):
         a = _min(r["orario_assegnato"])
         per_tav.setdefault(r["tavolo"], []).append((a, a + _durata(sala, r["coperti"]), r["id"]))
     confronti = 0
@@ -327,9 +396,11 @@ def verifica(sala: dict, prenotazioni: dict, sol: dict) -> list[Esito]:
     e.dettaglio = f"{confronti} coppie sullo stesso tavolo"
     esiti.append(e)
 
+    if a_turni:
+        esiti.pop()
     # 13. prenotazioni dentro l'esistenza del loro tavolo (riapparecchiatura compresa)
     e = Esito("prenotazioni dentro l'esistenza del loro tavolo")
-    for r in ass:
+    for r in ([] if a_turni else ass):
         if r["tavolo"] not in esist:
             continue
         dal, al = esist[r["tavolo"]]
@@ -341,6 +412,8 @@ def verifica(sala: dict, prenotazioni: dict, sol: dict) -> list[Esito]:
     e.dettaglio = f"{len(ass)} assegnazioni"
     esiti.append(e)
 
+    if a_turni:
+        esiti.pop()
     # 14. motivi delle non sistemate
     e = Esito("motivi delle non sistemate coerenti")
     capmax = _capienza_massima_possibile(sala)
@@ -355,6 +428,14 @@ def verifica(sala: dict, prenotazioni: dict, sol: dict) -> list[Esito]:
         ha_orari = any(inizio <= orario + s and orario + s + d <= fine for s in ammessi)
         if r["coperti"] > capmax:
             attesi = {M_TROPPO_GRANDE}
+        elif a_turni:
+            pol, _ = _politica(sol, sala)
+            if not in_ordine:
+                attesi = {M_SALA_PIENA}
+            elif pol == "mai":
+                attesi = {M_TURNO_PIENO, M_TEMPO}
+            else:
+                attesi = {M_TURNI_PIENI, M_TEMPO} | ({M_PROPOSTA_RIFIUTATA} if pol == "entro" else set())
         elif not ha_orari and not (in_ordine and _politica(sol, sala)[0] != "mai"):
             attesi = {M_FUORI_ORARIO}
         elif in_ordine:
@@ -376,13 +457,14 @@ def verifica(sala: dict, prenotazioni: dict, sol: dict) -> list[Esito]:
     pesi = sala["pesi"]
     soglia = sala.get("picco_cucina_soglia_coperti", 30)
     vuoti = sum(per_id_tav[r["tavolo"]]["capienza"] - r["coperti"] for r in ass if r["tavolo"] in per_id_tav)
-    c_sp = sum(round(pesi["spostamento_per_quarto"] * abs(_min(r["orario_assegnato"]) - _min(r["orario_richiesto"])) / 15)
-               for r in ass)
+    c_sp = 0 if a_turni else sum(
+        round(pesi["spostamento_per_quarto"] * abs(_min(r["orario_assegnato"]) - _min(r["orario_richiesto"])) / 15)
+        for r in ass)
     extra = sum(t["moduli"] - 1 for t in tavoli if t["tipo"] == "moduli")
     partenze: dict[int, int] = {}
     for r in ass:
         partenze[_min(r["orario_assegnato"])] = partenze.get(_min(r["orario_assegnato"]), 0) + r["coperti"]
-    oltre = sum(max(0, v - soglia) for v in partenze.values())
+    oltre = 0 if a_turni else sum(max(0, v - soglia) for v in partenze.values())   # a turni: picco disattivato
     atteso = {
         "non_sistemate": pesi["non_sistemata"] * len(nons),
         "posti_vuoti": pesi["posto_vuoto"] * vuoti,
@@ -440,7 +522,12 @@ def verifica(sala: dict, prenotazioni: dict, sol: dict) -> list[Esito]:
                 e.errore(f"{r['id']}: accettata nel registro ma non seduta nella piantina")
             elif a["orario_assegnato"] != r.get("orario_promesso"):
                 e.errore(f"{r['id']}: promessa alle {r.get('orario_promesso')}, seduta alle {a['orario_assegnato']}")
+            elif a_turni and a.get("turno") != r.get("turno_promesso"):
+                e.errore(f"{r['id']}: promessa nel turno {r.get('turno_promesso')}, seduta nel turno {a.get('turno')}")
         e.dettaglio = f"{n_prom} orari promessi"
+        if a_turni:
+            e.nome = "turno finale = turno promesso (e orari uguali a quelli promessi)"
+            e.dettaglio = f"{n_prom} turni promessi"
         esiti.append(e)
 
         e = Esito("registro coerente con sedute e rifiuti")
@@ -451,6 +538,10 @@ def verifica(sala: dict, prenotazioni: dict, sol: dict) -> list[Esito]:
                     e.errore(f"{r['id']}: accettata nel registro ma tra le non sistemate")
                 if r.get("orario_promesso") is None:
                     e.errore(f"{r['id']}: accettata senza orario promesso")
+                elif r.get("esito") == "accettata" and a_turni:
+                    chiesto = _turno_chiesto(input_pr.get(r["id"], {}), turni, t_parita)
+                    if r.get("turno_promesso") != chiesto or r.get("turno_richiesto") != chiesto:
+                        e.errore(f"{r['id']}: accettata nel turno {r.get('turno_promesso')}, ma il turno chiesto è {chiesto}")
                 elif r.get("esito") == "accettata" and \
                         _min(r["orario_promesso"]) - _min(r["orario_richiesto"]) not in ammessi:
                     e.errore(f"{r['id']}: orario promesso {r.get('orario_promesso')} non tra gli spostamenti ammessi")
@@ -472,7 +563,10 @@ def verifica(sala: dict, prenotazioni: dict, sol: dict) -> list[Esito]:
         # 19. proposte: entro la distanza massima, fuori dagli spostamenti ammessi, dentro il servizio
         e = Esito("proposte entro la distanza massima e fuori dagli spostamenti ammessi")
         n_prop = 0
-        for r in reg:
+        if a_turni:
+            e = _proposte_turni(reg, input_pr, turni, t_parita, sala.get("proposta_a_parita", "prima"))
+            esiti.append(e)
+        for r in ([] if a_turni else reg):
             rich = _min(r["orario_richiesto"])
             d = _durata(sala, r["coperti"])
             prima, dopo = r.get("proposta_prima"), r.get("proposta_dopo")
@@ -497,8 +591,9 @@ def verifica(sala: dict, prenotazioni: dict, sol: dict) -> list[Esito]:
                     e.errore(f"{r['id']}: proposta principale {r.get('proposta_principale')}, attesa {attesa} (la più vicina)")
             elif r.get("proposta_principale"):
                 e.errore(f"{r['id']}: proposta principale senza proposte")
-        e.dettaglio = f"{n_prop} proposte, massimo {prop_max} min"
-        esiti.append(e)
+        if not a_turni:
+            e.dettaglio = f"{n_prop} proposte, massimo {prop_max} min"
+            esiti.append(e)
 
         # 20. esiti coerenti con la politica del cliente
         pol, entro = _politica(sol, sala)
@@ -530,11 +625,125 @@ def verifica(sala: dict, prenotazioni: dict, sol: dict) -> list[Esito]:
     return esiti
 
 
+def _controlli_turni(ass, input_pr, su_proposta, turni, per_nome, t_parita, esist) -> list[Esito]:
+    """Ogni prenotazione è in un turno (quello chiesto, o l'altro se accettata su proposta), con orario e fine del
+    turno; su ogni tavolo al più una prenotazione per turno; il turno sta dentro l'esistenza del tavolo."""
+    e1 = Esito("turni delle prenotazioni (turno chiesto, orari del turno)")
+    per_turno: dict[str, list] = {}
+    for r in ass:
+        t = per_nome.get(r.get("turno"))
+        if t is None:
+            e1.errore(f"{r['id']}: turno {r.get('turno')!r} non definito")
+            continue
+        per_turno.setdefault(t[0], []).append(r)
+        if (_min(r["orario_assegnato"]), _min(r["fine"])) != (t[1], t[2]):
+            e1.errore(f"{r['id']}: {r['orario_assegnato']}-{r['fine']} invece del turno {t[0]} {_hhmm(t[1])}-{_hhmm(t[2])}")
+        if r.get("spostamento_min") != 0:
+            e1.errore(f"{r['id']}: spostamento_min {r.get('spostamento_min')} (a turni deve essere 0)")
+        chiesto = _turno_chiesto(input_pr.get(r["id"], {}), turni, t_parita)
+        if r.get("turno_richiesto") != chiesto:
+            e1.errore(f"{r['id']}: turno richiesto {r.get('turno_richiesto')}, ma per l'orario {r['orario_richiesto']} "
+                      f"è {chiesto}")
+        if r["id"] in su_proposta:
+            if t[0] == chiesto:
+                e1.errore(f"{r['id']}: accettata su proposta ma nel turno chiesto {chiesto}")
+        elif t[0] != chiesto:
+            e1.errore(f"{r['id']}: seduta nel turno {t[0]} invece di quello chiesto {chiesto}")
+    e1.dettaglio = " · ".join(f"{n}: {len(per_turno.get(n, []))} prenotazioni, "
+                              f"{sum(r['coperti'] for r in per_turno.get(n, []))} coperti" for n, _, _ in turni)
+    e2 = Esito("al più una prenotazione per turno su ogni tavolo")
+    visti: dict[tuple, str] = {}
+    for r in ass:
+        chiave = (r["tavolo"], r.get("turno"))
+        if chiave in visti:
+            e2.errore(f"{r['tavolo']}: {visti[chiave]} e {r['id']} nello stesso turno {r.get('turno')}")
+        visti[chiave] = r["id"]
+    e2.dettaglio = f"{len(ass)} assegnazioni su {len({r['tavolo'] for r in ass})} tavoli"
+    e3 = Esito("prenotazioni dentro l'esistenza del loro tavolo (turno intero)")
+    for r in ass:
+        t = per_nome.get(r.get("turno"))
+        if t is None or r["tavolo"] not in esist:
+            continue
+        dal, al = esist[r["tavolo"]]
+        if t[1] < dal or t[2] > al:
+            e3.errore(f"{r['id']} (turno {t[0]}) fuori dall'esistenza di {r['tavolo']} ({_hhmm(dal)}-{_hhmm(al)})")
+    e3.dettaglio = f"{len(ass)} assegnazioni"
+    return [e1, e2, e3]
+
+
+def _proposte_turni(reg, input_pr, turni, t_parita, p_parita) -> Esito:
+    """Le proposte sono inizi di altri turni (prima / dopo il turno chiesto); la principale è la più vicina
+    all'orario chiesto."""
+    e = Esito("proposte: altri turni, la principale è la più vicina all'orario chiesto")
+    inizi = {t[1]: i for i, t in enumerate(turni)}
+    n_prop = 0
+    for r in reg:
+        chiesto = _turno_chiesto(input_pr.get(r["id"], {}), turni, t_parita)
+        kc = next((i for i, t in enumerate(turni) if t[0] == chiesto), None)
+        rich = _min(r["orario_richiesto"])
+        cand = []
+        for nome, segno in (("proposta_prima", -1), ("proposta_dopo", 1)):
+            val = r.get(nome)
+            if val is None:
+                continue
+            n_prop += 1
+            k = inizi.get(_min(val))
+            if k is None:
+                e.errore(f"{r['id']}: {nome} {val} non è l'inizio di un turno")
+            elif kc is None or (k - kc) * segno <= 0:
+                e.errore(f"{r['id']}: {nome} {val} non è un turno {'prima' if segno < 0 else 'dopo'} del turno chiesto {chiesto}")
+            elif r.get("turno_proposto") is not None and r.get("proposta_principale") == val \
+                    and r["turno_proposto"] != turni[k][0]:
+                e.errore(f"{r['id']}: turno proposto {r['turno_proposto']} diverso da {turni[k][0]} ({val})")
+            cand.append(val)
+        if cand:
+            attesa = min(cand, key=lambda v: (abs(_min(v) - rich), (_min(v) > rich) != (p_parita == "dopo")))
+            if r.get("proposta_principale") != attesa:
+                e.errore(f"{r['id']}: proposta principale {r.get('proposta_principale')}, attesa {attesa} (la più vicina)")
+        elif r.get("proposta_principale"):
+            e.errore(f"{r['id']}: proposta principale senza proposte")
+    e.dettaglio = f"{n_prop} proposte di turno"
+    return e
+
+
+def _rifiuti_inevitabili_turni(sala: dict, prenotazioni: dict, sol: dict) -> tuple[list[str], int]:
+    """A turni: un rifiuto era inevitabile (in qualunque disposizione) se in ogni turno che si poteva dare, con le
+    prenotazioni accettate prima in quel turno più lei, i moduli minimi superano l'inventario."""
+    reg = sol.get("registro") or []
+    inp = {p["id"]: p for p in prenotazioni["prenotazioni"]}
+    mod, tondi = sala["inventario"]["moduli"], sala["inventario"].get("tondi", {"quantita": 0, "capienza": 0})
+    ppm, pt = mod.get("posti_per_modulo", 2), mod.get("posti_testate", 2)
+    turni = _turni(sala)
+    pol = _politica(sol, sala)[0]
+
+    def kmin(c):
+        return max(1, -(-(c - pt) // ppm))
+
+    def moduli_minimi(cop):
+        risp = sorted((kmin(c) for c in cop if c <= tondi.get("capienza", 0)), reverse=True)
+        return sum(kmin(c) for c in cop) - sum(risp[:tondi.get("quantita", 0)])
+
+    dimostrati, rifiuti = [], 0
+    for r in reg:
+        if r.get("esito") != "rifiutata" or r.get("motivo") not in (M_TURNO_PIENO, M_TURNI_PIENI, M_TEMPO):
+            continue
+        rifiuti += 1
+        chiesto = _turno_chiesto(inp[r["id"]], turni, sala.get("turno_a_parita", "prima"))
+        possibili = [t[0] for t in turni] if pol != "mai" else [chiesto]
+        if all(moduli_minimi([inp[q["id"]]["coperti"] for q in reg if q["ordine"] < r["ordine"]
+                              and q.get("esito") in ACCETTATE and q.get("turno_promesso") == tn] + [r["coperti"]])
+               > mod["quantita"] for tn in possibili):
+            dimostrati.append(r["id"])
+    return dimostrati, rifiuti
+
+
 def rifiuti_inevitabili_per_inventario(sala: dict, prenotazioni: dict, sol: dict) -> tuple[list[str], int]:
     """Condizione SUFFICIENTE (non necessaria) perché un rifiuto in ordine di arrivo fosse inevitabile in
     qualunque disposizione: per ogni orario ammesso esiste un istante in cui le prenotazioni attive (accettate
     prima, con l'orario promesso, più lei) richiedono più moduli dell'inventario anche usando al meglio i tondi.
     Ignora la geometria, quindi un rifiuto non dimostrato qui non è per questo evitabile."""
+    if sala.get("turni"):
+        return _rifiuti_inevitabili_turni(sala, prenotazioni, sol)
     reg = sol.get("registro") or []
     inp = {p["id"]: p for p in prenotazioni["prenotazioni"]}
     mod, tondi = sala["inventario"]["moduli"], sala["inventario"].get("tondi", {"quantita": 0, "capienza": 0})

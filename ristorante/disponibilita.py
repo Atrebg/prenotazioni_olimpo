@@ -12,6 +12,8 @@ insieme a tutte le accettate?": "entra" / "non entra" (dimostrato) / "da verific
   entrano insieme); la dominanza tra classi nei due versi (se a un orario non entra una prenotazione più piccola e
   più corta, non entra neanche una più grande; se entra la più grande, entrano le più piccole) chiude le altre;
   gli hint vengono dall'ultimo piano registrato.
+- A turni (`turni` nella sala) le celle sono classe di coperti × turno: la durata non conta, le classi dipendono
+  solo dalle forme di tavolo ammesse, conteggio e geometria si fanno per turno (in "fissa" sui tavoli comuni).
 - Se la tabella non è pronta, l'orario chiesto e i candidati si verificano in parallelo con priorità sul
   background; ci si ferma appena la risposta è decisa, e dopo `attesa_max_s` si risponde con ciò che è dimostrato.
 """
@@ -48,11 +50,12 @@ class Classe:
 
 def classi_coperti(ist) -> list[Classe]:
     """Raggruppa i coperti 1..capienza massima per (durata, forme di tavolo con capienza sufficiente): dentro una
-    classe l'ammissibilità di una prenotazione in più è identica nel modello. Le classi sono intervalli contigui."""
+    classe l'ammissibilità di una prenotazione in più è identica nel modello. Le classi sono intervalli contigui.
+    A turni la durata non conta."""
     forme = list(ist.forme_moduli) + ([ist.forma_tondo] if ist.forma_tondo is not None else [])
     chiavi = []
     for c in range(1, ist.capienza_massima + 1):
-        chiavi.append((c, ist.durata_min(c), frozenset(f.nome for f in forme if f.capienza >= c)))
+        chiavi.append((c, 0 if ist.turni else ist.durata_min(c), frozenset(f.nome for f in forme if f.capienza >= c)))
     classi = []
     for (durata, fs), gruppo in itertools.groupby(chiavi, key=lambda k: (k[1], k[2])):
         g = list(gruppo)
@@ -84,6 +87,7 @@ def calcola_max_tavoli(sala: dict, richiesta: tuple, soglie: list[int], tempo_s:
     capienza >= soglie[i]? Limite superiore DIMOSTRATO (dal bound di CP-SAT); 0 se i tavoli grandi non entrano.
     Si risolve come: prenotazioni grandi obbligatorie + tante coppie facoltative, tutte alla stessa ora."""
     pren, grandi = [], []
+    sala = {k: v for k, v in sala.items() if k != "turni"}     # pura geometria: tutti i tavoli nello stesso momento
     conteggi = list(richiesta) + [0]
     for i, c in enumerate(soglie):
         for _ in range(conteggi[i] - conteggi[i + 1]):
@@ -168,6 +172,17 @@ def impossibile_per_geometria(ist, voci, pr, st: int, geo: Geometria | None, fis
     il controllo si fa istante per istante."""
     if geo is None:
         return False
+    if ist.turni:           # a turni: le prenotazioni "attive insieme" sono quelle dello stesso turno
+        per_turno: dict[int, list[int]] = {}
+        for v in voci:
+            per_turno.setdefault(ist.turno_da_passo(v.opzioni[0][1]), []).append(v.pr.coperti)
+        per_turno.setdefault(ist.turno_da_passo(st), []).append(pr.coperti)
+        vettori = {k: tuple(sum(1 for c in cop if c >= s) for s in geo.soglie) for k, cop in per_turno.items()}
+        if fissa:
+            tot = max(len(c) for c in per_turno.values())
+            v = tuple(max(x[i] for x in vettori.values()) for i in range(len(geo.soglie)))
+            return tot > geo.limite(v)
+        return any(len(per_turno[k]) > geo.limite(vettori[k]) for k in per_turno)
     R, Z, passo = ist.riapp_passi, ist.orizzonte_passi, ist.passo
     blocchi = [(v.opzioni[0][1], v.opzioni[0][1] + ist.durata_min(v.pr.coperti) // passo + R, v.pr.coperti)
                for v in voci]
@@ -258,7 +273,7 @@ def esegui_cella(task: dict, stop=None) -> dict:
     sm = task["spostamento"]
     st = ist.a_passi(pr.orario_min + sm)
     esito = {"id": task["id"], "spostamento": sm, "piano": None}
-    if _impossibile_per_conteggio(ist, voci, pr, st):
+    if _impossibile_per_conteggio(ist, voci, pr, st, task["disposizione"]):
         return esito | {"esito": NON_ENTRA, "come": "conteggio", "tempo_s": round(time.perf_counter() - t0, 3)}
     mod = _costruisci(ist, voci + [_Voce(pr, [(sm, st)], True)], task["disposizione"], obiettivo="nessuno")
     if task.get("max_tavoli"):     # ridondante, dimostrato: mai più tavoli di quanti ne entrano insieme
@@ -617,7 +632,7 @@ class Disponibilita:
             f(stato["data"], int(stato.get("versione", 0)))
 
     def _impossibile(self, ist, voci, pr, st) -> str | None:
-        if _impossibile_per_conteggio(ist, voci, pr, st):
+        if _impossibile_per_conteggio(ist, voci, pr, st, self.disposizione):
             return "conteggio"
         if impossibile_per_geometria(ist, voci, pr, st, self.geo, self.disposizione == "fissa"):
             return "geometria"
@@ -657,7 +672,9 @@ class Disponibilita:
         celle: list[tuple] = []
         for k in classi:
             ist_k, voci_k, pr_k = istanza(self.sala, data_iso, accettate, k.massimo, self.sala["servizio"]["inizio"])
-            for st in range(0, ist.fine_passi - k.durata_min // ist.passo + 1):
+            inizi = ([ist.passo_turno(j) for j in range(len(ist.turni))] if ist.turni else
+                     range(0, ist.fine_passi - k.durata_min // ist.passo + 1))
+            for st in inizi:
                 celle.append((k, st))
                 come = self._impossibile(ist_k, voci_k, pr_k, st)
                 if come:

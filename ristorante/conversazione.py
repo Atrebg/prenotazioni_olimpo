@@ -16,7 +16,7 @@ import time
 from datetime import date, datetime, timedelta
 from pathlib import Path
 
-from .dati import ErroreDati, costruisci_istanza, hhmm_a_min, leggi_json, min_a_hhmm
+from .dati import ErroreDati, costruisci_istanza, hhmm_a_min, leggi_json, leggi_turni, min_a_hhmm, turno_piu_vicino
 from .lettura import (
     FORMATO_COMPATTO,
     GIORNI,
@@ -26,12 +26,13 @@ from .lettura import (
     etichetta_data,
     leggi_compatto,
     leggi_ora,
+    leggi_turno,
     nome_proprio,
     normalizza,
     normalizza_orario,
     risolvi_data,
 )
-from .modello import (_Voce, _cfg_solver, _costruisci, _estrai, _impossibile_per_conteggio, _parametri,
+from .modello import (_Voce, _cfg_solver, _costruisci, _estrai, _impossibile_per_conteggio, _parametri, modalita_turni,
                       _risolvi_modello, calcola_componenti)
 from .disponibilita import (NON_ENTRA, ENTRA, Calcolatore, CalcolatoreLocale, Disponibilita, Valutazione,
                             hint_completo, risolvi_interrompibile)
@@ -136,7 +137,7 @@ def lettura_da_llm(r) -> Lettura:
                    orario=r.orario, note=r.note,
                    riferimento_nome=nome_proprio(r.riferimento_nome) if r.riferimento_nome else None,
                    scelta=r.scelta, testo_data=r.testo_data, campi_mancanti=list(r.campi_mancanti),
-                   ambiguita=list(r.ambiguita), data_llm=r.data)
+                   ambiguita=list(r.ambiguita), data_llm=r.data, turno=getattr(r, "turno", None))
     for campo, valore in (("data", r.data), ("riferimento_data", r.riferimento_data)):
         if valore:
             try:
@@ -157,6 +158,24 @@ class _Conversazione:
         self.cfg = cfg_chat(sala)
         self.inizio = hhmm_a_min(sala["servizio"]["inizio"])
         self.fine = hhmm_a_min(sala["servizio"]["fine"])
+        self.turni = leggi_turni(sala, self.inizio, self.fine, int(sala.get("passo_orari_min", 15)))
+
+    # ------------------------------------------------------------------ turni
+    def _k_turno(self, orario: str) -> int | None:
+        """Indice del turno che comincia a quell'orario (None se nessuno)."""
+        return next((k for k, t in enumerate(self.turni) if min_a_hhmm(t.inizio_min) == orario), None)
+
+    def _turno(self, orario: str) -> str:
+        """'primo turno (20:00)' per l'orario d'inizio di un turno."""
+        k = self._k_turno(orario)
+        return f"{self.turni[k].nome} turno ({orario})" if k is not None else orario
+
+    def _nome_turno(self, orario: str) -> str:
+        k = self._k_turno(orario)
+        return f"{self.turni[k].nome} turno" if k is not None else f"turno delle {orario}"
+
+    def _formato(self) -> str:
+        return FORMATO_COMPATTO + (" · a turni: Rossi 4 sab 1t" if self.turni else "")
 
     # ------------------------------------------------------------------ ingresso
     def gestisci(self, testo: str) -> tuple[str, date | None, str]:
@@ -184,8 +203,9 @@ class _Conversazione:
         io.pop("verifica")
         self._salva_mittente(mitt, io)
         campi = f"{v['nome']} · {v['coperti']} persone · {etichetta_data(date.fromisoformat(v['data']))}"
+        dove = f"nel {self._nome_turno(v['orario'])}" if self.turni else f"alle {v['orario']}"
         if e == NON_ENTRA:
-            return f"Aggiornamento: {campi}, alle {v['orario']} non c'è posto."
+            return f"Aggiornamento: {campi}, {dove} non c'è posto."
         prop = next((p for p in stato["proposte_in_sospeso"] if p["mittente"] == self.mittente), None)
         opzioni = sorted({v["orario"], *(prop["opzioni"] if prop else [])})
         scade = self.ora + timedelta(minutes=int(self.cfg["scadenza_proposta_min"]))
@@ -195,7 +215,9 @@ class _Conversazione:
                  "creata_il": self.ora.isoformat(timespec="seconds"), "scade_il": scade.isoformat(timespec="seconds")}
         stato["proposte_in_sospeso"] = [p for p in stato["proposte_in_sospeso"] if p["mittente"] != self.mittente] + [nuova]
         self.archivio.salva(stato)
-        return f"Aggiornamento: {campi}, alle {v['orario']} c'è posto: rispondi «{v['orario']}» per registrarla."
+        risposta = (f"{self._k_turno(v['orario']) + 1}t" if self.turni and self._k_turno(v["orario"]) is not None
+                    else v["orario"])
+        return f"Aggiornamento: {campi}, {dove} c'è posto: rispondi «{risposta}» per registrarla."
 
     def _gestisci(self, testo: str) -> tuple[str, date | None, str]:
         mitt = self.archivio.mittenti()
@@ -275,8 +297,13 @@ class _Conversazione:
     def _leggi_llm(self, testo: str, io: dict) -> Lettura | str:
         if not getattr(self.lettore, "disponibile", False):
             return (f"Lettura automatica disattivata (manca la chiave ANTHROPIC_API_KEY). Scrivi nel formato: "
-                    f"{FORMATO_COMPATTO}")
+                    f"{self._formato()}")
         contesto = []
+        if self.turni:
+            contesto.append("Il ristorante lavora a turni: " + ", ".join(
+                f"{t.nome} turno alle {min_a_hhmm(t.inizio_min)}" for t in self.turni)
+                + ". Se il messaggio chiede un turno ('primo turno', '1t', 'al secondo') metti il numero in turno; "
+                  "se dice un orario, lascia l'orario.")
         attiva = self._proposta(tutte=False)
         if attiva:
             prop = attiva[1]
@@ -290,7 +317,7 @@ class _Conversazione:
             r = self.lettore.leggi(testo, self.ora, self.sala["servizio"]["inizio"], self.sala["servizio"]["fine"],
                                    "\n".join(contesto))
         except LLMNonDisponibile as e:
-            return f"Lettura automatica non riuscita ({e}). Scrivi nel formato: {FORMATO_COMPATTO}"
+            return f"Lettura automatica non riuscita ({e}). Scrivi nel formato: {self._formato()}"
         lett = lettura_da_llm(r)
         if "bozza" in io and lett.intento in ("nuova", "non_capito", io["bozza"]["intento"]):
             b = io["bozza"]
@@ -319,9 +346,14 @@ class _Conversazione:
         if m and "coperti" in bozza["mancano"]:
             trovati["coperti"] = int(m.group(1) or m.group(2))
             resto = resto.replace(m.group(0), " ")
+        if self.turni and "orario" in bozza["mancano"]:
+            mt = re.search(r"\b(?:[1-9]\s*t\b|(?:primo|secondo|terzo)\s+turno)", resto)
+            if mt and leggi_turno(mt.group(0)):
+                trovati["turno"] = leggi_turno(mt.group(0))
+                resto = resto.replace(mt.group(0), " ")
         m = re.search(r"\b(?:alle|verso le|per le|ore)\s+(\d{1,2}(?:[:.]\d{2})?(?:\s+e\s+(?:mezza|mezzo|un quarto))?)"
                       r"|\b(\d{1,2}[:.]\d{2})\b", resto)
-        if m and "orario" in bozza["mancano"]:
+        if m and "orario" in bozza["mancano"] and "turno" not in trovati:
             trovati["orario"] = m.group(1) or m.group(2)
             resto = resto.replace(m.group(0), " ")
         nudo = re.fullmatch(r"\s*(\d{1,2})\s*", resto)
@@ -380,6 +412,7 @@ class _Conversazione:
                     lett.domande += avvisi
                 lett.orario = o
                 lett.avvisi += [a for a in avvisi if o is not None]
+        self._metti_nel_turno(lett)
         if lett.coperti is not None and lett.coperti <= 0:
             lett.domande.append("quante persone?")
             lett.coperti = None
@@ -391,6 +424,31 @@ class _Conversazione:
         if lett.ambiguita and lett.intento in ("nuova", "modifica", "annulla"):
             lett.domande += [a for a in lett.ambiguita if a not in lett.domande]
 
+    def _metti_nel_turno(self, lett: Lettura) -> None:
+        """Sale a turni: un turno chiesto esplicitamente diventa l'orario d'inizio del turno; un orario va nel turno
+        più vicino (a parità quello della config), salvo se è lontano da tutti i turni: allora si propone il più
+        vicino senza registrare. Senza turni "1t" non vuol dire niente: si chiede l'orario."""
+        if lett.turno is not None:
+            if not self.turni:
+                lett.domande.append("qui non ci sono turni.")
+                lett.turno = None
+            elif not 1 <= lett.turno <= len(self.turni):
+                lett.domande.append(f"ci sono solo {len(self.turni)} turni.")
+                lett.turno = None
+            else:
+                lett.orario = min_a_hhmm(self.turni[lett.turno - 1].inizio_min)
+            return
+        if not self.turni or not lett.orario or lett.intento not in ("nuova", "disponibilita", "modifica"):
+            return
+        o = hhmm_a_min(lett.orario)
+        k = turno_piu_vicino(self.turni, o, str(self.sala.get("turno_a_parita", "prima")))
+        if abs(self.turni[k].inizio_min - o) > int(self.sala.get("turni_vicino_min", 45)):
+            lett.turno_lontano = k
+            return
+        lett.orario_chiesto = lett.orario
+        lett.orario = min_a_hhmm(self.turni[k].inizio_min)
+        lett.turno = k + 1
+
     def _bozza(self, lett: Lettura) -> dict:
         return {"intento": lett.intento, "nome": lett.nome, "coperti": lett.coperti, "orario": lett.orario,
                 "note": lett.note, "data": lett.data.isoformat() if lett.data else None,
@@ -399,7 +457,8 @@ class _Conversazione:
 
     def _campi(self, lett: Lettura) -> str:
         persone = f"{lett.coperti} persone" if lett.coperti else "? persone"
-        return " · ".join([lett.nome or "?", persone, etichetta_data(lett.data) if lett.data else "?", lett.orario or "?"])
+        orario = self._turno(lett.orario) if (self.turni and lett.orario) else (lett.orario or "?")
+        return " · ".join([lett.nome or "?", persone, etichetta_data(lett.data) if lett.data else "?", orario])
 
     def _chiedi(self, lett: Lettura) -> str:
         domande = list(dict.fromkeys(lett.domande))
@@ -433,7 +492,7 @@ class _Conversazione:
                 return f"Quale orario? {' o '.join(prop['opzioni'])}", date.fromisoformat(stato["data"])
             return self._conferma(stato, prop, scelta)
         return ("Non è una prenotazione: non registro niente. Per prenotare scrivi per esempio "
-                f"{FORMATO_COMPATTO}"), None
+                f"{self._formato()}"), None
 
     # istanza del motore con le accettate (orari congelati) più la richiesta
     def _istanza(self, stato: dict, coperti: int, orario: str, escludi: str | None = None):
@@ -470,7 +529,7 @@ class _Conversazione:
             """Un solo modello con tutti gli orari candidati: c'è un orario ammissibile? Si minimizza |spostamento|,
             quindi l'orario trovato è il più vicino se il solver chiude (OPTIMAL). Gli orari esclusi dal conteggio
             dei moduli (condizione sufficiente) non entrano nel modello. Restituisce (spostamento | None, deciso)."""
-            cand = [c for c in candidati if not _impossibile_per_conteggio(ist, voci, pr, c[1])]
+            cand = [c for c in candidati if not _impossibile_per_conteggio(ist, voci, pr, c[1], disp)]
             etichetta = "/".join(f"{c[0]:+d}" for c in candidati) + "′"
             if not cand:
                 esiti.append(f"{etichetta} CONTEGGIO")
@@ -527,14 +586,28 @@ class _Conversazione:
                         if normalizza(a["nome"]) == normalizza(lett.nome)), None)
             if gia is not None:
                 return self._chiedi_omonimo(gia, lett) + avvisi
+        if lett.turno_lontano is not None:
+            return self._turno_lontano(stato, lett, "nuova", None) + avvisi
         v = self._valuta(stato, lett.coperti, lett.orario)
         if v.esito == "entra":
-            a = self._registra_con_piano(stato, lett.nome, lett.coperti, lett.orario, lett.note, lett.orario, v.piano)
+            a = self._registra_con_piano(stato, lett.nome, lett.coperti, lett.orario, lett.note,
+                                         lett.orario_chiesto or lett.orario, v.piano)
             if a is None:
-                return (f"{lett.nome} · {lett.coperti} persone · {etichetta_data(lett.data)} · {lett.orario}: non riesco "
-                        f"a confermarlo in tempo, riprova tra poco. Non ho registrato niente.")
+                return (f"{self._campi(lett)}: non riesco a confermarlo in tempo, riprova tra poco. "
+                        f"Non ho registrato niente.")
             return self._conferma_testo(a, stato["data"]) + avvisi
         return self._risposta_non_entra(stato, v, lett, "nuova", None) + avvisi
+
+    def _turno_lontano(self, stato: dict, lett: Lettura, tipo: str, id_pren: str | None) -> str:
+        """L'orario chiesto è lontano da tutti i turni: si propone il più vicino, senza registrare."""
+        t = self.turni[lett.turno_lontano]
+        inizio = min_a_hhmm(t.inizio_min)
+        chiesto = lett.orario
+        lett.orario_chiesto, lett.orario = chiesto, inizio
+        self._salva_proposta(stato, lett, tipo, id_pren, [inizio])
+        campi = f"{lett.nome} · {lett.coperti} persone · {etichetta_data(lett.data)}"
+        return (f"{campi}: alle {chiesto} non c'è un turno. Il più vicino è il {t.nome}, alle {inizio}. Va bene? "
+                f"Non ho ancora registrato niente.")
 
     def _chiedi_omonimo(self, gia: dict, lett: Lettura) -> str:
         mitt = self.archivio.mittenti()
@@ -543,15 +616,17 @@ class _Conversazione:
                                                       "note": lett.note, "data": lett.data.isoformat()},
                          "scade_il": (self.ora + timedelta(minutes=int(self.cfg["scadenza_proposta_min"]))).isoformat()}
         self._salva_mittente(mitt, io)
+        dove_nuovo = f"nel {self._nome_turno(lett.orario)}" if self.turni else f"alle {lett.orario}"
+        dove_gia = f"nel {self._turno(gia['orario'])}" if self.turni else f"alle {gia['orario']}"
         if (lett.coperti, lett.orario) == (gia["coperti"], gia["orario"]):
             cosa = "è la stessa"
         elif lett.coperti == gia["coperti"]:
-            cosa = f"la sposto alle {lett.orario}"
+            cosa = f"la sposto {dove_nuovo}"
         elif lett.orario == gia["orario"]:
             cosa = f"la porto a {lett.coperti} persone"
         else:
-            cosa = f"la cambio in {lett.coperti} persone alle {lett.orario}"
-        return (f"C'è già {gia['nome']} alle {gia['orario']} per {gia['coperti']} persone "
+            cosa = f"la cambio in {lett.coperti} persone {dove_nuovo}"
+        return (f"C'è già {gia['nome']} {dove_gia} per {gia['coperti']} persone "
                 f"({etichetta_data(lett.data)}): è un'altra prenotazione o {cosa}?")
 
     def _risposta_non_entra(self, stato, v: Valutazione, lett: Lettura, tipo: str, id_pren: str | None,
@@ -561,10 +636,13 @@ class _Conversazione:
             self._rifiuto(stato, lett, "nessun tavolo componibile abbastanza grande")
             self.archivio.salva(stato)
             return f"{campi}: per {lett.coperti} persone non ho un tavolo abbastanza grande."
+        resta = " (la prenotazione attuale resta valida finché non confermi)" if tipo == "modifica" else ""
+        if self.turni and v.esito in ("opzioni", "parziale", "pieno", "non_deciso"):
+            return self._risposta_turni(stato, v, lett, tipo, id_pren, prefisso, campi, resta)
         if v.esito == "opzioni":
             self._salva_proposta(stato, lett, tipo, id_pren, v.opzioni)
             return (f"{prefisso}{campi}: alle {lett.orario} sono pieno. Posso alle {' o alle '.join(v.opzioni)}. Quale?"
-                    + (" (la prenotazione attuale resta valida finché non confermi)" if tipo == "modifica" else ""))
+                    + resta)
         if v.esito == "parziale":
             self._ricorda_verifica(stato, lett, id_pren)
             if v.opzioni:
@@ -578,11 +656,39 @@ class _Conversazione:
         self.archivio.salva(stato)
         return f"{prefisso}{campi}: sono pieno dalle {lett.orario} fino a {self.cfg['proposta_max_min']} minuti prima e dopo."
 
+    def _risposta_turni(self, stato, v: Valutazione, lett: Lettura, tipo: str, id_pren: str | None, prefisso: str,
+                        campi: str, resta: str) -> str:
+        """Sale a turni: "il primo turno è pieno. Posso nel secondo, alle 21:30. Va bene?"."""
+        chiesto = self._nome_turno(lett.orario)
+
+        def offerta(opzioni: list[str]) -> str:
+            voci = [f"nel {self.turni[self._k_turno(o)].nome}, alle {o}" if self._k_turno(o) is not None else f"alle {o}"
+                    for o in opzioni]
+            return f"Posso {' o '.join(voci)}. {'Va bene?' if len(voci) == 1 else 'Quale?'}"
+
+        if v.esito == "opzioni":
+            self._salva_proposta(stato, lett, tipo, id_pren, v.opzioni)
+            return f"{prefisso}{campi}: il {chiesto} è pieno. {offerta(v.opzioni)}{resta}"
+        if v.esito == "parziale":
+            self._ricorda_verifica(stato, lett, id_pren)
+            if v.opzioni:
+                self._salva_proposta(stato, lett, tipo, id_pren, v.opzioni)
+                return f"{prefisso}{campi}: il {chiesto} è ancora da verificare; di sicuro {offerta(v.opzioni)[0].lower()}{offerta(v.opzioni)[1:]}"
+            return f"{prefisso}{campi}: sto ancora verificando il {chiesto}, ti scrivo appena so. Non ho registrato niente."
+        if v.esito == "non_deciso":
+            return f"{campi} · {chiesto}: non riesco a verificarlo in tempo, riprova tra poco. Non ho registrato niente."
+        self._rifiuto(stato, lett, "tutti i turni pieni")
+        self.archivio.salva(stato)
+        altri = [t.nome for t in self.turni if t.nome + " turno" != chiesto]
+        anche = (f", e anche il {' e il '.join(altri)}" if altri else "")
+        return f"{prefisso}{campi}: il {chiesto} è pieno{anche}."
+
     def _salva_proposta(self, stato, lett: Lettura, tipo: str, id_pren: str | None, opzioni: list[str]) -> None:
         scade = self.ora + timedelta(minutes=int(self.cfg["scadenza_proposta_min"]))
         prop = {"mittente": self.mittente, "tipo": tipo, "id_prenotazione": id_pren, "opzioni": opzioni,
                 "richiesta": {"nome": lett.nome, "coperti": lett.coperti, "orario": lett.orario, "note": lett.note,
-                              "data": stato["data"]},
+                              "data": stato["data"], **({"orario_chiesto": lett.orario_chiesto}
+                                                        if lett.orario_chiesto else {})},
                 "creata_il": self.ora.isoformat(timespec="seconds"), "scade_il": scade.isoformat(timespec="seconds")}
         stato["proposte_in_sospeso"] = [p for p in stato["proposte_in_sospeso"] if p["mittente"] != self.mittente] + [prop]
         self.archivio.salva(stato)
@@ -610,7 +716,8 @@ class _Conversazione:
             self._togli_proposta(stato, salva=False)
             if prop["tipo"] == "modifica":
                 return self._applica_modifica(stato, prop["id_prenotazione"], r["coperti"], scelta, v.piano), d
-            a = self._registra_con_piano(stato, r["nome"], r["coperti"], scelta, r.get("note"), r["orario"], v.piano)
+            a = self._registra_con_piano(stato, r["nome"], r["coperti"], scelta, r.get("note"),
+                                         r.get("orario_chiesto") or r["orario"], v.piano)
             if a is None:
                 return f"{r['nome']} · {scelta}: non riesco a confermarlo in tempo, riprova tra poco.", d
             return self._conferma_testo(a, stato["data"]), d
@@ -622,13 +729,21 @@ class _Conversazione:
             v2 = Valutazione("opzioni", [r["orario"]])
         elif v2.esito == "parziale" and not v2.opzioni:
             v2 = Valutazione("parziale", [], in_verifica=v2.in_verifica)
+        lett.orario_chiesto = r.get("orario_chiesto")
+        gia_pieno = (f"Il {self._nome_turno(scelta)} non è più libero. " if self.turni else
+                     f"Le {scelta} non sono più libere. ")
         return self._risposta_non_entra(stato, v2, lett, prop["tipo"], prop.get("id_prenotazione"),
-                                        prefisso=f"Le {scelta} non sono più libere. "), d
+                                        prefisso=gia_pieno), d
 
     def _disponibilita(self, lett: Lettura) -> str:
         stato = self.archivio.carica(lett.data)
+        if lett.turno_lontano is not None:
+            t = self.turni[lett.turno_lontano]
+            return (f"{etichetta_data(lett.data)} per {lett.coperti}: alle {lett.orario} non c'è un turno. Il più vicino "
+                    f"è il {t.nome}, alle {min_a_hhmm(t.inizio_min)}: chiedimi per quello.")
         v = self._valuta(stato, lett.coperti, lett.orario)
-        q = f"{etichetta_data(lett.data)} alle {lett.orario} per {lett.coperti}"
+        q = (f"{etichetta_data(lett.data)} nel {self._turno(lett.orario)} per {lett.coperti}" if self.turni else
+             f"{etichetta_data(lett.data)} alle {lett.orario} per {lett.coperti}")
         if v.esito == "parziale":
             if v.opzioni:
                 return f"{q[:1].upper()}{q[1:]}: sto ancora verificando; di sicuro posso alle {' o alle '.join(v.opzioni)}."
@@ -640,8 +755,13 @@ class _Conversazione:
             return f"Sì, {q} c'è posto."
         if v.esito == "troppo_grande":
             return f"{q}: per {lett.coperti} persone non ho un tavolo abbastanza grande."
+        if v.esito == "opzioni" and self.turni:
+            voci = [f"nel {self.turni[self._k_turno(o)].nome}, alle {o}" for o in v.opzioni if self._k_turno(o) is not None]
+            return f"{q[:1].upper()}{q[1:]}: è pieno. Posso {' o '.join(voci)}."
         if v.esito == "opzioni":
             return f"{q[:1].upper()}{q[1:]}: sono pieno. Posso alle {' o alle '.join(v.opzioni)}."
+        if v.esito == "pieno" and self.turni:
+            return f"{q[:1].upper()}{q[1:]}: tutti i turni sono pieni."
         if v.esito == "non_deciso":
             return f"{q}: non riesco a verificarlo in tempo, riprova tra poco."
         return f"{q[:1].upper()}{q[1:]}: sono pieno fino a {self.cfg['proposta_max_min']} minuti prima e dopo."
@@ -652,6 +772,16 @@ class _Conversazione:
         if not acc:
             return f"{etichetta_data(d)}: nessuna prenotazione."
         righe = [f"{etichetta_data(d)} · {len(acc)} {'prenotazione' if len(acc) == 1 else 'prenotazioni'} · {sum(a['coperti'] for a in acc)} coperti"]
+        if self.turni:
+            for t in self.turni:
+                inizio = min_a_hhmm(t.inizio_min)
+                nel = [a for a in acc if a["orario"] == inizio]
+                righe.append(f"{t.nome.capitalize()} turno ({inizio}) · {len(nel)} "
+                             f"{'prenotazione' if len(nel) == 1 else 'prenotazioni'} · {sum(a['coperti'] for a in nel)} coperti")
+                righe += [f"  {a['nome']} {a['coperti']}" + (f" ({a['note']})" if a.get("note") else "") for a in nel]
+            fuori = [a for a in acc if self._k_turno(a["orario"]) is None]
+            righe += [f"{a['orario']} {a['nome']} {a['coperti']} (fuori dai turni)" for a in fuori]
+            return "\n".join(righe)
         righe += [f"{a['orario']} {a['nome']} {a['coperti']}" + (f" ({a['note']})" if a.get("note") else "") for a in acc]
         return "\n".join(righe)
 
@@ -698,19 +828,33 @@ class _Conversazione:
                     f"riprenota (il cambio di data non è ancora gestito)."), d
         if (nuovi_coperti, nuovo_orario) == (a["coperti"], a["orario"]):
             return f"Nessuna modifica: {a['nome']} · {a['coperti']} persone · {etichetta_data(d)} · {a['orario']}", d
+        if lett.turno_lontano is not None and lett.orario:
+            l2 = Lettura("modifica", lett.origine, nome=a["nome"], coperti=nuovi_coperti, orario=lett.orario,
+                         note=a.get("note"), data=d, turno_lontano=lett.turno_lontano)
+            return self._turno_lontano(stato, l2, "modifica", id_pren), d
         v = self._valuta(stato, nuovi_coperti, nuovo_orario, escludi=id_pren)
         if v.esito == "entra":
             return self._applica_modifica(stato, id_pren, nuovi_coperti, nuovo_orario, v.piano), d
+        if self.turni and v.esito in ("opzioni", "parziale") and v.opzioni:
+            # proporre il turno in cui la prenotazione è già, con gli stessi coperti, non cambia niente
+            v.opzioni = [o for o in v.opzioni if (o, nuovi_coperti) != (a["orario"], a["coperti"])]
+            if not v.opzioni and v.esito == "opzioni":
+                return (f"{a['nome']} · {nuovi_coperti} persone · {etichetta_data(d)}: il {self._nome_turno(nuovo_orario)} "
+                        f"è pieno. La prenotazione resta com'è, nel {self._turno(a['orario'])}."), d
         l2 = Lettura("modifica", lett.origine, nome=a["nome"], coperti=nuovi_coperti, orario=nuovo_orario,
                      note=a.get("note"), data=d)
         return self._risposta_non_entra(stato, v, l2, "modifica", id_pren), d
 
     def _applica_modifica(self, stato: dict, id_pren: str, coperti: int, orario: str, piano: dict | None = None) -> str:
         a = next(x for x in stato["accettate"] if x["id"] == id_pren)
-        prima = f"prima {a['coperti']} persone alle {a['orario']}"
+        prima = (f"prima {a['coperti']} persone nel {self._nome_turno(a['orario'])}" if self.turni else
+                 f"prima {a['coperti']} persone alle {a['orario']}")
         a.update(coperti=coperti, orario=orario, modificata_il=self.ora.isoformat(timespec="seconds"))
+        if self.turni and self._k_turno(orario) is not None:
+            a["turno"] = self.turni[self._k_turno(orario)].nome
         self._nuova_versione(stato, {k.replace("_richiesta_", id_pren): v for k, v in piano.items()} if piano else None)
-        return f"✓ Modificata {a['nome']} · {coperti} persone · {etichetta_data(date.fromisoformat(stato['data']))} · {orario} ({prima})"
+        quando = self._turno(orario) if self.turni else orario
+        return f"✓ Modificata {a['nome']} · {coperti} persone · {etichetta_data(date.fromisoformat(stato['data']))} · {quando} ({prima})"
 
     # ------------------------------------------------------------------ stato
     def _nuova_versione(self, stato: dict, piano: dict | None = None) -> None:
@@ -760,6 +904,8 @@ class _Conversazione:
         a = {"id": f"C{stato['data'].replace('-', '')}-{stato['contatore']:03d}", "nome": nome, "coperti": coperti,
              "orario": orario, "orario_richiesto": orario_richiesto, "note": note or "",
              "prenotata_il": self.ora.isoformat(timespec="seconds"), "mittente": self.mittente}
+        if self.turni and self._k_turno(orario) is not None:
+            a["turno"] = self.turni[self._k_turno(orario)].nome
         stato["accettate"].append(a)
         return a
 
@@ -770,7 +916,8 @@ class _Conversazione:
 
     def _conferma_testo(self, a: dict, data_iso: str) -> str:
         note = f" · {a['note']}" if a.get("note") else ""
-        return f"✓ {a['nome']} · {a['coperti']} persone · {etichetta_data(date.fromisoformat(data_iso))} · {a['orario']}{note}"
+        quando = self._turno(a["orario"]) if self.turni else a["orario"]
+        return f"✓ {a['nome']} · {a['coperti']} persone · {etichetta_data(date.fromisoformat(data_iso))} · {quando}{note}"
 
     def _proposta(self, tutte: bool) -> tuple[dict, dict] | None:
         """Ultima proposta in sospeso per questo mittente (anche scaduta se `tutte`), nelle serate da oggi in poi."""
@@ -796,6 +943,10 @@ class _Conversazione:
         t = normalizza(testo).strip(" .!?")
         if re.fullmatch(r"(no|nessuna|nessuno|lascia stare|lascia perdere|annulla)( grazie)?", t):
             return "nessuna"
+        if self.turni:
+            n = leggi_turno(testo, nudo=True)
+            if n is not None and 1 <= n <= len(self.turni):
+                return min_a_hhmm(self.turni[n - 1].inizio_min)
         t2 = re.sub(r"\b(ok|okay|si|va bene|vada per|perfetto|allora|meglio|facciamo|prendo|confermo|grazie)\b", " ", t)
         t2 = re.sub(r"\b(la|le|alle|quella delle|quella|delle|ore)\b", " ", t2).strip(" ,.!")
         if not t2:
@@ -877,7 +1028,8 @@ def piantina_serata(cartella_stato: str | Path, d: date, sala: dict | None = Non
     tavoli, assegnazioni, _ = _estrai(ist, mod, piano)
     comp = calcola_componenti(ist, tavoli, assegnazioni, [])
     sol = {"sala": sala.get("nome", ""), "serata": pren["serata"],
-           "modalita": {"accettazione": "chat (orari congelati alla conferma)", "disposizione": disp},
+           "modalita": {"accettazione": "chat (orari congelati alla conferma)", "disposizione": disp,
+                        **modalita_turni(ist)},
            "solver": info, "obiettivo_componenti": comp, "tavoli": tavoli, "assegnazioni": assegnazioni,
            "non_sistemate": []}
     out = Path(out) if out else RADICE / "out" / "serate" / d.isoformat()

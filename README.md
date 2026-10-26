@@ -14,6 +14,10 @@ Due scelte in configurazione (`dati/sala_esempio.json`, sovrascrivibili da riga 
 |---|---|---|
 | `accettazione` | `ordine_di_arrivo` (default) · `tutte_insieme` | "i primi che prenotano restano dentro" · ottimizzazione unica (modalità originale) |
 | `disposizione` | `fissa` (default) · `variabile` | tavoli fermi tutta la sera · la piantina può cambiare durante il servizio |
+| `turni` | assente (default) · elenco di turni | orari liberi · ogni prenotazione occupa il tavolo per tutto il suo turno ([modalità a turni](#modalità-a-turni)) |
+
+La sala del ristorante Olimpo a turni (primo alle 20:00, secondo alle 21:30) è `dati/sala_turni.json`: la sala di
+esempio più i turni (un test controlla che il resto resti uguale).
 
 ## Installazione
 
@@ -46,6 +50,7 @@ Negli esempi qui sotto si usa `.venv\Scripts\python.exe` (Windows); su Linux e m
 | `chat.py --piantina` | disposizione dei tavoli di una serata già in chat, con verifica | `.venv\Scripts\python.exe chat.py --piantina 2026-10-31 --cartella dati\serate` |
 | `prova.py` | "c'è posto?" al telefono, senza scrivere file | `.venv\Scripts\python.exe prova.py --stato out\soluzione.json --coperti 2 --orario 21:00` |
 | `confronto.py` | confronta disposizione fissa e variabile, o politiche di proposta | `.venv\Scripts\python.exe confronto.py --modi fissa variabile` |
+| `confronto.py` a turni | le tre combinazioni a turni su sabato_pieno | `.venv\Scripts\python.exe confronto.py --sala dati\sala_turni.json --combinazioni fissa:mai fissa:sempre variabile:sempre --out out\confronto_turni` |
 | `verifica.py` | verifica indipendente di una soluzione | `.venv\Scripts\python.exe verifica.py --sala dati\sala_esempio.json --prenotazioni dati\sabato_pieno.json --soluzione out\soluzione.json` |
 | `valuta_lettura.py` | misura la precisione della lettura via Claude sui messaggi di `valutazione/` (serve la chiave) | `.venv\Scripts\python.exe valuta_lettura.py` |
 | `pytest` | test | `.venv\Scripts\python.exe -m pytest -q` |
@@ -89,6 +94,7 @@ una volta sola (circa 3-25 s all'avvio su questa macchina).
 .venv\Scripts\python.exe chat.py --ora 2026-10-27T10:00            # orologio finto
 .venv\Scripts\python.exe chat.py --piantina 2026-10-31             # disposizione dei tavoli della serata + verifica
 .venv\Scripts\python.exe chat.py --senza-tabella                   # senza tabella delle disponibilità (verifica diretta)
+.venv\Scripts\python.exe chat.py --sala dati\sala_turni.json      # ristorante a turni (Rossi 4 sab 1t)
 .venv\Scripts\python.exe misura_chat.py [--attendi-tabella]        # tempi di risposta sul copione di 10 messaggi
 ```
 
@@ -149,6 +155,67 @@ background per ogni serata con stato (da oggi in poi) e la ricalcola da capo dop
   (centesimi di secondo); se non basta, ricerca libera partendo da quel piano.
 - Le proposte vengono dalla stessa riga della tabella: stessa regola di prima (spostamenti ammessi che entrano, poi
   il più vicino prima e dopo entro 60 minuti, con tutti i più vicini dimostrati impossibili).
+
+## Modalità a turni
+
+Si attiva con `turni` nella sala (`dati/sala_turni.json`); senza `turni` tutto resta come prima.
+
+```json
+"turni": [{"nome": "primo", "inizio": "20:00", "fine": "21:30"}, {"nome": "secondo", "inizio": "21:30", "fine": "24:00"}],
+"turno_a_parita": "prima",
+"turni_vicino_min": 45
+```
+
+- **Regole.** Ogni prenotazione occupa il tavolo per tutto il suo turno: durate e riapparecchiatura non contano (il primo
+  turno lascia il tavolo alle 21:30, il secondo arriva alle 21:30). Niente spostamenti di −15/+30. Un orario chiesto
+  va nel turno più vicino, a parità quello prima (`turno_a_parita`: `prima` o `dopo`); un turno si può chiedere
+  anche direttamente (`"turno": "secondo"` nelle prenotazioni, "1t", "2t", "primo turno" in chat). Il picco della
+  cucina è disattivato. Restano le regole di sempre: chi prenota prima resta dentro, il turno promesso si congela, se
+  il turno chiesto è pieno si propone l'altro e si registra solo dopo il sì (la politica del cliente misura la
+  distanza tra l'orario chiesto e l'inizio del turno proposto).
+- **Modello** (`ristorante/modello_turni.py`). Senza il tempo continuo ogni turno è un problema di sola sistemazione:
+  su ogni tavolo al più una prenotazione per turno. "fissa" = stessi tavoli e stessi accostamenti in tutti i turni
+  (un solo NoOverlap2D); "variabile" = una disposizione per turno, con un tavolo che è "lo stesso" del turno prima se
+  ha forma e posizione uguali, altrimenti è montato a servizio iniziato e paga il riallestimento. Il conteggio dei
+  moduli si fa per turno (in "fissa" sui tavoli che servono tutti i turni: il j-esimo tavolo più grande deve bastare
+  alla j-esima prenotazione più grande di ogni turno). La tabella delle disponibilità è classe di coperti × turno.
+- **Chat.** "✓ Rossi · 4 persone · sab 31/10 · primo turno (20:00)"; turno pieno: "…: il primo turno è pieno. Posso
+  nel secondo, alle 21:30. Va bene?" (sì, ok, va bene, 2t, il secondo); entrambi pieni: "il primo turno è pieno, e
+  anche il secondo"; un orario a più di `turni_vicino_min` minuti da ogni turno (19:00, 23:00) non si registra: "alle
+  19:00 non c'è un turno. Il più vicino è il primo, alle 20:00. Va bene?". Il riepilogo è diviso per turno con i
+  coperti. Una modifica che porterebbe nel turno dove la prenotazione è già non viene proposta.
+- **Mappa.** In "fissa" una sola piantina con le prenotazioni di ogni turno su ogni tavolo; in "variabile" un cursore
+  per turno e l'elenco dei cambi sala tra un turno e l'altro. La timeline mostra i coperti per turno al posto del
+  carico della cucina.
+- **Verificatore.** Turni della sala = turni dichiarati (consecutivi, dentro il servizio); ogni prenotazione nel turno
+  chiesto (o nell'altro se accettata su proposta), con l'orario e la fine del turno; al più una prenotazione per turno
+  su ogni tavolo; turno finale = turno promesso; in "fissa" ogni tavolo c'è in tutti i turni (nessun accostamento
+  cambia); proposte = inizi di altri turni.
+- Tutti i comandi accettano la sala a turni: `esegui.py --sala dati\sala_turni.json`, `chat.py --sala
+  dati\sala_turni.json`, `prova.py --sala dati\sala_turni.json ...`, `misura_chat.py --turni`.
+
+### Confronto a turni (sabato_pieno, ordine di arrivo, esecuzione del 26/10/2026)
+
+Stesse 30 prenotazioni (106 coperti), orari messi nel turno più vicino: 15 nel primo turno (52 coperti), 15 nel
+secondo (54). Riferimento: senza turni 22/30 (75 coperti), con proposte 26/30 (85); Sonnet da solo 26/30 (86).
+
+| | fissa, "mai" | fissa, "sempre" | variabile, "sempre" |
+|---|---|---|---|
+| accettate (su proposta) / rifiutate | 26 (0) / 4 | 26 (2) / 4 | 27 (2) / 3 |
+| coperti accettati | 86 | 88 | 90 |
+| primo turno: prenotazioni / coperti | 13 / 38 | 13 / 40 | 14 / 42 |
+| secondo turno: prenotazioni / coperti | 13 / 48 | 13 / 48 | 13 / 48 |
+| tavoli · accostati · riallestimenti | 13 · 1 da 4 moduli · 0 | 13 · 1 da 4 moduli · 0 | 15 · 1 da 4 moduli (solo nel secondo) · 1 |
+| decisioni impossibili dimostrate · UNKNOWN | 4 · 0 | 4 · 0 | 3 · 0 |
+| piantina | OPTIMAL | OPTIMAL | OPTIMAL |
+| tempo totale | 8,1 s | 9,0 s | 74,5 s |
+| verifica indipendente | PASS (22/22) | PASS (22/22) | PASS (22/22) |
+
+- Rifiutate: fissa "mai" Giordano ×4 e Caruso ×2 (secondo turno pieno), Ferrari ×8 e Marino ×6 (primo turno pieno);
+  fissa "sempre" Ricci ×2, Esposito ×2, Ferrari ×8, Marino ×6 (tutti i turni pieni; Giordano e Caruso passano al
+  primo turno su proposta); variabile "sempre" Esposito ×2, Ferrari ×8, Marino ×6.
+- In "variabile" alle 21:30 si smontano due tavoli da un modulo e si uniscono 4 moduli per Rizzo ×10: è l'unico
+  riallestimento, e vale il ventisettesimo cliente.
 
 ## Il modello in parole
 
@@ -310,9 +377,22 @@ Le risposte sono identiche prima e dopo, messaggio per messaggio.
   22-27 s e dà due risposte parziali (4,5-4,7 s). Scelto 6×2. Senza la dominanza "se entra la più grande entrano
   le più piccole" la stessa tabella richiedeva 32 s (6×2).
 
+Modalità a turni (`misura_chat.py --turni`, sala a turni, 6×2): stato = le 21 accettate entro venerdì 16:00 nel
+replay a turni (fissa, "mai"; primo turno 8, secondo 13 e pieno); 10 messaggi: annullamento di Rizzo, Giordano ×4 che
+prima non entrava, Caruso ×2 nel posto liberato, quattro richieste nel secondo turno pieno con proposta del primo, una
+conferma, un posto libero nel primo turno, un orario lontano dai turni (19:00). Risposte identiche nei tre casi.
+
+| | senza tabella (verifica diretta) | tabella pronta | tabella non pronta (raffica) |
+|---|---|---|---|
+| mediana | 4,33 s | 0,13 s | 0,26 s |
+| massimo | 13,32 s | 0,28 s | 2,62 s |
+
+Ricalcolo della tabella dopo una modifica: mediana 0,9 s, massimo 1,1 s; prima tabella 1,6 s.
+
 ## Dati di esempio
 
 - `dati/sala_esempio.json`: sala 1200×800, ostacoli, corsie, inventario, durate, pesi, modalità, tempi del solver.
+- `dati/sala_turni.json`: la stessa sala con i turni del ristorante Olimpo (primo alle 20:00, secondo alle 21:30).
 - `dati/sabato_pieno.json` (demo principale): 30 prenotazioni, 106 coperti, ricevute dal 25 al 31 ottobre;
   Rizzo ×10 prenota per primo, Ferrari ×8 tra gli ultimi.
 - `dati/sabato.json`: 24 prenotazioni, 93 coperti, tarato perché con l'ottimizzazione unica si siedano tutti.
@@ -343,6 +423,12 @@ Le risposte sono identiche prima e dopo, messaggio per messaggio.
   legato alle chiavi geometriche della sala (dimensioni, griglia, ostacoli, corsie, inventario, margine sedie): se
   cambia altro che incide sulla disposizione va cancellato il file in `dati/cache`. Una verifica rimasta a metà
   occupa un processo fino a `tempo_verifica_s`. I processi di calcolo occupano circa 100 MB l'uno.
+- Turni: la tabella delle disponibilità e la chat usano la disposizione `chat.disposizione` della sala (fissa); con
+  più di due turni il codice funziona (proposte prima e dopo, riallestimento tra turni consecutivi) ma è provato solo
+  con due. In "variabile" la rottura delle simmetrie vale solo nel primo turno: una decisione può richiedere decine di
+  secondi (fino a 26 s su sabato_pieno, per Ricci ×2); in chat la tabella e il limite geometrico della sala chiudono di
+  solito subito i "turno pieno" (misurato solo in "fissa"). Un orario esattamente a metà tra due turni va nel turno prima: se il cliente intendeva
+  l'altro, va chiesto ("20:45" → primo turno).
 - Chat: il cambio di data in una modifica non è gestito
   (si annulla e si riprenota). La lettura via LLM non è stata provata contro l'API su questo PC (nessuna chiave): i test
   usano un client finto. "Sabato prossimo" detto in settimana vale come il primo sabato che viene (convenzione).

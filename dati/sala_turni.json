@@ -1,0 +1,88 @@
+{
+  "nome": "Sala di esempio (a turni)",
+  "accettazione": "ordine_di_arrivo",
+  "disposizione": "fissa",
+  "slot_variabile": {"moduli": 28, "tondi": 4},
+  "cliente_accetta_proposta": "sempre",
+  "proposta_max_distanza_min": 120,
+  "proposta_a_parita": "prima",
+  "turni": [
+    {"nome": "primo", "inizio": "20:00", "fine": "21:30"},
+    {"nome": "secondo", "inizio": "21:30", "fine": "24:00"}
+  ],
+  "turno_a_parita": "prima",
+  "turni_vicino_min": 45,
+  "chat": {
+    "modello": "claude-haiku-5-5",
+    "effort": "low",
+    "max_tokens": 2048,
+    "timeout_s": 30,
+    "proposta_max_min": 60,
+    "scadenza_proposta_min": 15,
+    "giorni_max": 90,
+    "servizio_serale": true,
+    "tempo_verifica_s": 30,
+    "disposizione": "fissa",
+    "processi": 6,
+    "worker_per_processo": 2,
+    "tempo_cella_s": 20,
+    "attesa_max_s": 5
+  },
+  "larghezza_cm": 1200,
+  "altezza_cm": 800,
+  "griglia_cm": 10,
+  "ostacoli": [
+    {"nome": "Ingresso", "x0": 0, "y0": 620, "x1": 180, "y1": 800},
+    {"nome": "Porta cucina", "x0": 1060, "y0": 0, "x1": 1200, "y1": 160},
+    {"nome": "Bancone bar", "x0": 700, "y0": 0, "x1": 1060, "y1": 110},
+    {"nome": "Pilastro", "x0": 580, "y0": 380, "x1": 620, "y1": 420}
+  ],
+  "corsie": [
+    {"nome": "Corsia centrale", "x0": 0, "y0": 360, "x1": 1200, "y1": 460},
+    {"nome": "Corsia ingresso", "x0": 0, "y0": 460, "x1": 140, "y1": 620},
+    {"nome": "Corsia cucina", "x0": 1080, "y0": 160, "x1": 1200, "y1": 360}
+  ],
+  "inventario": {
+    "moduli": {
+      "quantita": 14,
+      "lato_cm": 80,
+      "max_per_blocco": 5,
+      "posti_per_modulo": 2,
+      "posti_testate": 2
+    },
+    "tondi": {
+      "quantita": 2,
+      "diametro_cm": 120,
+      "capienza": 6
+    }
+  },
+  "margine_sedie_cm": 50,
+  "durate": [
+    {"fino_a_coperti": 2, "minuti": 90},
+    {"fino_a_coperti": 4, "minuti": 105},
+    {"fino_a_coperti": 6, "minuti": 120},
+    {"fino_a_coperti": null, "minuti": 150}
+  ],
+  "riapparecchiatura_min": 15,
+  "servizio": {"inizio": "19:00", "fine": "24:00"},
+  "passo_orari_min": 15,
+  "spostamenti_ammessi_min": [-15, 0, 15, 30],
+  "pesi": {
+    "non_sistemata": 10000,
+    "posto_vuoto": 10,
+    "spostamento_per_quarto": 30,
+    "accostamento_per_modulo": 5,
+    "picco_cucina_per_coperto": 20,
+    "riallestimento": 20
+  },
+  "picco_cucina_soglia_coperti": 30,
+  "solver": {
+    "tempo_limite_s": 30,
+    "tempo_decisione_s": 120,
+    "tempo_spareggio_s": 20,
+    "tempo_piantina_s": 300,
+    "tempo_proposta_s": 60,
+    "worker": 8,
+    "seed": 42
+  }
+}

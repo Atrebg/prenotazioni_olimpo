@@ -9,6 +9,7 @@ Uso:
     .venv\\Scripts\\python.exe chat.py --messaggio "Rossi 4 sab 20:30"    # un colpo solo
     .venv\\Scripts\\python.exe chat.py --ora 2026-10-27T10:00             # finge l'orologio
     .venv\\Scripts\\python.exe chat.py --senza-tabella                     # senza tabella: verifica diretta
+    .venv\\Scripts\\python.exe chat.py --sala dati\\sala_turni.json            # ristorante a turni (Rossi 4 sab 1t)
     .venv\\Scripts\\python.exe chat.py --piantina 2026-10-31              # piantina della serata + verifica
 """
 from __future__ import annotations

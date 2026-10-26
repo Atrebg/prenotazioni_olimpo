@@ -1,0 +1,221 @@
+<!doctype html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Olimpo · piantina della sala</title>
+<style>
+  body { font-family: system-ui, -apple-system, "Segoe UI", sans-serif; margin: 0; padding: 16px; background: #faf9f6; color: #2c2c2a; }
+  h1 { font-size: 20px; font-weight: 600; margin: 0 0 4px; }
+  .sub { color: #5f5e5a; font-size: 14px; margin: 0 0 12px; }
+  .wrap { max-width: 760px; margin: 0 auto; }
+  .card { background: #fff; border: 1px solid #e3e1da; border-radius: 12px; padding: 12px; margin-bottom: 14px; }
+  svg { width: 100%; height: auto; display: block; }
+  .legenda { display: flex; flex-wrap: wrap; gap: 8px 16px; font-size: 13px; color: #444441; margin-top: 8px; }
+  .legenda span { display: inline-flex; align-items: center; gap: 6px; }
+  .sw { width: 14px; height: 14px; border-radius: 3px; border: 1px solid; display: inline-block; }
+  table { width: 100%; border-collapse: collapse; font-size: 14px; }
+  th, td { text-align: left; padding: 6px 8px; border-bottom: 1px solid #eeece6; vertical-align: top; }
+  th { font-weight: 600; color: #5f5e5a; font-size: 13px; }
+  .num { font-weight: 600; white-space: nowrap; }
+  .dc { color: #a32d2d; font-size: 12px; }
+  .ok { color: #3b6d11; font-size: 12px; }
+  .scroll { overflow-x: auto; }
+  ul { margin: 6px 0 0; padding-left: 20px; font-size: 14px; }
+  .tot { font-size: 14px; margin: 6px 0 0; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Olimpo · piantina della sala</h1>
+  <p class="sub" id="sub"></p>
+
+  <div class="card">
+    <svg id="mappa" viewBox="30 10 420 665" role="img" aria-label="Piantina della sala con i tavoli numerati"></svg>
+    <div class="legenda" id="legenda"></div>
+  </div>
+
+  <div class="card">
+    <p class="tot" id="totali"></p>
+  </div>
+
+  <div class="card scroll">
+    <table>
+      <thead><tr><th>N°</th><th>Tipo</th><th>Posti</th><th>Note</th><th>Stato</th></tr></thead>
+      <tbody id="elenco"></tbody>
+    </table>
+  </div>
+
+  <div class="card">
+    <strong>Ancora da sapere</strong>
+    <ul id="dasapere"></ul>
+  </div>
+
+  <div class="card">
+    <strong>Modifiche</strong>
+    <ul id="storico"></ul>
+  </div>
+</div>
+
+<!-- DATI DELLA SALA: è l'unica cosa da aggiornare. Posizioni in unità del disegno (non in scala). -->
+<script type="application/json" id="sala">
+{
+  "nome": "Olimpo",
+  "aggiornata": "26/10/2026",
+  "turni": ["20:00", "21:30"],
+  "ingresso": {"x": 236, "y": 34, "w": 46, "h": 10},
+  "muri": ["M74 305 L240 305 L240 645", "M410 340 L410 660", "M40 660 L410 660"],
+  "ostacoli": [
+    {"nome": "bancone", "punti": "95,395 160,395 160,640 142,640 142,413 95,413", "etichetta": {"x": 118, "y": 434}}
+  ],
+  "passaggi": [
+    {"nome": "passaggio", "x": 162, "y": 395, "w": 32, "h": 245}
+  ],
+  "tavoli": [
+    {"id": "1",   "tipo": "panca",        "x": 82.3,  "y": 104.6, "posti": 4, "note": "panca fissa", "confermato": true},
+    {"id": "2",   "tipo": "panca",        "x": 130.8, "y": 75.8,  "posti": 4, "note": "panca fissa", "confermato": true},
+    {"id": "3",   "tipo": "quadrato",     "x": 125.3, "y": 148,   "rot": 45, "posti": 2, "note": "tavolo da 2, messo di traverso", "confermato": true},
+    {"id": "4",   "tipo": "quadrato",     "x": 74.1,  "y": 186.7, "posti": 2, "note": "tavolo da 2", "confermato": true},
+    {"id": "5",   "tipo": "blocco",       "x": 202.2, "y": 135.5, "moduli": 3, "verso": "verticale", "posti": 8, "note": "3 quadrati uniti, si possono separare", "separabile": true, "confermato": true},
+    {"id": "6",   "tipo": "tondo",        "x": 257.3, "y": 106.8, "r": 16, "posti": 3, "note": "tavolo alto con 3 sgabelli", "confermato": true},
+    {"id": "7",   "tipo": "blocco",       "x": 267.6, "y": 180.7, "moduli": 2, "verso": "verticale", "rot": 18,  "posti": 6, "note": "2 quadrati uniti, di traverso, si possono separare", "separabile": true, "confermato": true},
+    {"id": "8",   "tipo": "blocco",       "x": 336.4, "y": 154,   "moduli": 3, "verso": "verticale", "rot": 19,  "posti": null, "note": "3 quadrati uniti, di traverso, si possono separare", "separabile": true},
+    {"id": "9",   "tipo": "blocco",       "x": 401.7, "y": 145,   "moduli": 2, "verso": "verticale", "rot": -16, "posti": null, "note": "2 quadrati uniti, di traverso, si possono separare", "separabile": true},
+    {"id": "10",  "tipo": "tondo",        "x": 390.6, "y": 223.3, "r": 27, "posti": 10, "note": "tondo grande", "confermato": true},
+    {"id": "11",  "tipo": "lungo",        "x": 191.5, "y": 278,   "w": 104, "h": 32, "posti": 20, "note": "tavolo lungo da 5 m: un gruppo fino a 20 oppure due gruppi fino a 8", "confermato": true},
+    {"id": "12",  "tipo": "blocco",       "x": 394.9, "y": 296,   "moduli": 2, "verso": "verticale", "posti": null, "note": "2 quadrati uniti, si possono separare", "separabile": true},
+    {"id": "13A", "tipo": "rettangolare", "x": 99,    "y": 354,   "w": 44, "h": 36, "posti": 4, "note": "tavolo fisso", "confermato": true},
+    {"id": "13B", "tipo": "rettangolare", "x": 145.5, "y": 354,   "w": 44, "h": 36, "posti": 4, "note": "tavolo fisso", "confermato": true},
+    {"id": "14",  "tipo": "panca",        "x": 212,   "y": 361,   "posti": 4, "note": "panca fissa", "confermato": true},
+    {"id": "15",  "tipo": "panca",        "x": 212,   "y": 407,   "posti": 4, "note": "panca fissa", "confermato": true},
+    {"id": "16",  "tipo": "panca",        "x": 212,   "y": 453,   "posti": 4, "note": "panca fissa", "confermato": true},
+    {"id": "17",  "tipo": "panca",        "x": 212,   "y": 520,   "posti": 4, "note": "panca fissa", "confermato": true},
+    {"id": "18",  "tipo": "panca",        "x": 212,   "y": 575,   "posti": 4, "note": "panca fissa", "confermato": true},
+    {"id": "19",  "tipo": "panca",        "x": 212,   "y": 625,   "posti": 4, "note": "panca fissa", "confermato": true},
+    {"id": "20",  "tipo": "blocco",       "x": 310,   "y": 361,   "moduli": 2, "verso": "orizzontale", "posti": null, "note": "2 quadrati uniti, si possono separare", "separabile": true},
+    {"id": "21",  "tipo": "blocco",       "x": 310,   "y": 415,   "moduli": 2, "verso": "orizzontale", "posti": null, "note": "2 quadrati uniti, si possono separare", "separabile": true},
+    {"id": "22",  "tipo": "blocco",       "x": 310,   "y": 474,   "moduli": 2, "verso": "orizzontale", "posti": null, "note": "2 quadrati uniti, si possono separare", "separabile": true},
+    {"id": "23",  "tipo": "blocco",       "x": 310,   "y": 534,   "moduli": 2, "verso": "orizzontale", "posti": null, "note": "2 quadrati uniti, si possono separare", "separabile": true},
+    {"id": "24",  "tipo": "blocco",       "x": 310,   "y": 598,   "moduli": 2, "verso": "orizzontale", "posti": null, "note": "2 quadrati uniti, si possono separare", "separabile": true},
+    {"id": "25",  "tipo": "quadrato",     "x": 384,   "y": 367,   "posti": 2, "note": "tavolo da 2, contro il muro a destra", "confermato": true},
+    {"id": "26",  "tipo": "quadrato",     "x": 384,   "y": 420,   "posti": 2, "note": "tavolo da 2, contro il muro a destra", "confermato": true},
+    {"id": "27",  "tipo": "quadrato",     "x": 384,   "y": 477,   "posti": 2, "note": "tavolo da 2, contro il muro a destra", "confermato": true},
+    {"id": "28",  "tipo": "quadrato",     "x": 384,   "y": 535,   "posti": 2, "note": "tavolo da 2, contro il muro a destra", "confermato": true},
+    {"id": "29",  "tipo": "quadrato",     "x": 384,   "y": 593,   "posti": 2, "note": "tavolo da 2, contro il muro a destra", "confermato": true}
+  ],
+  "da_sapere": [
+    "Posti dei gruppi 8, 9, 12 e 20-24: qui si usa la regola di 5 e 7 (2 posti per quadrato più 2 in testa: 3 quadrati = 8, 2 quadrati = 6).",
+    "Quanti posti ha un quadrato da solo quando si separa un gruppo (qui si ipotizza 4).",
+    "La linea a L è un muro o un separé?"
+  ],
+  "storico": [
+    "26/10/2026 · prima versione, dalla foto della piantina: tavoli numerati da 1 a 29, ingresso in alto.",
+    "26/10/2026 · 11 è un tavolo lungo da 5 m (20 posti o due gruppi da 8); 13 sono due tavoli fissi da 6 (13A e 13B); da 14 a 19 sono panche fisse da 4.",
+    "26/10/2026 · tondo grande (10) da 10 posti; tondo piccolo (6) con 3 sgabelli. Due turni: 20:00 e 21:30.",
+    "26/10/2026 · 13A e 13B sono da 4 posti, non da 6; 1 e 2 sono panche fisse da 4; 3 e 4 sono tavoli da 2.",
+    "26/10/2026 · 25-29 sono tavoli da 2 perché hanno il muro a destra; c’è un muro anche in basso; i quadrati uniti si possono separare.",
+    "26/10/2026 · 5 ha 8 posti e 7 ne ha 6; aggiunto il bancone a L a sinistra delle panche, con il passaggio tra bancone e panche."
+  ]
+}
+</script>
+
+<script>
+(function () {
+  var S = JSON.parse(document.getElementById('sala').textContent);
+  var STILE = {
+    quadrato:     {fill: '#eceae4', stroke: '#888780', nome: 'quadrato'},
+    blocco:       {fill: '#d6efe6', stroke: '#1d9e75', nome: 'quadrati uniti'},
+    lungo:        {fill: '#dbe9f8', stroke: '#378add', nome: 'tavolo lungo'},
+    rettangolare: {fill: '#fae1d8', stroke: '#d85a30', nome: 'rettangolare fisso'},
+    panca:        {fill: '#f8e7c7', stroke: '#ba7517', nome: 'panca fissa'},
+    tondo:        {fill: '#e7e4fb', stroke: '#7f77dd', nome: 'tondo'}
+  };
+  var LATO = 32, GAP = 2;
+  function postiIpotesi(t) {
+    if (t.posti != null) return t.posti;
+    if (t.tipo === 'quadrato') return 4;
+    if (t.tipo === 'blocco') return 2 * t.moduli + 2;
+    return 0;
+  }
+  function rect(x, y, w, h, st, extra) {
+    return '<rect x="' + x + '" y="' + y + '" width="' + w + '" height="' + h + '" rx="2" fill="' + st.fill +
+      '" stroke="' + st.stroke + '" stroke-width="1"' + (extra || '') + '/>';
+  }
+  var svg = '';
+  svg += '<rect x="40" y="40" width="400" height="625" rx="6" fill="none" stroke="#b4b2a9" stroke-dasharray="6 4"/>';
+  var e = S.ingresso;
+  svg += '<rect x="' + e.x + '" y="' + e.y + '" width="' + e.w + '" height="' + e.h + '" rx="2" fill="#ef9f27"/>';
+  svg += '<text x="' + (e.x + e.w / 2) + '" y="' + (e.y - 6) + '" text-anchor="middle" font-size="12" fill="#854f0b">ingresso</text>';
+  svg += '<defs><pattern id="righe" width="6" height="6" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><line x1="0" y1="0" x2="0" y2="6" stroke="#b5d4f4" stroke-width="2"/></pattern></defs>';
+  (S.passaggi || []).forEach(function (p) {
+    svg += '<rect x="' + p.x + '" y="' + p.y + '" width="' + p.w + '" height="' + p.h + '" fill="url(#righe)" stroke="#85b7eb" stroke-width="0.8"/>';
+    var cx = p.x + p.w / 2, cy = p.y + p.h / 2;
+    svg += '<text x="' + cx + '" y="' + cy + '" text-anchor="middle" dominant-baseline="central" font-size="11" fill="#0c447c" transform="rotate(-90 ' + cx + ' ' + cy + ')">' + p.nome + '</text>';
+  });
+  (S.ostacoli || []).forEach(function (o) {
+    svg += '<polygon points="' + o.punti + '" fill="#d3d1c7" stroke="#5f5e5a" stroke-width="1"/>';
+    if (o.etichetta) svg += '<text x="' + o.etichetta.x + '" y="' + o.etichetta.y + '" text-anchor="middle" font-size="11" fill="#444441">' + o.nome + '</text>';
+  });
+  S.muri.forEach(function (d) { svg += '<path d="' + d + '" fill="none" stroke="#2c2c2a" stroke-width="3"/>'; });
+  S.tavoli.forEach(function (t) {
+    var st = STILE[t.tipo], tratt = t.confermato ? '' : ' stroke-dasharray="3 2"';
+    var rot = t.rot ? ' transform="rotate(' + t.rot + ' ' + t.x + ' ' + t.y + ')"' : '';
+    var g = '';
+    if (t.tipo === 'tondo') {
+      g += '<circle cx="' + t.x + '" cy="' + t.y + '" r="' + t.r + '" fill="' + st.fill + '" stroke="' + st.stroke + '" stroke-width="1"' + tratt + '/>';
+    } else if (t.tipo === 'blocco') {
+      var k = t.moduli, L = k * LATO + (k - 1) * GAP;
+      for (var i = 0; i < k; i++) {
+        var off = -L / 2 + i * (LATO + GAP);
+        var x = t.verso === 'orizzontale' ? t.x + off : t.x - LATO / 2;
+        var y = t.verso === 'orizzontale' ? t.y - LATO / 2 : t.y + off;
+        g += rect(x, y, LATO, LATO, st, tratt + rot);
+      }
+    } else {
+      var w = t.w || LATO, h = t.h || LATO;
+      g += rect(t.x - w / 2, t.y - h / 2, w, h, st, tratt + rot);
+    }
+    var grande = (t.r && t.r >= 20) || (t.w && t.w >= 44);
+    if (grande) {
+      g += '<text x="' + t.x + '" y="' + (t.y - 3) + '" text-anchor="middle" font-size="13" font-weight="600" fill="#2c2c2a" stroke="#ffffff" stroke-width="3.5" paint-order="stroke" stroke-linejoin="round">' + t.id + '</text>';
+      g += '<text x="' + t.x + '" y="' + (t.y + 11) + '" text-anchor="middle" font-size="10.5" fill="#444441">' + t.posti + ' posti</text>';
+    } else {
+      g += '<text x="' + t.x + '" y="' + t.y + '" text-anchor="middle" dominant-baseline="central" font-size="13" font-weight="600" fill="#2c2c2a" stroke="#ffffff" stroke-width="3.5" paint-order="stroke" stroke-linejoin="round">' + t.id + '</text>';
+    }
+    svg += '<g>' + g + '</g>';
+  });
+  document.getElementById('mappa').innerHTML = svg;
+
+  var leg = '';
+  Object.keys(STILE).forEach(function (k) {
+    leg += '<span><i class="sw" style="background:' + STILE[k].fill + ';border-color:' + STILE[k].stroke + '"></i>' + STILE[k].nome + '</span>';
+  });
+  leg += '<span><i class="sw" style="background:#fff;border-color:#888780;border-style:dashed"></i>posti da confermare</span>';
+  leg += '<span><i class="sw" style="background:#ef9f27;border-color:#ef9f27"></i>ingresso</span>';
+  leg += '<span><i class="sw" style="background:#d3d1c7;border-color:#5f5e5a"></i>bancone</span>';
+  leg += '<span><i class="sw" style="background:#e6f1fb;border-color:#85b7eb"></i>passaggio</span>';
+  leg += '<span><i class="sw" style="background:#2c2c2a;border-color:#2c2c2a;height:4px"></i>muro</span>';
+  document.getElementById('legenda').innerHTML = leg;
+
+  document.getElementById('sub').textContent = 'Aggiornata il ' + S.aggiornata + ' · ' + S.tavoli.length + ' tavoli · turni ' + S.turni.join(' e ');
+
+  var noti = 0, ipotesi = 0, daConf = 0;
+  S.tavoli.forEach(function (t) { if (t.posti != null) noti += t.posti; else { daConf++; ipotesi += postiIpotesi(t); } });
+  document.getElementById('totali').innerHTML = 'Posti per turno: <strong>' + noti + '</strong> confermati, più ' + daConf +
+    ' tavoli da confermare (nell’elenco col punto di domanda). Se ogni quadrato ha 4 posti, la sala arriva a <strong>' + (noti + ipotesi) + '</strong> posti per turno.';
+
+  var righe = '';
+  S.tavoli.slice().sort(function (a, b) { return parseInt(a.id, 10) - parseInt(b.id, 10) || a.id.localeCompare(b.id); })
+    .forEach(function (t) {
+      var posti = t.posti != null ? t.posti : '<span class="dc">' + postiIpotesi(t) + '?</span>';
+      var stato = t.confermato ? '<span class="ok">confermato</span>' : '<span class="dc">da confermare</span>';
+      righe += '<tr><td class="num">' + t.id + '</td><td>' + STILE[t.tipo].nome + '</td><td>' + posti + '</td><td>' + (t.note || '') + '</td><td>' + stato + '</td></tr>';
+    });
+  document.getElementById('elenco').innerHTML = righe;
+
+  document.getElementById('dasapere').innerHTML = S.da_sapere.map(function (s) { return '<li>' + s + '</li>'; }).join('');
+  document.getElementById('storico').innerHTML = S.storico.map(function (s) { return '<li>' + s + '</li>'; }).join('');
+})();
+</script>
+</body>
+</html>

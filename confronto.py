@@ -4,6 +4,8 @@ Uso:
     .venv\\Scripts\\python.exe confronto.py                                   # fissa contro variabile (config)
     .venv\\Scripts\\python.exe confronto.py --modi fissa --politiche mai sempre entro_60_min --out out\\confronto_proposte
     .venv\\Scripts\\python.exe confronto.py --da-json                         # solo mappe, verifiche e tabella dai JSON
+    .venv\\Scripts\\python.exe confronto.py --sala dati\\sala_turni.json --combinazioni fissa:mai fissa:sempre variabile:sempre ^
+        --out out\\confronto_turni                                             # modalità a turni
 Per ogni combinazione scrive <out>\\<nome>\\{soluzione.json, serata.html} e <out>\\confronto.json.
 """
 from __future__ import annotations
@@ -25,8 +27,12 @@ from ristorante.mappa import scrivi_html  # noqa: E402
 def riga(nome: str, sol: dict, rc: int) -> dict:
     a, c, s = sol["accettazione"], sol["obiettivo_componenti"], sol["solver"]
     reg = {r["id"]: r for r in sol.get("registro", [])}
+    turni = sol["modalita"].get("turni") or []
     spostati = []
     for r in sorted(sol["assegnazioni"], key=lambda r: r["orario_richiesto"]):
+        if turni and r.get("turno") != r.get("turno_richiesto"):
+            spostati.append(f'{r["nome"]} ×{r["coperti"]} (chiesto alle {r["orario_richiesto"]}): {r["turno_richiesto"]} '
+                            f'→ {r["turno"]} turno, su proposta')
         if r["spostamento_min"]:
             q = reg.get(r["id"], {})
             tipo = "proposta" if q.get("esito") == "accettata su proposta" else "spostamento ammesso"
@@ -48,6 +54,14 @@ def riga(nome: str, sol: dict, rc: int) -> dict:
                                 for r in sol["non_sistemate"]],
         "spostati": spostati,
         "tavoli": len(sol["tavoli"]),
+        "accostati": [f'{t["id"]} da {t["moduli"]} moduli ({t["capienza"]} posti' +
+                      (f', {"/".join(t["turni"])} turno)' if turni else ")")
+                      for t in sol["tavoli"] if t["tipo"] == "moduli" and t["moduli"] > 1],
+        "moduli_oltre_il_primo": c["accostamenti"]["moduli_oltre_il_primo"],
+        "per_turno": {t["nome"]: {"prenotazioni": sum(1 for r in sol["assegnazioni"] if r.get("turno") == t["nome"]),
+                                  "coperti": sum(r["coperti"] for r in sol["assegnazioni"] if r.get("turno") == t["nome"]),
+                                  "tavoli": sum(1 for x in sol["tavoli"] if t["nome"] in x.get("turni", []))}
+                      for t in turni},
         "riallestimenti": c["riallestimenti"]["numero"],
         "obiettivo_piantina": s["obiettivo"],
         "obiettivo_senza_rifiuti": c["totale"] - c["non_sistemate"]["costo"],
@@ -72,6 +86,7 @@ def tabella(righe: list[dict]) -> str:
             ("coperti accettati / rifiutati", lambda r: f'{r["coperti_accettati"]} / {r["coperti_rifiutati"]}'),
             ("proposte non accettate dal cliente", lambda r: r["proposte_rifiutate_dal_cliente"]),
             ("tavoli · riallestimenti", lambda r: f'{r["tavoli"]} · {r["riallestimenti"]}'),
+            ("moduli accostati (oltre il primo)", lambda r: r["moduli_oltre_il_primo"]),
             ("obiettivo piantina (senza rifiuti)", lambda r: f'{r["obiettivo_piantina"]} ({r["obiettivo_senza_rifiuti"]})'),
             ("stato piantina · bound", lambda r: f'{r["stato_piantina"]} · {r["bound_piantina"]}'),
             ("decisioni: ammissibili / con proposta", lambda r: f'{r["decisioni_ammissibili"]} / {r["decisioni_ammissibili_su_proposta"]}'),
@@ -79,11 +94,15 @@ def tabella(righe: list[dict]) -> str:
             ("UNKNOWN", lambda r: r["decisioni_unknown"]),
             ("tempo decisioni / piantina / totale (s)", lambda r: f'{r["tempo_decisioni_s"]} / {r["tempo_piantina_s"]} / {r["tempo_totale_s"]}'),
             ("verifica indipendente", lambda r: r["verifica"])]
+    if any(r["per_turno"] for r in righe):
+        voci.insert(2, ("per turno: prenotazioni / coperti / tavoli", lambda r: " · ".join(
+            f'{n} {v["prenotazioni"]}/{v["coperti"]}/{v["tavoli"]}' for n, v in r["per_turno"].items())))
     out = ["| | " + " | ".join(r["nome"] for r in righe) + " |", "|---|" + "---|" * len(righe)]
     for nome, f in voci:
         out.append(f"| {nome} | " + " | ".join(str(f(r)) for r in righe) + " |")
     for r in righe:
         out.append(f'\nSpostati ({r["nome"]}): ' + ("; ".join(r["spostati"]) or "nessuno"))
+        out.append(f'Tavoli accostati ({r["nome"]}): ' + ("; ".join(r["accostati"]) or "nessuno"))
         out.append(f'Rifiutate ({r["nome"]}): ' + ("; ".join(r["rifiutate_dettaglio"]) or "nessuna"))
     return "\n".join(out)
 
@@ -96,6 +115,8 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--modi", nargs="+", default=[FISSA, VARIABILE], choices=[FISSA, VARIABILE])
     ap.add_argument("--politiche", nargs="+", default=None,
                     help="politiche del cliente da confrontare (mai, sempre, entro_N_min); default: quella della config")
+    ap.add_argument("--combinazioni", nargs="+", default=None,
+                    help="coppie disposizione:politica (es. fissa:mai variabile:sempre), al posto di --modi × --politiche")
     ap.add_argument("--da-json", action="store_true", help="non risolve: rigenera mappa, verifica e tabella dai JSON")
     ap.add_argument("--tempo-decisione", type=float, default=None)
     ap.add_argument("--tempo-spareggio", type=float, default=None)
@@ -104,12 +125,14 @@ def main(argv: list[str] | None = None) -> int:
     a = ap.parse_args(argv)
     out = Path(a.out)
     combinazioni = [(d, p) for d in a.modi for p in (a.politiche or [None])]
+    if a.combinazioni:
+        combinazioni = [tuple(c.split(":", 1)) for c in a.combinazioni]
     righe = []
     for disp, pol in combinazioni:
         if pol is None:
             nome = disp
         else:
-            nome = pol if len(a.modi) == 1 else f"{disp}_{pol}"
+            nome = pol if len(a.modi) == 1 and not a.combinazioni else f"{disp}_{pol}"
         cartella = out / nome
         print(f"\n=== {nome} ===", flush=True)
         if a.da_json:

@@ -11,6 +11,7 @@ Regole per l'agente che organizza la sala. Le **regole dure** non si violano mai
 5. Si prenota solo dentro il servizio, e il pasto finisce entro la chiusura.
 6. **Chi prenota prima resta dentro.** Una prenotazione accettata non si toglie per farne entrare un'altra.
 7. **L'orario promesso al cliente non si cambia** senza chiederglielo. Se all'orario chiesto non c'è posto si propone un orario diverso, entro 60 minuti, e si registra solo dopo il sì.
+   - **Con i turni** (Olimpo: primo turno alle 20:00, secondo alle 21:30) ogni prenotazione va in un turno. Il primo turno lascia il tavolo alle 21:30. Un orario chiesto va nel turno più vicino; se quel turno è pieno si propone l'altro.
 8. Non si dichiara "pieno" un orario senza averlo verificato.
 
 ## Regole di buonsenso (in ordine di priorità)
@@ -20,7 +21,7 @@ Regole per l'agente che organizza la sala. Le **regole dure** non si violano mai
 3. **Pochi spostamenti di tavoli.** Gli accostamenti per i gruppi si montano prima del servizio. Durante il servizio si spostano tavoli solo se serve a far entrare una prenotazione.
 4. **Tranquillità.** Le tavolate e le feste (compleanni, gruppi da 8 in su) stanno agli angoli o in fondo alla sala, e non accanto alle coppie se le due prenotazioni sono a tavola nello stesso momento.
 5. **Le coppie vicino alle pareti** o alle finestre quando possibile.
-6. **Arrivi distribuiti.** Evita che troppe prenotazioni arrivino nello stesso quarto d'ora: la cucina non regge più di 30 coperti nuovi ogni 15 minuti.
+6. **Arrivi distribuiti.** Evita che troppe prenotazioni arrivino nello stesso quarto d'ora: la cucina non regge più di 30 coperti nuovi ogni 15 minuti. Con i turni questa regola non vale, perché ogni turno può arrivare tutto insieme.
 7. **Note del cliente.** Le note (compleanno, seggiolone, allergie, "tavolo tranquillo") si riportano sempre sulla mappa, e se ne tiene conto quando si sceglie il tavolo.
 
 ## Come comportarsi

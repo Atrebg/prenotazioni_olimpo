@@ -29,8 +29,11 @@ def stampa_sintesi(sol: dict, n_pren: int, n_cop: int) -> None:
     ass = sol["assegnazioni"]
     mod = sol.get("modalita", {})
     print(f"Modalità: accettazione {mod.get('accettazione')} · disposizione {mod.get('disposizione')}"
-          + (f" · proposta: {mod['cliente_accetta_proposta']} (max {mod['proposta_max_distanza_min']} min)"
-             if mod.get("cliente_accetta_proposta") else ""))
+          + (f" · proposta: {mod['cliente_accetta_proposta']}"
+             + ("" if mod.get("turni") else f" (max {mod['proposta_max_distanza_min']} min)")
+             if mod.get("cliente_accetta_proposta") else "")
+          + (" · turni: " + ", ".join(f"{t['nome']} {t['inizio']}-{t['fine']}" for t in mod["turni"])
+             if mod.get("turni") else ""))
     if "accettazione" in sol:
         a = sol["accettazione"]
         print(f"Accettate {a['accettate']} (di cui {a['accettate_su_proposta']} su proposta), rifiutate {a['rifiutate']} "
@@ -47,6 +50,10 @@ def stampa_sintesi(sol: dict, n_pren: int, n_cop: int) -> None:
           f"riallestimenti {c['riallestimenti']['costo']} ({c['riallestimenti']['numero']})")
     print(f"Sistemate {len(ass)}/{n_pren} prenotazioni, {sum(r['coperti'] for r in ass)}/{n_cop} coperti, "
           f"{len(sol['tavoli'])} tavoli")
+    for t in mod.get("turni") or []:
+        nel = [r for r in ass if r.get("turno") == t["nome"]]
+        print(f"  {t['nome']} turno ({t['inizio']}-{t['fine']}): {len(nel)} prenotazioni, "
+              f"{sum(r['coperti'] for r in nel)} coperti, {sum(1 for x in sol['tavoli'] if t['nome'] in x.get('turni', []))} tavoli")
     for r in sol["non_sistemate"]:
         print(f"  non sistemata: {r['id']} {r['nome']} ×{r['coperti']} {r['orario_richiesto']} — {r['motivo']}")
 

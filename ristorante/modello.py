@@ -14,6 +14,9 @@ Disposizione (config `disposizione`):
   moduli e tondi in uso in ogni istante entro l'inventario (cumulativi); peso per ogni slot montato dopo
   l'apertura ("riallestimento").
 
+Modalità a turni (`turni` nella sala): il modello è in `modello_turni.py` (ogni turno è un problema di sola
+sistemazione); `_costruisci`, `_estrai` e il conteggio dei moduli passano lì da soli.
+
 Variabili (G = cella di griglia, P = passo orario):
 - slot a moduli (opzionali): presenza p, forma b[f] (k, orientamento), angolo dell'ingombro x, y,
   dimensioni w, h = somma b[f]*dimensione(f); slot tondi: presenza, x, y;
@@ -39,6 +42,8 @@ from .dati import (
     MOTIVO_SALA_PIENA_ACCETTATE,
     MOTIVO_TEMPO_SCADUTO,
     MOTIVO_TROPPO_GRANDE,
+    MOTIVO_TURNI_PIENI,
+    MOTIVO_TURNO_PIENO,
     ORDINE_DI_ARRIVO,
     TUTTE_INSIEME,
     VARIABILE,
@@ -85,6 +90,9 @@ class _Modello:
     a: dict = field(default_factory=dict)        # (pid, chiave) -> BoolVar
     o: dict = field(default_factory=dict)        # (pid, spostamento_min) -> BoolVar
     disposizione: str = FISSA
+    turni: bool = False                          # modello a turni (modello_turni.py)
+    info_slot: dict = field(default_factory=dict)    # a turni: chiave -> (tipo "m"/"t", indice, turno | None)
+    turni_slot: dict = field(default_factory=dict)   # a turni: chiave -> turni in cui lo slot esiste
 
 
 def _pesi(ist: Istanza) -> dict:
@@ -117,6 +125,9 @@ def _costruisci(ist: Istanza, voci: list[_Voce], disposizione: str, obiettivo: s
     obiettivo "completo": somma pesata di tutte le componenti; "nessuno": sola ammissibilità (decisioni di
     accettazione). `non_sistemate_fisse` aggiunge al costo le prenotazioni già rifiutate (costante, per la
     piantina finale). `rinforzo`: vincoli ridondanti per dimostrare prima l'impossibilità."""
+    if ist.turni:
+        from .modello_turni import costruisci_turni
+        return costruisci_turni(ist, voci, disposizione, obiettivo, non_sistemate_fisse, proiezioni, rinforzo)
     pesi = _pesi(ist)
     soglia_picco = int(ist.sala.get("picco_cucina_soglia_coperti", 30))
     m = cp_model.CpModel()
@@ -502,6 +513,10 @@ def _risolvi_modello(mod: _Modello, tempo_s: float, worker: int, seed: int, log:
 
 def _estrai(ist: Istanza, mod: _Modello, piano: dict) -> tuple[list, list, set]:
     """Tavoli e assegnazioni dal piano (valori per nome di variabile)."""
+    if mod.turni:
+        from .modello_turni import estrai_turni
+        return estrai_turni(ist, mod, piano)
+
     def V(x):
         return x if isinstance(x, int) else piano[x.name]
 
@@ -634,6 +649,8 @@ def calcola_componenti(ist: Istanza, tavoli: list, assegnazioni: list, non_siste
     for r in assegnazioni:
         per_quarto[r["orario_assegnato"]] = per_quarto.get(r["orario_assegnato"], 0) + r["coperti"]
     oltre = sum(max(0, v - soglia) for v in per_quarto.values())
+    if ist.turni:           # a turni ogni turno arriva tutto insieme: il picco della cucina non si conta
+        oltre = 0
     comp = {
         "non_sistemate": {"numero": len(non_sistemate), "costo": pesi["non_sistemata"] * len(non_sistemate)},
         "posti_vuoti": {"posti": vuoti, "costo": pesi["posto_vuoto"] * vuoti},
@@ -641,7 +658,8 @@ def calcola_componenti(ist: Istanza, tavoli: list, assegnazioni: list, non_siste
         "accostamenti": {"moduli_oltre_il_primo": extra, "costo": pesi["accostamento_per_modulo"] * extra},
         "picco_cucina": {"coperti_oltre_soglia": oltre, "soglia": soglia,
                          "costo": pesi["picco_cucina_per_coperto"] * oltre,
-                         "coperti_per_orario": dict(sorted(per_quarto.items()))},
+                         "coperti_per_orario": dict(sorted(per_quarto.items())),
+                         **({"disattivato": "turni"} if ist.turni else {})},
         "riallestimenti": {"numero": riall, "costo": pesi["riallestimento"] * riall},
     }
     comp["totale"] = sum(v["costo"] for v in comp.values())
@@ -651,6 +669,14 @@ def calcola_componenti(ist: Istanza, tavoli: list, assegnazioni: list, non_siste
 def _parametri(ist, worker, seed):
     return (int(worker if worker is not None else _cfg_solver(ist, "worker", 8)),
             int(seed if seed is not None else _cfg_solver(ist, "seed", 42)))
+
+
+def modalita_turni(ist: Istanza) -> dict:
+    """Voci della modalità a turni da dichiarare nella soluzione (le controlla il verificatore)."""
+    if not ist.turni:
+        return {}
+    return {"turni": [{"nome": t.nome, "inizio": min_a_hhmm(t.inizio_min), "fine": min_a_hhmm(t.fine_min)}
+                      for t in ist.turni], "turno_a_parita": ist.turno_a_parita}
 
 
 # ---------------------------------------------------------------------------- modalità "tutte_insieme"
@@ -671,7 +697,8 @@ def risolvi(ist: Istanza, tempo_limite_s: float | None = None, worker: int | Non
         # la soluzione "nessun tavolo, nessuna prenotazione sistemata" è sempre ammissibile
         raise RuntimeError("modello INFEASIBLE: errore di modellazione o di dati")
     base = {"sala": ist.sala.get("nome", ""), "serata": ist.serata.get("serata", ""),
-            "modalita": {"accettazione": TUTTE_INSIEME, "disposizione": disposizione}, "solver": info}
+            "modalita": {"accettazione": TUTTE_INSIEME, "disposizione": disposizione, **modalita_turni(ist)},
+            "solver": info}
     if piano is None:
         ns = [_non_sistemata(ist, pr, [], MOTIVO_NESSUNA_SOLUZIONE) for pr in ist.prenotazioni]
         return base | {"obiettivo_componenti": calcola_componenti(ist, [], [], ns),
@@ -703,10 +730,15 @@ class Decisione:
     esiti_proposte: str = ""
 
 
-def _impossibile_per_conteggio(ist: Istanza, accettate: list[_Voce], pr: Prenotazione, st: int) -> bool:
+def _impossibile_per_conteggio(ist: Istanza, accettate: list[_Voce], pr: Prenotazione, st: int,
+                               disposizione: str | None = None) -> bool:
     """Condizione SUFFICIENTE di impossibilità, in qualunque disposizione: in un passo della permanenza di `pr`
     (riapparecchiatura compresa) le prenotazioni attive chiedono più moduli dell'inventario, anche usando al meglio
-    i tondi. Ogni prenotazione attiva occupa un tavolo suo; un tavolo a moduli per c coperti usa almeno kmin(c) moduli."""
+    i tondi. Ogni prenotazione attiva occupa un tavolo suo; un tavolo a moduli per c coperti usa almeno kmin(c) moduli.
+    A turni il conteggio è per turno (e in "fissa" sui tavoli che servono tutti i turni)."""
+    if ist.turni:
+        from .modello_turni import impossibile_per_conteggio_turni
+        return impossibile_per_conteggio_turni(ist, accettate, pr, st, disposizione)
     R, Z, passo = ist.riapp_passi, ist.orizzonte_passi, ist.passo
     cap_t = ist.forma_tondo.capienza if ist.forma_tondo is not None else 0
     n_t = ist.n_tondi if ist.forma_tondo is not None else 0
@@ -741,7 +773,7 @@ def _primo_ammissibile(ist, accettate, pr, candidati, disposizione, tempo_s, wor
     `dimostrata` = tutti i candidati più vicini sono stati esclusi con certezza (INFEASIBLE o conteggio)."""
     esiti, tutti_decisi = [], True
     for sm, st in candidati:
-        if _impossibile_per_conteggio(ist, accettate, pr, st):
+        if _impossibile_per_conteggio(ist, accettate, pr, st, disposizione):
             esiti.append(f"{sm:+d}′ CONTEGGIO")
             continue
         mod = _costruisci(ist, accettate + [_Voce(pr, [(sm, st)], True)], disposizione, obiettivo="nessuno")
@@ -775,7 +807,7 @@ def valuta_richiesta(ist: Istanza, accettate: list[_Voce], pr: Prenotazione, dis
             esiti_liv.append((liv, "UNKNOWN"))
             continue
         ops_l = [o for o in ops if abs(o[0]) == liv]
-        if all(_impossibile_per_conteggio(ist, accettate, pr, st) for _, st in ops_l):
+        if all(_impossibile_per_conteggio(ist, accettate, pr, st, disposizione) for _, st in ops_l):
             esiti_liv.append((liv, "CONTEGGIO"))
             continue
         mod = _costruisci(ist, accettate + [_Voce(pr, ops_l, True)], disposizione, obiettivo="nessuno")
@@ -803,8 +835,8 @@ def valuta_richiesta(ist: Istanza, accettate: list[_Voce], pr: Prenotazione, dis
         if not ops:
             return Decisione("rifiutata", "impossibile (a priori)", MOTIVO_FUORI_ORARIO, stato_fascia=stato_fascia)
         if fascia_decisa:
-            return Decisione("rifiutata", "impossibile (dimostrato)", MOTIVO_SALA_PIENA_ACCETTATE,
-                             stato_fascia=stato_fascia)
+            return Decisione("rifiutata", "impossibile (dimostrato)",
+                             MOTIVO_TURNO_PIENO if ist.turni else MOTIVO_SALA_PIENA_ACCETTATE, stato_fascia=stato_fascia)
         return Decisione("rifiutata", "non decisa (tempo scaduto)", MOTIVO_TEMPO_SCADUTO, stato_fascia=stato_fascia)
     cand_prima, cand_dopo = ist.candidati_proposta(pr)
     prima, es_p, dec_p = _primo_ammissibile(ist, accettate, pr, cand_prima, disposizione, tempo_proposta_s,
@@ -815,7 +847,7 @@ def valuta_richiesta(ist: Istanza, accettate: list[_Voce], pr: Prenotazione, dis
     if prima is None and dopo is None:
         if fascia_decisa and dec_p and dec_d:
             return Decisione("rifiutata", "impossibile (dimostrato)",
-                             motivo_nessun_orario(ist.proposta_max_distanza_min),
+                             MOTIVO_TURNI_PIENI if ist.turni else motivo_nessun_orario(ist.proposta_max_distanza_min),
                              stato_fascia=stato_fascia, esiti_proposte=esiti_proposte)
         return Decisione("rifiutata", "non decisa (tempo scaduto)", MOTIVO_TEMPO_SCADUTO,
                          stato_fascia=stato_fascia, esiti_proposte=esiti_proposte)
@@ -869,6 +901,8 @@ def accetta_in_ordine(ist: Istanza, disposizione: str | None = None, tempo_decis
                "stato_solver": None, "decisione": None, "spostamento_minimo_dimostrato": None,
                "spareggio": None, "proposta_prima": None, "proposta_dopo": None, "proposta_principale": None,
                "proposte_piu_vicine_dimostrate": None, "esiti_proposte": None, "tempo_s": 0.0}
+        if ist.turni:
+            rec.update(turno_richiesto=ist.turni[ist.turno_della(pr)].nome, turno_promesso=None, turno_proposto=None)
         t0 = time.perf_counter()
         dec = valuta_richiesta(ist, accettate, pr, disposizione, tempo_decisione_s, tempo_spareggio_s,
                                tempo_proposta_s, worker, seed, log, piano, cerca_proposte=politica != MAI)
@@ -880,6 +914,8 @@ def accetta_in_ordine(ist: Istanza, disposizione: str | None = None, tempo_decis
             accettate.append(_Voce(pr, [(sm, ist.a_passi(pr.orario_min + sm))], True))
             piano = dec.piano
             rec.update(esito="accettata", orario_promesso=min_a_hhmm(pr.orario_min + sm), spostamento_min=sm)
+            if ist.turni:       # a turni non c'è spostamento: si promette il turno
+                rec.update(spostamento_min=0, turno_promesso=rec["turno_richiesto"])
         elif dec.esito == "proposta":
             princ = proposta_principale(ist, dec)
             rec.update(proposta_prima=min_a_hhmm(pr.orario_min + dec.prima["spostamento"]) if dec.prima else None,
@@ -887,12 +923,16 @@ def accetta_in_ordine(ist: Istanza, disposizione: str | None = None, tempo_decis
                        proposta_principale=min_a_hhmm(pr.orario_min + princ["spostamento"]),
                        proposte_piu_vicine_dimostrate={"prima": dec.prima["dimostrata"] if dec.prima else None,
                                                        "dopo": dec.dopo["dimostrata"] if dec.dopo else None})
+            if ist.turni:
+                rec["turno_proposto"] = ist.turni[ist.turno_da_passo(princ["inizio"])].nome
             if ist.accetta_proposta(princ["spostamento"]):
                 sm = princ["spostamento"]
                 accettate.append(_Voce(pr, [(sm, princ["inizio"])], True))
                 piano = princ["piano"]
                 rec.update(esito="accettata su proposta", orario_promesso=min_a_hhmm(pr.orario_min + sm),
                            spostamento_min=sm)
+                if ist.turni:
+                    rec.update(spostamento_min=0, turno_promesso=rec["turno_proposto"])
             else:
                 motivo = MOTIVO_PROPOSTA_RIFIUTATA
                 rec["decisione"] = "proposta rifiutata dal cliente"
@@ -901,7 +941,10 @@ def accetta_in_ordine(ist: Istanza, disposizione: str | None = None, tempo_decis
             rifiutate.append(_non_sistemata(ist, pr, ist.opzioni(pr), motivo))
         rec["tempo_s"] = round(time.perf_counter() - t0, 2)
         registro.append(rec)
-        dettaglio = {"accettata": f" alle {rec['orario_promesso']}",
+        dettaglio = ({"accettata": f" nel {rec.get('turno_promesso')} turno",
+                      "accettata su proposta": f" nel {rec.get('turno_promesso')} turno (chiesto il "
+                                               f"{rec.get('turno_richiesto')})"} if ist.turni else {}).get(rec["esito"])
+        dettaglio = dettaglio or {"accettata": f" alle {rec['orario_promesso']}",
                      "accettata su proposta": f" alle {rec['orario_promesso']} (proposte: prima {rec['proposta_prima']},"
                                               f" dopo {rec['proposta_dopo']})"}.get(rec["esito"], f" ({rec['motivo']})")
         extra = f" | {rec['esiti_proposte']}" if rec["esiti_proposte"] else ""
@@ -914,7 +957,7 @@ def accetta_in_ordine(ist: Istanza, disposizione: str | None = None, tempo_decis
             "modalita": {"accettazione": ORDINE_DI_ARRIVO, "disposizione": disposizione,
                          "cliente_accetta_proposta": politica,
                          "proposta_max_distanza_min": ist.proposta_max_distanza_min,
-                         "proposta_a_parita": ist.proposta_a_parita}}
+                         "proposta_a_parita": ist.proposta_a_parita, **modalita_turni(ist)}}
     if accettate:
         mod = _costruisci(ist, accettate, disposizione, non_sistemate_fisse=len(rifiutate))
         stato, finale, info = _risolvi_modello(mod, tempo_piantina_s, worker, seed, log, hint=piano)

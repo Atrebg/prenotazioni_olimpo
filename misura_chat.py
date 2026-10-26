@@ -8,6 +8,11 @@ Uso:
     .venv\\Scripts\\python.exe misura_chat.py                      # come la chat (tabella in background se disponibile)
     .venv\\Scripts\\python.exe misura_chat.py --attendi-tabella    # ogni messaggio parte a tabella pronta
     .venv\\Scripts\\python.exe misura_chat.py --senza-tabella      # solo verifica diretta
+    .venv\\Scripts\\python.exe misura_chat.py --turni              # sala a turni (dati/sala_turni.json), copione adattato
+
+A turni lo stato iniziale sono le 21 prenotazioni accettate entro venerdì 30/10 alle 16:00 nel replay in ordine di
+arrivo (turni, disposizione fissa, politica "mai": out/confronto_turni/fissa_mai, prodotto da confronto.py): il primo
+turno ha 8 prenotazioni, il secondo 13 ed è pieno.
 """
 from __future__ import annotations
 
@@ -37,6 +42,20 @@ COPIONE = [
 ]
 
 
+COPIONE_TURNI = [
+    "annulla Rizzo sab",          # libera il tavolo da 10 del secondo turno
+    "Giordano 4 sab 21:00",       # prima non entrava (turno pieno nel replay); le 21:00 vanno nel secondo turno
+    "Caruso 2 sab 2t",            # anche lei rifiutata nel replay: ora c'è posto
+    "Sala 4 sab 21:30",           # secondo turno pieno: proposta del primo
+    "ok",                         # conferma della proposta
+    "Lupi 2 sab 2t",              # secondo turno pieno: proposta
+    "Moro 2 sab 21:15",           # secondo turno pieno: proposta
+    "Verdi 4 sab 21:45",          # secondo turno pieno: proposta
+    "Pace 2 sab 1t",              # posto libero
+    "Neri 4 sab 19:00",           # lontano dai turni: propone il primo senza registrare
+]
+
+
 class SenzaLLM:
     """Il copione è tutto in formato compatto: l'LLM non serve (e non va chiamato)."""
     disponibile = False
@@ -56,6 +75,21 @@ def stato_iniziale(cartella: Path) -> None:
     scrivi_json_atomico(cartella / "2026-10-31.json", st)
 
 
+def stato_iniziale_turni(cartella: Path) -> None:
+    from ristorante.serate import scrivi_json_atomico, serata_vuota
+    sol = json.loads((RADICE / "out" / "confronto_turni" / "fissa_mai" / "soluzione.json").read_text(encoding="utf-8"))
+    reg = {r["id"]: r for r in sol["registro"]}
+    st = serata_vuota(date(2026, 10, 31))
+    entro = [a for a in sol["assegnazioni"] if reg[a["id"]]["prenotata_il"] < "2026-10-30T16:00"]
+    for i, a in enumerate(sorted(entro, key=lambda a: reg[a["id"]]["prenotata_il"]), 1):
+        st["accettate"].append({"id": f"C20261031-{i:03d}", "nome": a["nome"], "coperti": a["coperti"],
+                                "orario": a["orario_assegnato"], "orario_richiesto": a["orario_richiesto"],
+                                "turno": a["turno"], "note": a.get("note", ""),
+                                "prenotata_il": reg[a["id"]]["prenotata_il"] + ":00", "mittente": "importata"})
+    st["contatore"] = len(st["accettate"])
+    scrivi_json_atomico(cartella / "2026-10-31.json", st)
+
+
 def main(argv=None) -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--attendi-tabella", action="store_true")
@@ -63,17 +97,19 @@ def main(argv=None) -> int:
     ap.add_argument("--processi", type=int, default=None)
     ap.add_argument("--worker", type=int, default=None)
     ap.add_argument("--json", default=None, help="salva le misure in questo file")
+    ap.add_argument("--turni", action="store_true", help="sala a turni e copione adattato")
     a = ap.parse_args(argv)
     t0 = time.perf_counter()
     from ristorante import conversazione
     from ristorante.dati import leggi_json
-    sala = leggi_json(RADICE / "dati" / "sala_esempio.json")
+    sala = leggi_json(RADICE / "dati" / ("sala_turni.json" if a.turni else "sala_esempio.json"))
+    copione = COPIONE_TURNI if a.turni else COPIONE
     t_import = time.perf_counter() - t0
     disp = None
     with tempfile.TemporaryDirectory(ignore_cleanup_errors=True) as tmp:
         try:
             cartella = Path(tmp)
-            stato_iniziale(cartella)
+            (stato_iniziale_turni if a.turni else stato_iniziale)(cartella)
             if not a.senza_tabella and hasattr(conversazione, "avvia_disponibilita"):
                 t1 = time.perf_counter()
                 disp = conversazione.avvia_disponibilita(cartella, sala, processi=a.processi, worker=a.worker,
@@ -86,7 +122,7 @@ def main(argv=None) -> int:
                 print(f"Tabella iniziale pronta: {pronta} in {t_ric:.1f} s")
             from ristorante.serate import Archivio
             arch = Archivio(cartella)
-            for i, msg in enumerate(COPIONE, 1):
+            for i, msg in enumerate(copione, 1):
                 pronta = disp.tabella_pronta(date(2026, 10, 31)) if disp is not None else None
                 versione = arch.carica(date(2026, 10, 31)).get("versione", 0)
                 t1 = time.perf_counter()

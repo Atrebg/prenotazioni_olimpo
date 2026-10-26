@@ -2,7 +2,8 @@
 controlli del codice su date e orari.
 
 Il formato compatto si legge senza LLM: "Rossi 4 sab 20:30 [note]", "Rossi 4 31/10 20:30 seggiolone",
-più "annulla Rossi sab" e "riepilogo sab". Tutto il resto passa all'LLM, se c'è la chiave.
+più "annulla Rossi sab" e "riepilogo sab"; nelle sale a turni anche "Rossi 4 sab 1t" o "Rossi 4 sab secondo turno".
+Tutto il resto passa all'LLM, se c'è la chiave.
 """
 from __future__ import annotations
 
@@ -46,6 +47,8 @@ class LetturaLLM(BaseModel):
     riferimento_nome: Optional[str] = Field(None, description="modifica/annulla: nome della prenotazione esistente")
     riferimento_data: Optional[str] = Field(None, description="modifica/annulla: data AAAA-MM-GG della prenotazione esistente, se detta")
     scelta: Optional[str] = Field(None, description="conferma_proposta: orario scelto HH:MM oppure posizione 1/2/3")
+    turno: Optional[int] = Field(None, description="solo se il messaggio chiede un turno ('primo turno', '1t', "
+                                                   "'al secondo turno'): 1 = primo, 2 = secondo; altrimenti null")
     campi_mancanti: list[str] = Field(default_factory=list, description="campi necessari non presenti nel messaggio")
     ambiguita: list[str] = Field(default_factory=list, description="dubbi di lettura, in italiano")
     testo_data: Optional[str] = Field(None, description="le parole della data come scritte: 'sabato', 'domani sera', '31/10'")
@@ -66,6 +69,9 @@ class Lettura:
     riferimento_data: date | None = None
     scelta: str | None = None
     testo_data: str | None = None
+    turno: int | None = None             # turno chiesto esplicitamente (1 = primo), sale a turni
+    orario_chiesto: str | None = None    # sale a turni: orario scritto, prima di metterlo nel turno più vicino
+    turno_lontano: int | None = None     # sale a turni: indice del turno più vicino se l'orario è lontano da tutti
     campi_mancanti: list[str] = field(default_factory=list)
     ambiguita: list[str] = field(default_factory=list)
     domande: list[str] = field(default_factory=list)   # da chiedere al proprietario prima di agire
@@ -181,13 +187,34 @@ def normalizza_orario(h: int, mi: int, inizio_min: int, fine_min: int, passo: in
     return f"{tot // 60:02d}:{tot % 60:02d}", avvisi
 
 
+# --------------------------------------------------------------------------- turni
+
+_ORDINALI_TURNO = {"primo": 1, "secondo": 2, "terzo": 3, "quarto": 4, "1o": 1, "2o": 2, "3o": 3, "1°": 1, "2°": 2,
+                   "3°": 3}
+_RE_TURNO = r"(?:[1-9]\s*t(?:urno)?|[1-9]°\s*turno|(?:primo|secondo|terzo|quarto)\s+turno|turno\s+[1-9])"
+
+
+def leggi_turno(testo: str, nudo: bool = False) -> int | None:
+    """'1t', '2 t', '1° turno', 'primo turno', 'turno 2' -> 1, 2 (numero del turno, da 1). Con `nudo` anche le
+    risposte brevi a una proposta: 'il secondo', 'primo'."""
+    t = normalizza(testo).strip(" .!?")
+    t = re.sub(r"\b(il|al|nel|ok|si|va bene|allora|meglio)\b", " ", t).strip(" ,")
+    m = re.fullmatch(r"([1-9])\s*t(?:urno)?|([1-9])°\s*turno|turno\s+([1-9])", t)
+    if m:
+        return int(m.group(1) or m.group(2) or m.group(3))
+    m = re.fullmatch(r"(primo|secondo|terzo|quarto|1o|2o|3o)\s+turno" + (r"|(primo|secondo|terzo|quarto)" if nudo else ""), t)
+    if m:
+        return _ORDINALI_TURNO[m.group(1) or m.group(2)]
+    return None
+
+
 # --------------------------------------------------------------------------- formato compatto
 
 _RE_GIORNO = (r"(?:oggi|stasera|domani|dopodomani|lun|mar|mer|gio|ven|sab|dom|luned[iì]|marted[iì]|mercoled[iì]|"
               r"gioved[iì]|venerd[iì]|sabato|domenica|\d{1,2}[/.-]\d{1,2}(?:[/.-]\d{2,4})?)")
 _RE_COMPATTO = re.compile(
     r"^\s*(?P<nome>[^\W\d_][\w'’ .-]*?)\s+(?P<coperti>\d{1,2})\s+(?P<giorno>" + _RE_GIORNO + r")\s+"
-    r"(?P<ora>\d{1,2}(?:[:.]\d{2})?)(?:\s+\[?(?P<note>[^\]]*?)\]?)?\s*$", re.IGNORECASE)
+    r"(?:(?P<turno>" + _RE_TURNO + r")|(?P<ora>\d{1,2}(?:[:.]\d{2})?))(?:\s+\[?(?P<note>[^\]]*?)\]?)?\s*$", re.IGNORECASE)
 _RE_ANNULLA = re.compile(r"^\s*annulla\s+(?P<nome>[^\W\d_][\w'’ .-]*?)\s+(?P<giorno>" + _RE_GIORNO + r")\s*$", re.IGNORECASE)
 _RE_RIEPILOGO = re.compile(r"^\s*riepilogo(?:\s+(?P<giorno>" + _RE_GIORNO + r"))?\s*$", re.IGNORECASE)
 
@@ -208,10 +235,13 @@ def leggi_compatto(testo: str) -> Lettura | None:
     if m and not _nome_plausibile(m.group("nome")):
         m = None
     if m:
+        note = (m.group("note") or "").strip() or None
+        if m.group("turno"):
+            return Lettura("nuova", "compatto", nome=nome_proprio(m.group("nome")), coperti=int(m.group("coperti")),
+                           turno=leggi_turno(m.group("turno")), note=note, testo_data=m.group("giorno"))
         ora = leggi_ora(m.group("ora"))
         if ora is None:
             return None
-        note = (m.group("note") or "").strip() or None
         return Lettura("nuova", "compatto", nome=nome_proprio(m.group("nome")), coperti=int(m.group("coperti")),
                        orario=f"{ora[0]:02d}:{ora[1]:02d}", note=note, testo_data=m.group("giorno"))
     m = _RE_ANNULLA.match(testo)

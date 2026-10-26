@@ -6,7 +6,10 @@ Convenzioni:
   sono arrotondate per ECCESSO, ostacoli e corsie sono allargati verso l'esterno
   (arrotondamento conservativo: una soluzione valida sulla griglia è valida anche in cm);
 - tempo in minuti dalla mezzanotte ("24:00" = 1440); il solver lavora in passi di
-  `passo_orari_min` (15 min) contati dall'apertura del servizio.
+  `passo_orari_min` (15 min) contati dall'apertura del servizio;
+- modalità a turni (`turni` nella sala): ogni prenotazione occupa il tavolo per tutto il suo turno, durate e
+  riapparecchiatura non contano, l'orario chiesto va nel turno più vicino (a parità: `turno_a_parita`) oppure nel
+  turno chiesto esplicitamente (campo `turno` della prenotazione).
 """
 from __future__ import annotations
 
@@ -27,6 +30,9 @@ MOTIVO_NESSUNA_SOLUZIONE = "nessuna soluzione trovata entro il tempo limite"
 MOTIVO_SALA_PIENA_ACCETTATE = "sala piena nella fascia richiesta, con le prenotazioni già accettate"
 MOTIVO_TEMPO_SCADUTO = "spazio non trovato entro il tempo limite"
 MOTIVO_PROPOSTA_RIFIUTATA = "proposta non accettata dal cliente"
+# modalità a turni
+MOTIVO_TURNO_PIENO = "turno pieno, con le prenotazioni già accettate"
+MOTIVO_TURNI_PIENI = "tutti i turni pieni, con le prenotazioni già accettate"
 MAI, SEMPRE = "mai", "sempre"
 
 
@@ -70,14 +76,26 @@ class Forma:
 
 
 @dataclass(frozen=True)
+class Turno:
+    nome: str               # "primo", "secondo"
+    inizio_min: int
+    fine_min: int
+
+    @property
+    def etichetta(self) -> str:
+        return f"{self.nome} turno"
+
+
+@dataclass(frozen=True)
 class Prenotazione:
     id: str
     nome: str
     coperti: int
-    orario_min: int         # minuti dalla mezzanotte
+    orario_min: int         # minuti dalla mezzanotte (orario chiesto)
     note: str = ""
     prenotata_il: str = ""  # data e ora di ricezione (ISO, "2026-10-27T18:42"); "" se assente
     indice: int = 0         # posizione nel file (spareggio a parità di prenotata_il)
+    turno: int | None = None  # modalità a turni: indice del turno chiesto (esplicito o il più vicino all'orario)
 
 
 @dataclass
@@ -109,6 +127,30 @@ class Istanza:
     cliente_accetta_proposta: str = MAI     # "mai" | "sempre" | "entro_N_min"
     proposta_max_distanza_min: int = 120
     proposta_a_parita: str = "prima"        # a parità di distanza: "prima" | "dopo"
+    turni: list[Turno] = field(default_factory=list)    # vuota = orari liberi (modalità classica)
+    turno_a_parita: str = "prima"           # orario a metà tra due turni: "prima" (il turno prima) | "dopo"
+    turni_vicino_min: int = 45              # chat: oltre questa distanza dal turno più vicino si chiede conferma
+
+    # ---- turni -------------------------------------------------------------------
+    def turno_vicino(self, orario_min: int) -> int:
+        """Indice del turno più vicino all'orario (distanza dall'inizio del turno); a parità `turno_a_parita`."""
+        return turno_piu_vicino(self.turni, orario_min, self.turno_a_parita)
+
+    def distanza_turno(self, orario_min: int, k: int) -> int:
+        return abs(self.turni[k].inizio_min - orario_min)
+
+    def passo_turno(self, k: int) -> int:
+        return self.a_passi(self.turni[k].inizio_min)
+
+    def turno_da_passo(self, st: int) -> int | None:
+        """Turno che comincia al passo `st` (None se nessuno)."""
+        return next((k for k, t in enumerate(self.turni) if self.a_passi(t.inizio_min) == st), None)
+
+    def turno_di(self, nome: str) -> int | None:
+        return next((k for k, t in enumerate(self.turni) if t.nome == nome), None)
+
+    def turno_della(self, pr: Prenotazione) -> int:
+        return pr.turno if pr.turno is not None else self.turno_vicino(pr.orario_min)
 
     # ---- tempo -------------------------------------------------------------------
     def durata_min(self, coperti: int) -> int:
@@ -128,7 +170,11 @@ class Istanza:
         return self.fine_passi + self.riapp_passi
 
     def opzioni(self, pr: Prenotazione) -> list[tuple[int, int]]:
-        """Spostamenti ammessi per la prenotazione: (spostamento_min, inizio in passi), pasto dentro il servizio."""
+        """Spostamenti ammessi per la prenotazione: (spostamento_min, inizio in passi), pasto dentro il servizio.
+        A turni: solo il turno chiesto, (inizio del turno - orario chiesto, passo d'inizio del turno)."""
+        if self.turni:
+            k = self.turno_della(pr)
+            return [(self.turni[k].inizio_min - pr.orario_min, self.passo_turno(k))]
         d = self.durata_min(pr.coperti) // self.passo
         t = self.a_passi(pr.orario_min)
         out = []
@@ -141,7 +187,14 @@ class Istanza:
     def candidati_proposta(self, pr: Prenotazione) -> tuple[list[tuple[int, int]], list[tuple[int, int]]]:
         """Orari alternativi fuori dagli spostamenti ammessi, sulla griglia, con il pasto dentro il servizio e
         a non più di `proposta_max_distanza_min` dall'orario richiesto: (prima, dopo), ciascuna lista ordinata
-        dal più vicino. Elementi (spostamento_min, inizio in passi)."""
+        dal più vicino. Elementi (spostamento_min, inizio in passi).
+        A turni: gli altri turni, quelli prima e quelli dopo il turno chiesto (senza limite di distanza)."""
+        if self.turni:
+            k = self.turno_della(pr)
+            prima = [(self.turni[j].inizio_min - pr.orario_min, self.passo_turno(j)) for j in range(k - 1, -1, -1)]
+            dopo = [(self.turni[j].inizio_min - pr.orario_min, self.passo_turno(j))
+                    for j in range(k + 1, len(self.turni))]
+            return prima, dopo
         d = self.durata_min(pr.coperti) // self.passo
         t = self.a_passi(pr.orario_min)
         ammessi = set(self.spostamenti_min)
@@ -363,6 +416,10 @@ def costruisci_istanza(sala: dict, serata: dict) -> Istanza:
     sv = sala.get("slot_variabile", {})
     slot_var_mod = int(sv.get("moduli", 2 * n_moduli))
     slot_var_tondi = int(sv.get("tondi", 2 * n_tondi))
+    turni = leggi_turni(sala, inizio, fine, passo)
+    t_parita = str(sala.get("turno_a_parita", "prima"))
+    if t_parita not in ("prima", "dopo"):
+        raise ErroreDati("turno_a_parita: atteso 'prima' o 'dopo'")
 
     pren: list[Prenotazione] = []
     visti: set[str] = set()
@@ -383,7 +440,16 @@ def costruisci_istanza(sala: dict, serata: dict) -> Istanza:
                 ricevuta = datetime.fromisoformat(ricevuta).isoformat(timespec="minutes")
             except ValueError as exc:
                 raise ErroreDati(f"{pid}: prenotata_il {ricevuta!r} non è una data ISO (AAAA-MM-GGTHH:MM)") from exc
-        pren.append(Prenotazione(pid, str(p["nome"]), cop, orario, str(p.get("note", "") or ""), ricevuta, indice))
+        turno = None
+        if turni:
+            if p.get("turno") not in (None, ""):
+                turno = next((k for k, t in enumerate(turni) if t.nome == str(p["turno"])), None)
+                if turno is None:
+                    raise ErroreDati(f"{pid}: turno {p['turno']!r} non definito ({', '.join(t.nome for t in turni)})")
+            else:
+                turno = turno_piu_vicino(turni, orario, t_parita)
+        pren.append(Prenotazione(pid, str(p["nome"]), cop, orario, str(p.get("note", "") or ""), ricevuta, indice,
+                                 turno))
 
     return Istanza(
         sala=sala, serata=serata, prenotazioni=pren, griglia=g, larghezza_g=W, altezza_g=H,
@@ -394,7 +460,33 @@ def costruisci_istanza(sala: dict, serata: dict) -> Istanza:
         accettazione=accettazione, disposizione=disposizione,
         slot_variabile_moduli=slot_var_mod, slot_variabile_tondi=slot_var_tondi,
         cliente_accetta_proposta=politica, proposta_max_distanza_min=prop_max, proposta_a_parita=a_parita,
+        turni=turni, turno_a_parita=t_parita, turni_vicino_min=int(sala.get("turni_vicino_min", 45)),
     )
+
+
+def turno_piu_vicino(turni: list[Turno], orario_min: int, a_parita: str = "prima") -> int:
+    """Indice del turno il cui inizio è più vicino all'orario; a metà strada vince il turno prima (o dopo)."""
+    dopo = a_parita == "dopo"
+    return min(range(len(turni)), key=lambda k: (abs(turni[k].inizio_min - orario_min), -k if dopo else k))
+
+
+def leggi_turni(sala: dict, inizio: int, fine: int, passo: int) -> list[Turno]:
+    """Turni della sala: consecutivi, senza sovrapposizioni, dentro il servizio e sulla griglia."""
+    turni: list[Turno] = []
+    for t in sala.get("turni") or []:
+        tu = Turno(str(t["nome"]), hhmm_a_min(t["inizio"]), hhmm_a_min(t["fine"]))
+        if tu.fine_min <= tu.inizio_min:
+            raise ErroreDati(f"turno {tu.nome}: la fine deve venire dopo l'inizio")
+        if tu.inizio_min < inizio or tu.fine_min > fine:
+            raise ErroreDati(f"turno {tu.nome}: fuori dal servizio")
+        if (tu.inizio_min - inizio) % passo or (tu.fine_min - inizio) % passo:
+            raise ErroreDati(f"turno {tu.nome}: fuori dalla griglia di {passo} min")
+        if turni and tu.inizio_min < turni[-1].fine_min:
+            raise ErroreDati(f"turno {tu.nome}: comincia prima della fine del turno {turni[-1].nome}")
+        turni.append(tu)
+    if len({t.nome for t in turni}) != len(turni):
+        raise ErroreDati("nomi dei turni duplicati")
+    return turni
 
 
 def leggi_json(percorso: str | Path) -> dict:

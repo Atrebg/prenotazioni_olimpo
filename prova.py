@@ -45,6 +45,20 @@ def rispondi(sala: dict, stato: dict, coperti: int, orario: str, tempo_s: float 
     dec = valuta_richiesta(ist, accettate, per_id["_richiesta_"], disposizione, tempo_s,
                            _cfg_solver(ist, "tempo_spareggio_s", 20), tempo_s, worker, seed, cerca_proposte=True)
     rich = hhmm_a_min(orario)
+    if ist.turni:           # sala a turni: l'orario va nel turno più vicino, le proposte sono gli altri turni
+        tu = ist.turni[ist.turno_della(per_id["_richiesta_"])]
+        chiesto = f"{tu.nome} turno ({min_a_hhmm(tu.inizio_min)})"
+        if dec.esito == "accettata":
+            return f"Sì, nel {chiesto} c'è posto."
+        if dec.esito == "proposta":
+            altri = [ist.turni[ist.turno_da_passo(p["inizio"])] for p in (dec.prima, dec.dopo) if p is not None]
+            return (f"Il {tu.nome} turno è pieno. Posso "
+                    + " oppure ".join(f"nel {t.nome}, alle {min_a_hhmm(t.inizio_min)}" for t in altri) + ".")
+        if dec.motivo == MOTIVO_TROPPO_GRANDE:
+            return f"Per {coperti} persone non ho un tavolo abbastanza grande."
+        if dec.decisione == "impossibile (dimostrato)":
+            return f"{giorno} tutti i turni sono pieni."
+        return f"Il {chiesto}: non riesco a confermarlo subito (verifica non chiusa entro {tempo_s:g} s)."
     if dec.esito == "accettata":
         if dec.spostamento == 0:
             return f"Sì, alle {orario} c'è posto."

@@ -3,7 +3,8 @@
 Legge solo la configurazione della sala, le prenotazioni e la soluzione JSON (non le variabili del modello).
 Se la disposizione cambia durante la serata aggiunge un cursore orario (JavaScript inline) che mostra i tavoli
 presenti in quel momento e chi ci siede, più l'elenco dei cambi sala. Se c'è un registro di accettazione lo
-riporta in ordine di prenotazione.
+riporta in ordine di prenotazione. A turni: in "fissa" una sola piantina con le prenotazioni di ogni turno su ogni
+tavolo; in "variabile" un cursore per turno.
 """
 from __future__ import annotations
 
@@ -37,9 +38,21 @@ def _esistenza(t: dict, sala: dict) -> tuple[int, int]:
     return _min(t.get("esiste_dal", sala["servizio"]["inizio"])), (_min(t["esiste_al"]) if "esiste_al" in t else fine)
 
 
+def _turni(sol: dict) -> list[dict]:
+    """Turni dichiarati nella soluzione (vuota = orari liberi)."""
+    return sol.get("modalita", {}).get("turni") or []
+
+
+def _apertura_chiusura(sala: dict, sol: dict) -> tuple[int, int]:
+    """Quando la sala è "pronta" e quando chiude: a turni dall'inizio del primo turno alla fine dell'ultimo."""
+    turni = _turni(sol)
+    if turni:
+        return _min(turni[0]["inizio"]), _min(turni[-1]["fine"])
+    return _min(sala["servizio"]["inizio"]), _min(sala["servizio"]["fine"]) + sala.get("riapparecchiatura_min", 0)
+
+
 def _disposizione_cambia(sala: dict, sol: dict) -> bool:
-    inizio = _min(sala["servizio"]["inizio"])
-    fine = _min(sala["servizio"]["fine"]) + sala.get("riapparecchiatura_min", 0)
+    inizio, fine = _apertura_chiusura(sala, sol)
     return any(_esistenza(t, sala) != (inizio, fine) for t in sol["tavoli"])
 
 
@@ -83,9 +96,8 @@ def _svg_sala(sala: dict, sol: dict, dinamica: bool) -> str:
     mg = sala["margine_sedie_cm"]
     mod = sala["inventario"]["moduli"]
     ppm, ptest, lato = mod.get("posti_per_modulo", 2), mod.get("posti_testate", 2), mod["lato_cm"]
-    riapp = sala.get("riapparecchiatura_min", 0)
-    inizio = _min(sala["servizio"]["inizio"])
-    chiusura = _min(sala["servizio"]["fine"]) + riapp
+    inizio, chiusura = _apertura_chiusura(sala, sol)
+    a_turni = bool(_turni(sol))
     per_tav = _per_tavolo(sol)
     out = [f'<svg class="sala" viewBox="-30 -30 {W + 60} {H + 60}" xmlns="http://www.w3.org/2000/svg" '
            f'role="img" aria-label="Mappa della sala">',
@@ -124,7 +136,8 @@ def _svg_sala(sala: dict, sol: dict, dinamica: bool) -> str:
             f'{_hhmm(dal)}–{"chiusura" if al == chiusura else _hhmm(al)}'
         tip = [f'{t["id"]} · {t["capienza"]} posti' + (f' · presente {quando}' if quando else "")]
         tip += [f'{r["orario_assegnato"]}-{r["fine"]} {r["nome"]} ×{r["coperti"]}'
-                + (f' (richiesto {r["orario_richiesto"]})' if r["spostamento_min"] else "")
+                + (f' ({r["turno"]} turno, chiesto alle {r["orario_richiesto"]})' if a_turni else
+                   f' (richiesto {r["orario_richiesto"]})' if r["spostamento_min"] else "")
                 + (f' — {r["note"]}' if r.get("note") else "") for r in prenot]
         out.append(f'<g class="tavolo" data-dal="{dal}" data-al="{al}"><title>{escape(chr(10).join(tip))}</title>')
         out.append(f'<rect x="{x - mg}" y="{y - mg}" width="{w + 2 * mg}" height="{h + 2 * mg}" fill="none" '
@@ -155,8 +168,9 @@ def _svg_sala(sala: dict, sol: dict, dinamica: bool) -> str:
             segno = f' ({"+" if sp > 0 else "−"}{abs(sp)}′)' if sp else ""
             a = _min(r["orario_assegnato"])
             dati = f' data-inizio="{a}" data-fine="{_min(r["fine"])}"'
+            altro_turno = a_turni and r.get("turno") != r.get("turno_richiesto")
             righe.append((f'{r["orario_assegnato"]} {r["nome"]} ×{r["coperti"]}{segno}',
-                          "et-pren spostata" if sp else "et-pren", dati))
+                          "et-pren spostata" if sp or altro_turno else "et-pren", dati))
             if r.get("note"):
                 righe.append((f'↳ {r["note"]}', "et-nota", dati))
         passo = 17
@@ -175,7 +189,8 @@ def _svg_sala(sala: dict, sol: dict, dinamica: bool) -> str:
 
 def _svg_timeline(sala: dict, sol: dict) -> str:
     inizio, fine = _min(sala["servizio"]["inizio"]), _min(sala["servizio"]["fine"])
-    riapp = sala.get("riapparecchiatura_min", 0)
+    turni = _turni(sol)
+    riapp = 0 if turni else sala.get("riapparecchiatura_min", 0)     # a turni la riapparecchiatura non conta
     soglia = sala.get("picco_cucina_soglia_coperti", 30)
     passo = sala.get("passo_orari_min", 15)
     sx = 3.4                    # px per minuto
@@ -211,8 +226,9 @@ def _svg_timeline(sala: dict, sol: dict) -> str:
         for j, r in enumerate(per_tav.get(t["id"], [])):
             a, b = _min(r["orario_assegnato"]), _min(r["fine"])
             col = COL_BARRA[(i + j) % len(COL_BARRA)]
-            out.append(f'<rect x="{X(b):.1f}" y="{y + 6}" width="{riapp * sx:.1f}" height="{riga - 12}" fill="url(#riapp2)">'
-                       f'<title>riapparecchiatura {riapp} min</title></rect>')
+            if riapp:
+                out.append(f'<rect x="{X(b):.1f}" y="{y + 6}" width="{riapp * sx:.1f}" height="{riga - 12}" fill="url(#riapp2)">'
+                           f'<title>riapparecchiatura {riapp} min</title></rect>')
             bordo = f' stroke="{COL_SPOSTATA}" stroke-width="3"' if r["spostamento_min"] else ""
             tip = (f'{r["nome"]} ×{r["coperti"]}: {r["orario_assegnato"]}-{r["fine"]} '
                    f'(richiesto {r["orario_richiesto"]})' + (f' — {r["note"]}' if r.get("note") else ""))
@@ -227,8 +243,23 @@ def _svg_timeline(sala: dict, sol: dict) -> str:
             nota = " ★" if r.get("note") else ""
             out.append(f'<text x="{X(a) + 6:.1f}" y="{y + riga / 2 + 5}" class="et-barra">'
                        f'{escape(r["nome"])} ×{r["coperti"]}{segno}{nota}</text>')
-    # carico cucina: coperti che iniziano per passo
+    # carico cucina: coperti che iniziano per passo (a turni: coperti per turno, senza soglia)
     y0 = top + n_righe * riga + 30
+    if turni:
+        per_t = {t["nome"]: sum(r["coperti"] for r in sol["assegnazioni"] if r.get("turno") == t["nome"]) for t in turni}
+        scala = alt_cucina / max([1] + list(per_t.values()))
+        out.append(f'<text x="8" y="{y0 + alt_cucina / 2}" class="et-riga"><tspan font-weight="700">Coperti</tspan></text>'
+                   f'<text x="8" y="{y0 + alt_cucina / 2 + 16}" class="et-piccolo">per turno (arrivano insieme)</text>')
+        out.append(f'<line x1="{sin}" y1="{y0 + alt_cucina}" x2="{X(fine):.1f}" y2="{y0 + alt_cucina}" stroke="#999"/>')
+        for t in turni:
+            a, b, c = _min(t["inizio"]), _min(t["fine"]), per_t[t["nome"]]
+            hgt = c * scala
+            out.append(f'<rect x="{X(a) + 2:.1f}" y="{y0 + alt_cucina - hgt:.1f}" width="{(b - a) * sx - 4:.1f}" '
+                       f'height="{hgt:.1f}" fill="#8c8c8c"><title>{t["nome"]} turno: {c} coperti</title></rect>'
+                       f'<text x="{(X(a) + X(b)) / 2:.1f}" y="{y0 + alt_cucina - hgt - 4:.1f}" class="et-piccolo" '
+                       f'text-anchor="middle">{t["nome"]} turno · {c} coperti</text>')
+        out.append('</svg>')
+        return "\n".join(out)
     partenze: dict[int, int] = {}
     for r in sol["assegnazioni"]:
         partenze[_min(r["orario_assegnato"])] = partenze.get(_min(r["orario_assegnato"]), 0) + r["coperti"]
@@ -253,8 +284,7 @@ def _svg_timeline(sala: dict, sol: dict) -> str:
 
 def cambi_sala(sala: dict, sol: dict) -> list[tuple[int, str]]:
     """Elenco dei cambi di disposizione durante il servizio: (minuto, descrizione)."""
-    inizio = _min(sala["servizio"]["inizio"])
-    chiusura = _min(sala["servizio"]["fine"]) + sala.get("riapparecchiatura_min", 0)
+    inizio, chiusura = _apertura_chiusura(sala, sol)
     per_tav = _per_tavolo(sol)
     eventi: dict[int, dict[str, list]] = {}
     for t in sol["tavoli"]:
@@ -301,6 +331,13 @@ def _sintesi(sala: dict, sol: dict, totale_coperti: int, totale_pren: int) -> st
         vivi = [u for u in tav if _esistenza(u, sala)[0] <= dal < _esistenza(u, sala)[1]]
         picco_m = max(picco_m, sum(u["moduli"] for u in vivi if u["tipo"] == "moduli"))
         picco_t = max(picco_t, sum(1 for u in vivi if u["tipo"] == "tondo"))
+    turni = _turni(sol)
+    kpi_sposta = (f'<div class="kpi"><div class="v">{len(spostate)}</div><div class="l">spostate ({minuti} min in tutto)</div></div>')
+    if turni:
+        su_prop = sum(1 for r in ass if r.get("turno") != r.get("turno_richiesto"))
+        per_t = " · ".join(f'{sum(r["coperti"] for r in ass if r.get("turno") == t["nome"])}' for t in turni)
+        kpi_sposta = (f'<div class="kpi"><div class="v">{per_t}</div><div class="l">coperti per turno '
+                      f'({", ".join(t["nome"] + " " + t["inizio"] for t in turni)}) · {su_prop} nell\'altro turno</div></div>')
     righe_ns = "".join(
         f'<li><b>{escape(r["nome"])}</b> ×{r["coperti"]} alle {r["orario_richiesto"]}: {escape(r["motivo"])}</li>'
         for r in nons) or "<li>nessuna</li>"
@@ -311,7 +348,9 @@ def _sintesi(sala: dict, sol: dict, totale_coperti: int, totale_pren: int) -> st
         ("posti vuoti", comp["posti_vuoti"]["costo"], f'{comp["posti_vuoti"]["posti"]} posti'),
         ("spostamenti", comp["spostamenti"]["costo"], f'{comp["spostamenti"]["quarti_d_ora"]} quarti d\'ora'),
         ("accostamenti", comp["accostamenti"]["costo"], f'{comp["accostamenti"]["moduli_oltre_il_primo"]} moduli oltre il primo'),
-        ("picco cucina", comp["picco_cucina"]["costo"], f'{comp["picco_cucina"]["coperti_oltre_soglia"]} coperti oltre {comp["picco_cucina"]["soglia"]}'),
+        ("picco cucina", comp["picco_cucina"]["costo"],
+         "disattivato: a turni ogni turno arriva tutto insieme" if turni else
+         f'{comp["picco_cucina"]["coperti_oltre_soglia"]} coperti oltre {comp["picco_cucina"]["soglia"]}'),
         ("riallestimenti", comp.get("riallestimenti", {}).get("costo", 0), f'{comp.get("riallestimenti", {}).get("numero", 0)} tavoli montati a servizio iniziato'),
     ]
     tab_ob = "".join(f'<tr><td>{n}</td><td class="num">{c}</td><td>{escape(d)}</td></tr>' for n, c, d in voci)
@@ -329,14 +368,14 @@ def _sintesi(sala: dict, sol: dict, totale_coperti: int, totale_pren: int) -> st
 <div class="sintesi">
   <div class="kpi"><div class="v">{coperti}/{totale_coperti}</div><div class="l">coperti sistemati</div></div>
   <div class="kpi"><div class="v">{len(ass)}/{totale_pren}</div><div class="l">prenotazioni sistemate</div></div>
-  <div class="kpi"><div class="v">{len(spostate)}</div><div class="l">spostate ({minuti} min in tutto)</div></div>
+  {kpi_sposta}
   <div class="kpi"><div class="v">{picco_m}/{inv["moduli"]["quantita"]}</div><div class="l">moduli in uso al massimo · tondi {picco_t}/{inv.get("tondi", {}).get("quantita", 0)}</div></div>
   <div class="kpi"><div class="v">{len(tav)}</div><div class="l">tavoli · {len(accostati)} con moduli accostati · {comp.get("riallestimenti", {}).get("numero", 0)} riallestimenti</div></div>
   <div class="kpi"><div class="v">{escape(s["stato"])}</div><div class="l">stato del solver · {s.get("tempo_s", "—")} s</div></div>
   {kpi_acc}
 </div>
 <p class="sotto">Accettazione: <b>{escape(str(mod.get("accettazione", "tutte_insieme")).replace("_", " "))}</b> ·
-disposizione: <b>{escape(str(mod.get("disposizione", "fissa")))}</b></p>
+disposizione: <b>{escape(str(mod.get("disposizione", "fissa")))}</b>{" · a turni: " + escape(", ".join(t["nome"] + " " + t["inizio"] + "-" + t["fine"] for t in turni)) if turni else ""}</p>
 <div class="due">
   <div class="box"><h3>Non sistemate</h3><ul>{righe_ns}</ul></div>
   <div class="box"><h3>Obiettivo {s.get("obiettivo", "—")} <span class="tenue">(bound {bound}, gap {gap})</span></h3>
@@ -362,12 +401,15 @@ def _registro(sol: dict) -> str:
         ok = esito in ("accettata", "accettata su proposta")
         sp = r.get("spostamento_min") or 0
         promesso = (f'{r["orario_promesso"]}' + (f' ({"+" if sp > 0 else "−"}{abs(sp)}′)' if sp else "")) if ok else "—"
+        if r.get("turno_richiesto"):
+            promesso = f'{r["turno_promesso"]} turno ({r["orario_promesso"]})' if ok else "—"
         proposte = " / ".join(f"{nome} {r[k]}" for nome, k in (("prima", "proposta_prima"), ("dopo", "proposta_dopo"))
                               if r.get(k)) or "—"
         dettaglio = r.get("motivo") or ("spostamento minimo non dimostrato" if r.get("spostamento_minimo_dimostrato") is False else "")
         cls = {"accettata su proposta": "proposta", "rifiutata": "nonsist"}.get(esito, "")
         righe.append(f'<tr class="{cls}"><td class="num">{r["ordine"]}</td><td>{_data(r["prenotata_il"])}</td>'
-                     f'<td>{escape(r["nome"])} ×{r["coperti"]}</td><td>{r["orario_richiesto"]}</td>'
+                     f'<td>{escape(r["nome"])} ×{r["coperti"]}</td><td>{r["orario_richiesto"]}'
+                     f'{" (" + escape(r["turno_richiesto"]) + " turno)" if r.get("turno_richiesto") else ""}</td>'
                      f'<td>{etichette.get(esito, escape(esito))}</td><td>{promesso}</td><td>{escape(proposte)}</td>'
                      f'<td>{escape(dettaglio)}</td><td>{escape(str(r.get("stato_solver", "")))}</td>'
                      f'<td class="num">{r.get("tempo_s", "")}</td></tr>')
@@ -383,7 +425,8 @@ def _elenco(sol: dict) -> str:
         sp = r["spostamento_min"]
         cls = ' class="proposta"' if r["id"] in su_proposta else (' class="spostata"' if sp else "")
         righe.append(f'<tr{cls}><td>{escape(r["id"])}</td><td>{escape(r["nome"])}</td><td class="num">{r["coperti"]}</td>'
-                     f'<td>{r["orario_richiesto"]}</td><td>{r["orario_assegnato"]}</td>'
+                     f'<td>{r["orario_richiesto"]}</td><td>{r["orario_assegnato"]}'
+                     f'{" · " + escape(r["turno"]) + " turno" if r.get("turno") else ""}</td>'
                      f'<td>{("+" if sp > 0 else "−") + str(abs(sp)) + "′" if sp else ""}</td><td>{r["fine"]}</td>'
                      f'<td>{escape(r["tavolo"])}</td><td>{escape(r.get("note", ""))}</td></tr>')
     for r in sol["non_sistemate"]:
@@ -440,13 +483,14 @@ JS = """
   var r=document.getElementById('ora'); if(!r) return;
   var et=document.getElementById('ora-testo'), etm=document.getElementById('ora-mappa');
   function hh(m){return String(Math.floor(m/60)).padStart(2,'0')+':'+String(m%60).padStart(2,'0');}
+  var turni=r.dataset.turni?JSON.parse(r.dataset.turni):null;
   function aggiorna(){
-    var m=+r.value, n=0;
+    var m=turni?turni[+r.value][1]:+r.value, n=0;
     document.querySelectorAll('svg.sala g.tavolo').forEach(function(g){
       var vivo=(+g.dataset.dal<=m && m<+g.dataset.al); g.style.display=vivo?'':'none'; if(vivo) n++;});
     document.querySelectorAll('svg.sala [data-inizio]').forEach(function(t){
       var s=(+t.dataset.inizio<=m && m<+t.dataset.fine); t.classList.toggle('accesa',s); t.classList.toggle('spenta',!s);});
-    et.textContent=hh(m)+' · '+n+' tavoli'; if(etm) etm.textContent=hh(m);
+    et.textContent=(turni?turni[+r.value][0]+' turno, ':'')+hh(m)+' · '+n+' tavoli'; if(etm) etm.textContent=hh(m);
   }
   r.addEventListener('input',aggiorna); aggiorna();
 })();
@@ -472,14 +516,27 @@ def genera_html(sala: dict, prenotazioni: dict, sol: dict) -> str:
     inizio, fine = _min(sala["servizio"]["inizio"]), _min(sala["servizio"]["fine"])
     passo = sala.get("passo_orari_min", 15)
     cursore = cambi = ""
-    if dinamica:
+    turni = _turni(sol)
+    if dinamica and turni:
+        import json as _json
+        dati = escape(_json.dumps([[t["nome"], _min(t["inizio"])] for t in turni]))
+        cursore = (f'<div class="cursore"><span class="ora" id="ora-testo"></span>'
+                   f'<span class="tenue">sposta il cursore per vedere i tavoli di ogni turno e chi ci siede</span>'
+                   f'<input type="range" id="ora" min="0" max="{len(turni) - 1}" step="1" value="0" '
+                   f'data-turni="{dati}" aria-label="turno"></div>')
+    elif dinamica:
         cursore = (f'<div class="cursore"><span class="ora" id="ora-testo"></span>'
                    f'<span class="tenue">sposta il cursore per vedere i tavoli presenti e chi ci siede</span>'
                    f'<input type="range" id="ora" min="{inizio}" max="{fine}" step="{passo}" '
                    f'value="{_ora_di_punta(sala, sol)}" aria-label="ora della serata"></div>')
+    if dinamica:
         voci = "".join(f'<li><b>{_hhmm(m_)}</b> {escape(d)}</li>' for m_, d in cambi_sala(sala, sol))
         cambi = f'<h2>Cambi sala durante il servizio</h2><ul class="cambi">{voci}</ul>'
-        sotto = "La disposizione cambia durante la serata: la mappa mostra i tavoli presenti all'ora scelta."
+        sotto = ("La disposizione cambia tra i turni: la mappa mostra i tavoli del turno scelto." if turni else
+                 "La disposizione cambia durante la serata: la mappa mostra i tavoli presenti all'ora scelta.")
+    elif turni:
+        sotto = ("Disposizione fissa: gli stessi tavoli in tutti i turni; ogni tavolo riporta chi siede in ciascun "
+                 "turno (" + ", ".join(f'{t["nome"]} alle {t["inizio"]}' for t in turni) + ").")
     else:
         sotto = "Disposizione dei tavoli fissa per tutta la serata."
     registro = f'<h2>Registro delle accettazioni (in ordine di prenotazione)</h2>{_registro(sol)}' if sol.get("registro") else ""
@@ -498,12 +555,12 @@ def genera_html(sala: dict, prenotazioni: dict, sol: dict) -> str:
 <span><i class="q" style="background:{COL_TAVOLO}"></i>tavolo (tratteggio interno = moduli accostati)</span>
 <span><i class="q" style="background:{COL_SEDIA}"></i>sedia</span>
 <span><i class="q" style="background:#fff;border-style:dashed"></i>ingombro tavolo + sedie ({sala["margine_sedie_cm"]} cm)</span>
-<span style="color:{COL_SPOSTATA}">arancione = orario spostato</span></p>
+<span style="color:{COL_SPOSTATA}">arancione = {"nell'altro turno (accettata su proposta)" if turni else "orario spostato"}</span></p>
 {cambi}
 <h2>Timeline per tavolo</h2>
 <div class="scorri">{_svg_timeline(sala, sol)}</div>
 <p class="legenda"><span>barra = permanenza al tavolo</span><span><i class="q" style="background:#efe6d6"></i>tavolo presente</span>
-<span><i class="q" style="background:#e0e0e0"></i>riapparecchiatura ({sala.get("riapparecchiatura_min", 0)} min)</span>
+{"" if turni else '<span><i class="q" style="background:#e0e0e0"></i>riapparecchiatura (' + str(sala.get("riapparecchiatura_min", 0)) + ' min)</span>'}
 <span style="color:{COL_SPOSTATA}">bordo arancione = spostata, trattino = orario richiesto</span><span>★ = nota</span></p>
 {registro}
 <h2>Elenco prenotazioni</h2>
