@@ -48,6 +48,7 @@
   .esito { font-size: 14px; color: #3b6d11; margin: 8px 0 0; }
   body.modifica #mappa { -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
   body.modifica #mappa [data-k] { cursor: move; touch-action: none; }
+  body.modifica #mappa [data-k] * { touch-action: none; }   /* il dito tocca rect e text, non il g: senza, il browser annulla il trascinamento */
   body.modifica #mappa [data-k="maniglia"] { cursor: crosshair; }
   .foglio { display: none; position: fixed; left: 0; right: 0; bottom: 0; z-index: 10; max-width: 760px; margin: 0 auto; max-height: 46vh; overflow-y: auto; box-sizing: border-box; background: #fff; border: 1px solid #d8d5cc; border-bottom: 0; border-radius: 14px 14px 0 0; box-shadow: 0 -4px 18px rgba(0, 0, 0, .12); padding: 10px 14px 16px; }
   body.modifica.con-foglio .foglio { display: block; }

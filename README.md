@@ -257,6 +257,10 @@ motore (pesi, tempi, politica "sempre", 3 processi × 4 worker per la tabella) s
 
 ### Editor della piantina
 
+Da telefono e da PC si apre da https://atrebg.github.io/prenotazioni_olimpo/olimpo/piantina.html (GitHub Pages, ramo
+`main`; `.nojekyll` lascia i file come sono). Il link del file su github.com mostra solo il codice, e le anteprime dei
+file sul telefono (WhatsApp, File) possono non eseguirla: va aperta nel browser.
+
 `olimpo/piantina.html` si apre nel browser (anche da file, senza server) ed è anche l'editor della sala: **Modifica**
 per spostare i tavoli col mouse, **Salva piantina** per scaricare lo stesso file con i dati aggiornati e una riga nello
 storico, da rimettere al posto di quello in `olimpo/`.
