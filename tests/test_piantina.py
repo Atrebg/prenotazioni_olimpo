@@ -3,7 +3,9 @@ ordine di arrivo e proposta dell'altro turno, chat con i tavoli solo nel riepilo
 tabella delle disponibilità."""
 import copy
 import json
+import math
 import random
+import re
 from datetime import date, datetime, timedelta
 
 import pytest
@@ -167,6 +169,47 @@ def test_mappa_della_serata_con_elementi_sconosciuti_o_incompleti():
     assert '>senza tipo<' in mappa and '>vetrata<' in mappa and 'd="M10 10 L20 20"' in mappa
     assert 'd="M0 0 L10 0 L10 10"' in mappa and 'stroke-width="10.0"' in mappa  # 25 cm con il quadrato da 80 cm
     assert "senza misure" not in mappa and "corridoio" not in mappa
+
+
+def _arco(a, b, prof, n):
+    """n punti di un arco di cerchio da a a b (estremi esclusi): a metà dista `prof` dalla corda."""
+    c = math.dist(a, b)
+    tx, ty = (b[0] - a[0]) / c, (b[1] - a[1]) / c
+    nx, ny = -ty, tx
+    r = (c * c / 4 + prof * prof) / (2 * prof)
+    th = math.asin(c / 2 / r)
+    ox, oy = (a[0] + b[0]) / 2 + nx * (prof - r), (a[1] + b[1]) / 2 + ny * (prof - r)
+    ang = [-th + 2 * th * k / (n + 1) for k in range(1, n + 1)]
+    return [[round(ox + r * (math.cos(f) * nx + math.sin(f) * tx), 2), round(oy + r * (math.cos(f) * ny + math.sin(f) * ty), 2)] for f in ang]
+
+
+def test_muro_curvo_dal_comando_curva_dell_editor(tmp_path, verificatore):
+    """Il comando Curva dell'editor lascia nel muro una spezzata con tanti vertici (nessun campo nuovo): il motore, il verificatore
+    e la mappa della serata la leggono come una piantina qualunque. Qui un tratto del primo muro diventa un arco da 30 punti."""
+    from ristorante.mappa_piantina import genera_html
+    testo = PIANTINA.read_text(encoding="utf-8")
+    dati = leggi_blocco_sala(PIANTINA)
+    muro = dati["muri"][0]
+    a, b = muro["punti"][1], muro["punti"][2]                                  # il tratto verticale, 850 cm
+    arco = _arco(a, b, 40, 30)                                                 # 100 cm di profondità
+    assert len(arco) == 30 and max(abs(p[0] - a[0]) for p in arco) == pytest.approx(40, abs=0.5)
+    muro["punti"][2:2] = arco
+    curva = tmp_path / "piantina_curva.html"
+    curva.write_text(re.sub(r'(<script type="application/json" id="sala">).*?(</script>)',
+                            lambda m: m.group(1) + "\n" + json.dumps(dati, ensure_ascii=False) + "\n" + m.group(2), testo, count=1, flags=re.S),
+                     encoding="utf-8")
+    letti = leggi_blocco_sala(curva)
+    assert letti == dati and len(letti["muri"][0]["punti"]) == 3 + 30 and letti["muri"][0]["punti"][-1] == b
+    assert letti["tavoli"] == leggi_blocco_sala(PIANTINA)["tavoli"]
+    sala = carica_sala(curva)
+    assert sala["piantina"] == letti and Piantina(letti).posti_per_turno() == 151
+    pren = in_arrivo(("A", 6, "20:00"), ("B", 2, "21:30"))
+    sol = ordine(sala, pren)
+    assert sol["accettazione"]["accettate"] == 2
+    verifica_ok(verificatore, sala, pren, sol)
+    mappa = genera_html(sala, pren, sol)
+    percorsi = re.findall(r'<path d="(M74 305 L240 305 L[^"]*)" fill="none" stroke="#2c2c2a"', mappa)
+    assert len(percorsi) == 2 and all(p.count(" L") == 32 for p in percorsi)    # una vista per turno; 33 punti = 32 tratti
 
 
 def test_partizioni_di_un_blocco_da_tre(verificatore):

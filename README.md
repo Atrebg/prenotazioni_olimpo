@@ -272,6 +272,7 @@ storico, da rimettere al posto di quello in `olimpo/`.
 - **Aggiungi**: tavoli (quadrato, blocco, lungo, rettangolare, panca, tondo) ed elementi fissi (muro a spezzata con
   spessore, bancone, pilastro, colonna tonda, porta con 90 cm liberi, finestra, bagni, cassa, mobile, pedana, zona
   vietata, blocco fisso, passaggio).
+- **Curva** (pannello del muro): un tratto diventa un arco di tot cm di profondità; nei dati resta una spezzata di punti.
 - Avvisi per pezzi sovrapposti e per poco spazio per le sedie. Copia dati e Condividi per mandare la piantina.
 
 Il motore legge i campi nuovi senza cambiare comportamento: i tavoli restano fermi dove sono nel disegno. I file

@@ -392,7 +392,7 @@
   var LATO = 32, GAP = 2, SEDIE_CM = 50, PASSO_CM = 5;
 
   var ed = {attivo: false, sel: null, vertice: null, aggancio: true, griglia: true, quote: true, sporco: false, cambiate: 0,
-    annulla: [], ripeti: [], avvisati: {}, controlli: []};
+    annulla: [], ripeti: [], avvisati: {}, controlli: [], curva: {muro: null, vert: null, seg: null, prof: '', inv: false}};
   var drag = null, tocco = null, timerAvviso = null;
 
   function normalizza(d) {         // file di prima: muri come percorsi "M x y L x y", niente sala
@@ -813,9 +813,9 @@
     if (v) s += quotaConTesto(v.p, v.q, cm5(v.d) + ' cm', '#c0560b', fs, evita, linee);
     return s + '</g>';
   }
-  function maniglia(x, y, h, piu, attiva) {
+  function maniglia(x, y, h, piu, attiva, zona) {      // zona: raggio dell'area da toccare (di solito 14 px)
     var r = px(piu ? 5.5 : 7);
-    return '<g data-k="maniglia" data-h="' + h + '"><circle cx="' + num2(x) + '" cy="' + num2(y) + '" r="' + px(14) + '" fill="transparent"/>' +
+    return '<g data-k="maniglia" data-h="' + h + '"><circle cx="' + num2(x) + '" cy="' + num2(y) + '" r="' + (zona || px(14)) + '" fill="transparent"/>' +
       '<circle cx="' + num2(x) + '" cy="' + num2(y) + '" r="' + r + '" fill="' + (attiva ? '#1f6feb' : '#ffffff') + '" stroke="#1f6feb" stroke-width="' + px(2) + '"/>' +
       (piu ? '<path d="M' + num2(x - r * 0.55) + ' ' + num2(y) + ' L' + num2(x + r * 0.55) + ' ' + num2(y) + ' M' + num2(x) + ' ' + num2(y - r * 0.55) + ' L' + num2(x) + ' ' + num2(y + r * 0.55) + '" stroke="#1f6feb" stroke-width="' + px(1.6) + '"/>' : '') + '</g>';
   }
@@ -834,8 +834,13 @@
       if (k === 'muri') {
         var pts = muroValido(el) ? el.punti : [];
         s += '<path d="' + dMuro(pts) + '" fill="none" stroke="' + blu + '" stroke-width="' + num2(2 * metaMuro(el) + px(5)) + '" opacity="0.35" pointer-events="none"/>';
-        for (var n = 0; n + 1 < pts.length; n++) s += maniglia((pts[n][0] + pts[n + 1][0]) / 2, (pts[n][1] + pts[n + 1][1]) / 2, 'm' + n, true);
-        pts.forEach(function (p, j) { s += maniglia(p[0], p[1], 'v' + j, false, ed.vertice === j); });
+        var lung = function (a, b) { return Math.hypot(a[0] - b[0], a[1] - b[1]); };
+        for (var n = 0; n + 1 < pts.length; n++)       // il + sparisce dai tratti troppo corti per toccarlo (una curva ne ha tanti)
+          if (lung(pts[n], pts[n + 1]) >= px(26)) s += maniglia((pts[n][0] + pts[n + 1][0]) / 2, (pts[n][1] + pts[n + 1][1]) / 2, 'm' + n, true);
+        pts.forEach(function (p, j) {                  // vertici fitti: l'area da toccare si stringe, così ogni pallino prende il suo tocco
+          var vicino = Math.min(j ? lung(p, pts[j - 1]) : Infinity, j + 1 < pts.length ? lung(p, pts[j + 1]) : Infinity);
+          s += maniglia(p[0], p[1], 'v' + j, false, ed.vertice === j, Math.min(px(14), vicino / 2));
+        });
       } else {
         var g = geo(k, el);
         s += '<polygon points="' + poliStr(k === 'sala' ? poliGeo(g, 0) : poli(k, el, 3)) + '" fill="none" stroke="' + blu + '" stroke-width="' + px(2) + '" pointer-events="none"/>';
@@ -1096,13 +1101,25 @@
   }
   function foglioMuro(m) {
     var pts = muroValido(m) ? m.punti : [];
-    var h = testaFoglio('Muro', false) + '<div class="dettagli"><div class="campi"><label>Spessore' + inCm('spessore') + '</label>' +
-      '<div class="largo sottotitolo">Vertici: distanza dalla parete sinistra e da quella in alto</div>';
+    var h = testaFoglio('Muro', false) + '<div class="dettagli"><div class="campi"><label>Spessore' + inCm('spessore') + '</label>';
+    if (pts.length > 1) {
+      var sg = segCurva(m), opz = '';
+      for (var s = 0; s + 1 < pts.length; s++)
+        opz += '<option value="' + s + '"' + (s === sg ? ' selected' : '') + '>tratto ' + (s + 1) + '–' + (s + 2) + ' · ' +
+          cm5(Math.hypot(pts[s + 1][0] - pts[s][0], pts[s + 1][1] - pts[s][1])) + ' cm</option>';
+      h += '<div class="largo sottotitolo">Curva un tratto</div><label>Tratto<select data-curva="seg">' + opz + '</select></label>' +
+        '<label>Profondità della curva<span class="unita"><input type="number" step="5" inputmode="numeric" data-curva="prof" value="' + esc(ed.curva.prof) +
+        '" aria-label="Profondità della curva in cm"><i>cm</i></span></label>' +
+        '<p class="largo nota-campo" id="curva-lato">' + latoCurva(m) + '</p>' +
+        '<div class="largo pulsanti"><button type="button" class="btn" data-az="curva-inverti">Inverti lato</button>' +
+        '<button type="button" class="btn primario" data-az="curva">Curva</button></div>';
+    }
+    h += '<div class="largo sottotitolo">Vertici: distanza dalla parete sinistra e da quella in alto</div>';
     pts.forEach(function (p, n) {
       h += '<div class="vertice largo' + (ed.vertice === n ? ' attivo' : '') + '"><b>' + (n + 1) + '</b>' + inCm('vx' + n, true, 'vertice ' + (n + 1) + ', da sinistra') +
         inCm('vy' + n, true, 'vertice ' + (n + 1) + ', dall\'alto') + '<button type="button" class="btn piccolo" data-az="v-elimina-' + n + '"' + (pts.length <= 2 ? ' disabled' : '') + '>Elimina</button></div>';
     });
-    h += '</div><p class="tot">Tira i pallini per spostare i vertici; il pallino con il + a metà di un tratto aggiunge un vertice; trascina la linea per spostare tutto il muro.</p>' +
+    h += '</div><p class="tot">Tira i pallini per spostare i vertici; il pallino con il + a metà di un tratto aggiunge un vertice; trascina la linea per spostare tutto il muro; Curva trasforma un tratto in un arco.</p>' +
       '<div class="pulsanti"><button type="button" class="btn" data-az="v-aggiungi">Aggiungi vertice</button>' +
       '<button type="button" class="btn rosso" data-az="elimina">Elimina muro</button></div></div>';
     return h;
@@ -1280,6 +1297,63 @@
     if (!m || sel.k !== 'muri' || m.punti.length <= 2) return;
     cambia(function () { m.punti.splice(n, 1); ed.vertice = null; return true; });
   }
+  // Curva un tratto: un arco di cerchio tra i due estremi, a vertici fitti (resta una spezzata, nessun campo nuovo nei dati)
+  function curvaDi(i) {                // stato del comando per il muro i: riparte da capo se è un altro muro
+    if (ed.curva.muro !== i) ed.curva = {muro: i, vert: null, seg: null, prof: '', inv: false};
+    return ed.curva;
+  }
+  function segCurva(m) {               // il tratto scelto; se non l'hai scelto, quello che parte dal vertice attivo, o il primo
+    var c = curvaDi(ed.sel.i), ultimo = m.punti.length - 2;
+    if (c.seg != null && c.vert === ed.vertice && c.seg <= ultimo) return c.seg;
+    return ed.vertice != null && ed.vertice <= ultimo ? ed.vertice : 0;
+  }
+  function latoCurva(m) {              // verso della curva: a destra di chi va dal vertice di partenza a quello d'arrivo, o l'opposto
+    var n = segCurva(m), a = m.punti[n], b = m.punti[n + 1], L = Math.hypot(b[0] - a[0], b[1] - a[1]) || 1;
+    var sg = (ed.curva.inv ? -1 : 1) * (Number(ed.curva.prof) < 0 ? -1 : 1);
+    var nx = -(b[1] - a[1]) / L * sg, ny = (b[0] - a[0]) / L * sg;
+    var v = ny > 0.38 ? 'il basso' : ny < -0.38 ? 'l\'alto' : '', h = nx > 0.38 ? 'destra' : nx < -0.38 ? 'sinistra' : '';
+    return 'La curva va verso ' + (v ? v + (h ? ' a ' + h : '') : h) + '.';
+  }
+  function arco(a, b, prof) {          // vertici nuovi tra a e b; prof = quanto il mezzo dista dalla corda (unità, il segno dà il lato)
+    var dx = b[0] - a[0], dy = b[1] - a[1], c = Math.hypot(dx, dy), tx = dx / c, ty = dy / c;
+    var sg = prof < 0 ? -1 : 1, nx = -ty * sg, ny = tx * sg, s = Math.abs(prof);
+    var R = (c * c / 4 + s * s) / (2 * s), th = Math.asin(Math.min(1, c / 2 / R));           // raggio e mezzo angolo
+    var ox = (a[0] + b[0]) / 2 + nx * (s - R), oy = (a[1] + b[1]) / 2 + ny * (s - R);        // centro del cerchio
+    var n = Math.max(3, Math.min(39, Math.round(2 * th * R * cpu() / 30)));                  // uno ogni 30 cm d'arco
+    if (n % 2 === 0) n++;                                                                    // dispari: un vertice cade sul mezzo, a quota esatta
+    var out = [];
+    for (var k = 1; k <= n; k++) {
+      var f = -th + 2 * th * k / (n + 1), co = R * Math.cos(f), si = R * Math.sin(f);
+      out.push([num2(ox + nx * co + tx * si), num2(oy + ny * co + ty * si)]);
+    }
+    return out;
+  }
+  function curva() {
+    var sel = ed.sel, m = elemento(sel);
+    if (!m || sel.k !== 'muri' || !muroValido(m)) return;
+    var campo = $('foglio').querySelector('[data-curva="prof"]'), d = campo ? Number(campo.value) : 0;
+    if (!isFinite(d) || d === 0) { avviso('Scrivi di quanti cm la curva si scosta dalla retta (diverso da 0).'); return; }
+    var n = segCurva(m), a = m.punti[n], b = m.punti[n + 1], corda = Math.hypot(b[0] - a[0], b[1] - a[1]) * cpu();
+    if (corda < 10) { avviso('Il tratto ' + (n + 1) + '–' + (n + 2) + ' è troppo corto per curvarlo.'); return; }
+    var prof = Math.abs(d), tagliata = prof > corda / 2;
+    if (tagliata) prof = corda / 2;                                  // più di così sarebbe oltre il semicerchio
+    var nuovi = arco(a, b, (d < 0 ? -1 : 1) * (ed.curva.inv ? -1 : 1) * u(prof));
+    cambia(function () {
+      Array.prototype.splice.apply(m.punti, [n + 1, 0].concat(nuovi));
+      ed.vertice = null;
+      ed.curva = {muro: null, vert: null, seg: null, prof: '', inv: false};
+      return true;
+    });
+    esito('Curva sul tratto ' + (n + 1) + '–' + (n + 2) + ': ' + nuovi.length + ' vertici nuovi, ' + Math.round(prof) + ' cm.' +
+      (tagliata ? ' Ho ridotto la profondità da ' + Math.round(Math.abs(d)) + ' cm: il massimo è un semicerchio.' : ''));
+  }
+  function cambiaCurva(inp) {          // tratto o profondità scelti nel pannello: si ricordano, i dati non cambiano
+    var m = elemento(ed.sel);
+    if (!m || ed.sel.k !== 'muri' || !muroValido(m)) return;
+    var c = curvaDi(ed.sel.i);
+    if (inp.getAttribute('data-curva') === 'seg') { c.seg = Number(inp.value); c.vert = ed.vertice; } else c.prof = inp.value;
+    $('curva-lato').textContent = latoCurva(m);
+  }
   function duplica() {
     var sel = ed.sel, el = elemento(sel);
     if (!el || sel.k === 'ingresso' || sel.k === 'sala' || sel.k === 'muri') return;
@@ -1359,7 +1433,9 @@
     drag = {id: e.pointerId, k: k, i: i, h: h, p0: punto(e), sx: e.clientX, sy: e.clientY, prima: prima,
       orig: copia(elemento(ed.sel)), mosso: false, inserito: inserito, vista: svg.getAttribute('viewBox').split(' ').map(Number)};
     try { svg.setPointerCapture(e.pointerId); } catch (x) { /* niente */ }
-    if (nuova || inserito || k === 'muri') { disegnaMappa(); disegnaFoglio(); }
+    // per i muri la mappa non si ridisegna qui: col dito il tocco veniva annullato (pointercancel) dopo ~15 px (Chromium, prova del 27/10);
+    // ridisegnano il primo spostamento e il rilascio
+    if (nuova || inserito || k === 'muri') { if (k !== 'muri') disegnaMappa(); disegnaFoglio(); }
   });
   svg.addEventListener('pointermove', function (e) {
     if (!drag || e.pointerId !== drag.id) return;
@@ -1445,11 +1521,13 @@
     return false;
   }
   $('foglio').addEventListener('change', function (e) {
+    if (e.target.getAttribute('data-curva')) { cambiaCurva(e.target); return; }
     var campo = e.target.getAttribute('data-campo'), sel = ed.sel || {k: 'sala', i: 0}, el = elemento(sel);
     if (!campo || !el) return;
     var v = e.target.type === 'checkbox' ? e.target.checked : e.target.value;
     cambia(function () { return applica(sel, el, campo, v); });
   });
+  $('foglio').addEventListener('input', function (e) { if (e.target.getAttribute('data-curva') === 'prof') cambiaCurva(e.target); });
   $('foglio').addEventListener('click', function (e) {
     var b = e.target.closest('[data-az]');
     if (!b) return;
@@ -1460,6 +1538,8 @@
     if (!el) return;
     if (az === 'elimina') { elimina(); return; }
     if (az === 'duplica') { duplica(); return; }
+    if (az === 'curva') { curva(); return; }
+    if (az === 'curva-inverti') { curvaDi(sel.i).inv = !ed.curva.inv; $('curva-lato').textContent = latoCurva(el); return; }
     if (az === 'v-aggiungi') {
       cambia(function () {
         var p = el.punti, a = p[p.length - 2], c = p[p.length - 1], dx = c[0] - a[0], dy = c[1] - a[1], L = Math.hypot(dx, dy) || 1;
