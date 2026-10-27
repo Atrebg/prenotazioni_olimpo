@@ -255,6 +255,24 @@ motore (pesi, tempi, politica "sempre", 3 processi × 4 worker per la tabella) s
   pezzi, lungo (un gruppo fino a 20 o due fino a 8, il secondo solo con il primo), mai due prenotazioni sullo stesso
   quadrato o tavolo nello stesso turno, turno finale = turno promesso, registro ordinato, ogni prenotazione una volta.
 
+### Editor della piantina
+
+`olimpo/piantina.html` si apre nel browser (anche da file, senza server) ed è anche l'editor della sala: **Modifica**
+per spostare i tavoli col mouse, **Salva piantina** per scaricare lo stesso file con i dati aggiornati e una riga nello
+storico, da rimettere al posto di quello in `olimpo/`.
+
+- Pannello a lato (da 900 px), Annulla/Ripeti, tastiera: Canc, Ctrl+Z/Y, frecce di 5 cm (Maiusc 50 cm), Esc.
+- Misure in centimetri per ogni pezzo (da sinistra, dall'alto, larghezza, profondità, rotazione) e per la sala;
+  "Mostra misure" disegna le quote, griglia di 1 m, scatto di 5 cm.
+- **Scheda misure** da stampare: ogni misura da prendere nel locale, con la stima attuale e la colonna "misurato".
+- **Aggiungi**: tavoli (quadrato, blocco, lungo, rettangolare, panca, tondo) ed elementi fissi (muro a spezzata con
+  spessore, bancone, pilastro, colonna tonda, porta con 90 cm liberi, finestra, bagni, cassa, mobile, pedana, zona
+  vietata, blocco fisso, passaggio).
+- Avvisi per pezzi sovrapposti e per poco spazio per le sedie. Copia dati e Condividi per mandare la piantina.
+
+Il motore legge i campi nuovi senza cambiare comportamento: i tavoli restano fermi dove sono nel disegno. I file
+scaricati dall'editor durante le prove sono in `tests/` e i test controllano che il motore li legga.
+
 ### Risultati sulla sala vera (esecuzione del 26/10/2026)
 
 Sabato di prova `dati/olimpo_sabato.json`: 67 prenotazioni, 260 coperti, orari chiesti dalle 19:30 alle 22:00 (41 nel

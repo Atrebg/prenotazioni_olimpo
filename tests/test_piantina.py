@@ -85,6 +85,90 @@ def test_lettura_del_blocco_dalla_piantina(tmp_path):
     assert verifica.leggi_sala(str(PIANTINA)) == dati
 
 
+def test_piantina_salvata_dall_editor(verificatore):
+    """`tests/piantina_salvata_editor.html` è il file scaricato con "Salva piantina" dall'editor della piantina (prova del
+    27/10/2026 in Chromium): 25 spostato, 26 da 3 posti, aggiunto il quadrato 30, eliminato il 29 (e la sua unione).
+    Il motore, il verificatore e la mappa della serata lo leggono come la piantina."""
+    from ristorante.mappa_piantina import genera_html
+    salvata = RADICE / "tests" / "piantina_salvata_editor.html"
+    dati = leggi_blocco_sala(salvata)
+    per_id = {t["id"]: t for t in dati["tavoli"]}
+    assert "29" not in per_id and (per_id["30"]["tipo"], per_id["30"]["posti"], per_id["30"]["fisso"]) == ("quadrato", 4, False)
+    assert per_id["26"]["posti"] == 3 and (per_id["25"]["x"], per_id["25"]["y"]) != (384, 367)
+    assert all("29" not in u["tavoli"] for u in dati["unioni"]) and dati["storico"][-1].endswith("· modificata nell'editor")
+    # campi nuovi: fisso per ogni tavolo, scala, ostacoli rettangolari (bancone a L in due pezzi, cucina), porta della cucina
+    assert all(isinstance(t["fisso"], bool) for t in dati["tavoli"]) and dati["scala"] == {"lato_quadrato_cm": 80}
+    assert {o["tipo"] for o in dati["ostacoli"]} == {"bancone", "cucina"} and all({"x", "y", "w", "h"} <= set(o) for o in dati["ostacoli"])
+    assert [p["nome"] for p in dati["porte"]] == ["porta cucina"]
+    sala = carica_sala(salvata)
+    assert sala["turni"] == TURNI and sala["piantina"] == dati
+    p = Piantina(dati)
+    assert len(p.tavoli) == 30 and p.posti_per_turno() == 151 - 2 + 1 + 4 and p.capacita() == [2, 3, 4, 6, 8, 10, 20]
+    assert verificatore.leggi_sala(str(salvata)) == dati
+    pren = in_arrivo(("A", 3, "20:00"), ("B", 4, "21:30"))
+    sol = ordine(sala, pren)
+    assert sol["accettazione"]["accettate"] == 2
+    verifica_ok(verificatore, sala, pren, sol)
+    mappa = genera_html(sala, pren, sol)
+    assert mappa.count(">cucina<") == 2 and mappa.count(">porta cucina<") == 2      # una vista per turno
+
+
+def test_piantina_salvata_dall_editor_con_elementi_fissi(verificatore):
+    """`tests/piantina_salvata_editor_2.html`: file scaricato dalla seconda versione dell'editor (prova del 27/10/2026 in
+    Chromium, desktop): sala larga 1050 cm, 26 spostato con i campi in cm, 11 di 500 x 100 cm, 3 ruotato di 30°, un muro a
+    3 vertici spesso 20 cm, pilastri, zona vietata, bagni, cassa, credenza, pedana, blocco "frigo vini", porta e finestra."""
+    from ristorante.mappa_piantina import genera_html
+    salvata = RADICE / "tests" / "piantina_salvata_editor_2.html"
+    dati = leggi_blocco_sala(salvata)
+    per_id = {t["id"]: t for t in dati["tavoli"]}
+    assert dati["sala"] == {"x": 40, "y": 40, "w": 420, "h": 625} and dati["scala"] == {"lato_quadrato_cm": 80}
+    assert (per_id["26"]["x"], per_id["26"]["y"]) == (376, 416) and (per_id["11"]["w"], per_id["11"]["h"]) == (200, 40)
+    assert per_id["3"]["rot"] == 30
+    tipi = {o["tipo"] for o in dati["ostacoli"]}
+    assert tipi == {"bancone", "cucina", "pilastro", "zona_vietata", "bagni", "cassa", "mobile", "pedana", "blocco"}
+    assert any(o["tipo"] == "pilastro" and o.get("forma") == "tondo" for o in dati["ostacoli"])
+    assert any(o["tipo"] == "blocco" and o["nome"] == "frigo vini" for o in dati["ostacoli"])
+    assert all(isinstance(m, dict) and len(m["punti"]) >= 2 and m["spessore_cm"] > 0 for m in dati["muri"])
+    assert any(len(m["punti"]) == 3 and m["spessore_cm"] == 20 for m in dati["muri"])
+    assert [p["spazio_libero_cm"] for p in dati["porte"]] == [90, 90] and len(dati["finestre"]) == 1
+    sala = carica_sala(salvata)
+    assert sala["turni"] == TURNI and sala["piantina"] == dati
+    p = Piantina(dati)
+    assert len(p.tavoli) == 30 and p.posti_per_turno() == 151 and p.capacita() == [2, 3, 4, 6, 8, 10, 20]
+    assert verificatore.leggi_sala(str(salvata)) == dati
+    pren = in_arrivo(("A", 6, "20:00"), ("B", 2, "21:30"))
+    sol = ordine(sala, pren)
+    assert sol["accettazione"]["accettate"] == 2
+    verifica_ok(verificatore, sala, pren, sol)
+    mappa = genera_html(sala, pren, sol)
+    assert mappa.count('viewBox="30 10 440 665"') == 2                       # il contorno viene dalla sala salvata
+    assert mappa.count(">frigo vini<") == 2 and mappa.count(">zona vietata<") == 2 and "<ellipse" in mappa
+    assert 'fill="#e3f2fc"' in mappa and 'stroke-width="8.0"' in mappa       # finestra; muro da 20 cm = 8 unità
+
+
+def test_mappa_della_serata_con_elementi_sconosciuti_o_incompleti():
+    """La mappa della serata disegna in grigio, col nome, i tipi che non conosce e salta gli elementi senza misure,
+    senza rompersi; muri nel formato di prima (percorso) e in quello nuovo (punti e spessore)."""
+    from ristorante.mappa_piantina import genera_html
+    sala = sala_vera(DA2)
+    sala["piantina"] |= {
+        "ostacoli": [{"nome": "acquario", "tipo": "acquario", "x": 50, "y": 60, "w": 40, "h": 20, "rot": 30},
+                     {"tipo": "bancone"}, {"nome": "senza tipo", "x": 100, "y": 100, "w": 50, "h": 30}, "rotto"],
+        "muri": ["M10 10 L20 20", {"punti": [[0, 0], [10, 0], [10, 10]], "spessore_cm": 25}, {"punti": [[1, 1]]}, {}],
+        "porte": [{"nome": "porta", "x": 60, "y": 30, "w": 36, "h": 4, "rot": 90}, {"nome": "senza misure"}],
+        "finestre": [{"nome": "vetrata", "x": 200, "y": 36, "w": 48, "h": 4}, {"x": "boh"}],
+        "passaggi": [{"nome": "corridoio", "x": 300, "y": 100}],
+    }
+    pren = in_arrivo(("A", 2, "20:00"))
+    sol = ordine(sala, pren)
+    mappa = genera_html(sala, pren, sol)
+    assert 'viewBox="30 10 420 665"' in mappa                                  # senza "sala": il contorno di prima
+    assert '>acquario<' in mappa and 'fill="#d9d7d0"' in mappa and "rotate(30" in mappa
+    assert '>senza tipo<' in mappa and '>vetrata<' in mappa and 'd="M10 10 L20 20"' in mappa
+    assert 'd="M0 0 L10 0 L10 10"' in mappa and 'stroke-width="10.0"' in mappa  # 25 cm con il quadrato da 80 cm
+    assert "senza misure" not in mappa and "corridoio" not in mappa
+
+
 def test_partizioni_di_un_blocco_da_tre(verificatore):
     p = Piantina({"tavoli": [BLOCCO3], "posti_quadrato_separato": 4})
     assert {u.quadrati: u.posti for u in p.unita()} == {(0, 2): 8, (0, 1): 6, (1, 2): 6, (0, 0): 4, (1, 1): 4, (2, 2): 4}

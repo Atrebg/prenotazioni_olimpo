@@ -1,0 +1,1793 @@
+<!doctype html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Olimpo · piantina della sala</title>
+<style id="stile">
+  body { font-family: system-ui, -apple-system, "Segoe UI", sans-serif; margin: 0; padding: 16px; background: #faf9f6; color: #2c2c2a; }
+  h1 { font-size: 20px; font-weight: 600; margin: 0 0 4px; }
+  .sub { color: #5f5e5a; font-size: 14px; margin: 0 0 12px; }
+  .wrap { max-width: 760px; margin: 0 auto; }
+  .card { background: #fff; border: 1px solid #e3e1da; border-radius: 12px; padding: 12px; margin-bottom: 14px; }
+  svg { width: 100%; height: auto; display: block; }
+  .legenda { display: flex; flex-wrap: wrap; gap: 8px 16px; font-size: 13px; color: #444441; margin-top: 8px; }
+  .legenda span { display: inline-flex; align-items: center; gap: 6px; }
+  .sw { width: 14px; height: 14px; border-radius: 3px; border: 1px solid; display: inline-block; }
+  table { width: 100%; border-collapse: collapse; font-size: 14px; }
+  th, td { text-align: left; padding: 6px 8px; border-bottom: 1px solid #eeece6; vertical-align: top; }
+  th { font-weight: 600; color: #5f5e5a; font-size: 13px; }
+  .num { font-weight: 600; white-space: nowrap; }
+  .dc { color: #a32d2d; font-size: 12px; }
+  .ok { color: #3b6d11; font-size: 12px; }
+  .scroll { overflow-x: auto; }
+  ul { margin: 6px 0 0; padding-left: 20px; font-size: 14px; }
+  .tot { font-size: 14px; margin: 6px 0 0; }
+
+  /* editor */
+  .testa { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
+  .btn { font: inherit; font-size: 15px; min-height: 44px; padding: 0 14px; border-radius: 10px; border: 1px solid #c9c6bc; background: #fff; color: #2c2c2a; cursor: pointer; touch-action: manipulation; }
+  .btn:disabled { opacity: .4; cursor: default; }
+  .btn.primario { background: #185fa5; border-color: #185fa5; color: #fff; }
+  .btn.verde { background: #3b6d11; border-color: #3b6d11; color: #fff; }
+  .btn.rosso { color: #a32d2d; border-color: #e0b4b4; }
+  .btn.piccolo { min-height: 36px; font-size: 14px; padding: 0 10px; }
+  body:not(.modifica) .solo-modifica { display: none; }
+  body.modifica .solo-vista { display: none; }
+  .barra { position: sticky; top: 0; z-index: 5; display: flex; gap: 6px; padding: 8px 0; background: #faf9f6; }
+  .barra .btn { flex: 1 1 auto; padding: 0 8px; }
+  .istruzioni { font-size: 15px; background: #fff7e6; border: 1px solid #f0d9a8; border-radius: 10px; padding: 8px 12px; margin: 0 0 10px; }
+  .pulsanti { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; }
+  .sottotitolo { font-size: 13px; font-weight: 600; color: #5f5e5a; margin: 12px 0 0; }
+  .opzioni { display: flex; flex-wrap: wrap; gap: 10px 18px; margin-top: 14px; font-size: 15px; align-items: center; }
+  .opzioni label { display: inline-flex; align-items: center; gap: 8px; }
+  input[type=checkbox] { width: 22px; height: 22px; margin: 0; flex: none; }
+  .editor input[type=number], .editor input[type=text], .editor select { font: inherit; font-size: 16px; min-height: 42px; padding: 4px 8px; border: 1px solid #c9c6bc; border-radius: 8px; background: #fff; color: #2c2c2a; box-sizing: border-box; width: 100%; }
+  .editor input:disabled { background: #f1efe9; color: #6b6a64; }
+  .editor #o-lato { width: 84px; }
+  .esito { font-size: 14px; color: #3b6d11; margin: 8px 0 0; }
+  body.modifica #mappa { -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
+  body.modifica #mappa [data-k] { cursor: move; touch-action: none; }
+  body.modifica #mappa [data-k="maniglia"] { cursor: crosshair; }
+  .foglio { display: none; position: fixed; left: 0; right: 0; bottom: 0; z-index: 10; max-width: 760px; margin: 0 auto; max-height: 46vh; overflow-y: auto; box-sizing: border-box; background: #fff; border: 1px solid #d8d5cc; border-bottom: 0; border-radius: 14px 14px 0 0; box-shadow: 0 -4px 18px rgba(0, 0, 0, .12); padding: 10px 14px 16px; }
+  body.modifica.con-foglio .foglio { display: block; }
+  body.modifica.con-foglio { padding-bottom: 48vh; }
+  body.trascina .foglio .dettagli { display: none; }
+  .f-testa { display: flex; align-items: center; gap: 8px; }
+  .f-testa strong { font-size: 17px; flex: 1; }
+  .badge { font-size: 12px; font-weight: 600; padding: 3px 9px; border-radius: 99px; background: #fde7c2; color: #854f0b; }
+  .misure { font-size: 13px; color: #444441; margin: 6px 0 8px; }
+  .avviso-fisso { font-size: 13px; color: #854f0b; margin: 0 0 8px; }
+  .campi { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 10px 12px; }
+  .campi label { display: flex; flex-direction: column; gap: 4px; font-size: 13px; color: #5f5e5a; }
+  .campi label.spunta { flex-direction: row; align-items: center; gap: 8px; font-size: 15px; color: #2c2c2a; }
+  .campi .largo { grid-column: 1 / -1; }
+  .campi .sottotitolo { margin: 4px 0 -4px; }
+  .unita { display: flex; align-items: center; gap: 6px; }
+  .unita i { font-style: normal; color: #5f5e5a; font-size: 14px; }
+  .passo { display: flex; gap: 6px; align-items: center; }
+  .passo .btn { min-width: 44px; padding: 0; }
+  .passo input[type=number] { width: 70px; text-align: center; }
+  .passo .valore { min-width: 28px; text-align: center; font-size: 16px; color: #2c2c2a; }
+  .rot { display: flex; flex-wrap: wrap; gap: 8px; align-items: flex-end; font-size: 15px; }
+  .rot label { width: 130px; }
+  .vertice { display: grid; grid-template-columns: 22px 1fr 1fr auto; gap: 8px; align-items: center; font-size: 14px; }
+  .vertice.attivo b { color: #1f6feb; }
+  .nota-campo { color: #5f5e5a; font-size: 13px; margin: -4px 0 0; }
+  .avviso { display: none; position: fixed; top: 10px; left: 50%; transform: translateX(-50%); z-index: 20; background: #2c2c2a; color: #fff; font-size: 14px; padding: 10px 14px; border-radius: 10px; width: max-content; max-width: 88vw; box-sizing: border-box; }
+  .avviso.visibile { display: block; }
+  #controlli li { cursor: pointer; margin-bottom: 4px; }
+  #controlli li.grave { color: #a32d2d; }
+  #controlli li.titoletto { list-style: none; margin: 10px 0 4px -20px; color: #5f5e5a; cursor: default; }
+  .avvisi-pezzo { margin: 0 0 8px; padding-left: 18px; font-size: 13px; color: #854f0b; }
+  .avvisi-pezzo:empty { display: none; }
+  @media (max-width: 480px) { body { padding: 12px; } .barra .btn { font-size: 14px; padding: 0 6px; } }
+
+  /* da PC: mappa alta quanto lo schermo, pannello e strumenti a lato */
+  @media (min-width: 900px) {
+    body.modifica .wrap { max-width: 1500px; }
+    body.modifica .lavoro { display: grid; grid-template-columns: min-content minmax(340px, 1fr); gap: 14px; align-items: start; }
+    body.modifica .carta-mappa { margin-bottom: 0; }
+    body.modifica #mappa { height: calc(100vh - 205px); min-height: 420px; width: auto; }
+    body.modifica .lato { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 14px; align-content: start; align-items: start; position: sticky; top: 64px; max-height: calc(100vh - 76px); overflow-y: auto; }
+    body.modifica .lato > .card { margin-bottom: 0; }
+    body.modifica .foglio { display: block; position: static; max-width: none; max-height: none; overflow: visible; border: 1px solid #e3e1da; border-radius: 12px; box-shadow: none; }
+    body.modifica.con-foglio { padding-bottom: 16px; }
+    body.trascina .foglio .dettagli { display: block; }
+    body.modifica .editor .btn { min-height: 38px; font-size: 14px; }
+    body.modifica .editor input[type=number], body.modifica .editor input[type=text], body.modifica .editor select { min-height: 36px; font-size: 15px; }
+    body.modifica .istruzioni { font-size: 14px; padding: 6px 12px; }
+  }
+
+  /* scheda delle misure da stampare */
+  .scheda { display: none; position: fixed; inset: 0; z-index: 40; background: #fff; overflow-y: auto; padding: 20px; box-sizing: border-box; }
+  body.con-scheda .scheda { display: block; }
+  .scheda .a4 { max-width: 780px; margin: 0 auto; font-size: 13px; }
+  .scheda h2 { font-size: 19px; margin: 0 0 4px; }
+  .scheda p { margin: 4px 0 8px; }
+  .scheda table { font-size: 12.5px; }
+  .scheda th, .scheda td { padding: 3px 6px; }
+  .scheda td.stima { text-align: right; white-space: nowrap; width: 70px; }
+  .scheda td.misurato { width: 120px; border-bottom: 1px solid #8a8780; }
+  .scheda tr.gruppo td { font-weight: 600; background: #f3f1ec; padding-top: 5px; }
+  .scheda .schizzo { margin-top: 12px; }
+  .scheda .schizzo svg { height: 118mm; width: auto; max-width: 100%; margin: 0 auto; }
+  .scheda .comandi { display: flex; gap: 8px; justify-content: flex-end; margin-bottom: 8px; }
+  @media print {
+    @page { size: A4; margin: 11mm; }
+    body.con-scheda { padding: 0 !important; background: #fff; }
+    body.con-scheda #pagina > :not(.scheda) { display: none !important; }
+    body.con-scheda .scheda { position: static; padding: 0; overflow: visible; }
+    .scheda .comandi { display: none !important; }
+    .scheda tr { break-inside: avoid; }
+    .scheda .schizzo { break-inside: avoid; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap" id="pagina">
+  <div class="testa">
+    <div>
+      <h1>Olimpo · piantina della sala</h1>
+      <p class="sub" id="sub"></p>
+    </div>
+    <button type="button" class="btn primario solo-vista" id="b-modifica">Modifica</button>
+  </div>
+
+  <div class="barra solo-modifica editor">
+    <button type="button" class="btn primario" id="b-fine">Fine</button>
+    <button type="button" class="btn" id="b-annulla">Annulla</button>
+    <button type="button" class="btn" id="b-ripeti">Ripeti</button>
+    <button type="button" class="btn verde" id="b-salva">Salva piantina</button>
+  </div>
+  <p class="istruzioni solo-modifica">Trascina per spostare, tocca per modificare, poi Salva e mandami il file</p>
+  <div class="avviso" id="avviso" role="status"></div>
+
+  <div class="lavoro">
+    <div class="card carta-mappa">
+      <svg id="mappa" viewBox="30 10 420 665" role="img" aria-label="Piantina della sala con i tavoli numerati"></svg>
+      <div class="legenda" id="legenda"></div>
+    </div>
+
+    <div class="lato solo-modifica">
+      <div class="foglio editor" id="foglio"></div>
+
+      <div class="card editor" id="strumenti">
+        <strong>Aggiungi</strong>
+        <div class="sottotitolo">Tavoli</div>
+        <div class="pulsanti">
+          <button type="button" class="btn" data-nuovo="quadrato">Quadrato</button>
+          <button type="button" class="btn" data-nuovo="blocco">Quadrati uniti</button>
+          <button type="button" class="btn" data-nuovo="tondo">Tondo</button>
+          <button type="button" class="btn" data-nuovo="lungo">Lungo</button>
+          <button type="button" class="btn" data-nuovo="panca">Panca</button>
+          <button type="button" class="btn" data-nuovo="rettangolare">Rettangolare</button>
+        </div>
+        <div class="sottotitolo">Elementi fissi</div>
+        <div class="pulsanti">
+          <button type="button" class="btn" data-fisso="muro">Muro</button>
+          <button type="button" class="btn" data-fisso="bancone">Bancone</button>
+          <button type="button" class="btn" data-fisso="pilastro">Pilastro</button>
+          <button type="button" class="btn" data-fisso="colonna">Colonna tonda</button>
+          <button type="button" class="btn" data-fisso="porta">Porta</button>
+          <button type="button" class="btn" data-fisso="finestra">Finestra</button>
+          <button type="button" class="btn" data-fisso="bagni">Bagni</button>
+          <button type="button" class="btn" data-fisso="cassa">Cassa</button>
+          <button type="button" class="btn" data-fisso="mobile">Mobile o credenza</button>
+          <button type="button" class="btn" data-fisso="pedana">Pedana</button>
+          <button type="button" class="btn" data-fisso="zona_vietata">Zona vietata</button>
+          <button type="button" class="btn" data-fisso="blocco">Blocco fisso</button>
+          <button type="button" class="btn" data-fisso="passaggio">Passaggio</button>
+        </div>
+        <div class="opzioni">
+          <label><input type="checkbox" id="o-quote">Mostra misure</label>
+          <label><input type="checkbox" id="o-aggancio">Aggancia ogni 5 cm</label>
+          <label><input type="checkbox" id="o-griglia">Griglia da 1 m</label>
+          <label>Lato del quadrato <input type="number" id="o-lato" min="20" max="200" step="1" inputmode="numeric"> cm</label>
+        </div>
+        <div class="pulsanti">
+          <button type="button" class="btn" id="b-scheda">Scheda misure</button>
+          <button type="button" class="btn verde" id="b-salva2">Salva piantina</button>
+          <button type="button" class="btn" id="b-copia">Copia dati</button>
+          <button type="button" class="btn" id="b-condividi">Condividi</button>
+        </div>
+        <p class="tot">Da PC: Canc elimina, Ctrl+Z annulla, Ctrl+Y ripete, le frecce spostano di 5 cm (con Maiusc di 50 cm), Esc toglie la scelta.</p>
+        <p class="esito" id="esito"></p>
+      </div>
+
+      <div class="card">
+        <strong id="controlli-titolo">Controlli</strong>
+        <p class="tot">Sono avvisi, non blocchi: sulla mappa in rosso i tavoli da sistemare. Intorno a ogni tavolo si contano 50 cm per le sedie. Tocca un avviso per vedere il tavolo.</p>
+        <ul id="controlli"></ul>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <p class="tot" id="totali"></p>
+  </div>
+
+  <div class="card scroll">
+    <table>
+      <thead><tr><th>N°</th><th>Tipo</th><th>Posti</th><th>Note</th><th>Stato</th></tr></thead>
+      <tbody id="elenco"></tbody>
+    </table>
+  </div>
+
+  <div class="card">
+    <strong>Unioni di tavoli</strong>
+    <p class="tot">Tavoli diversi si uniscono solo dove c'è spazio: il motore usa SOLO le unioni confermate. Sulla mappa le proposte sono le linee arancioni tratteggiate.</p>
+    <ul id="unioni"></ul>
+  </div>
+
+  <div class="card">
+    <strong>Ancora da sapere</strong>
+    <ul id="dasapere"></ul>
+  </div>
+
+  <div class="card">
+    <strong>Modifiche</strong>
+    <ul id="storico"></ul>
+  </div>
+
+  <div class="scheda" id="scheda"></div>
+</div>
+
+<!-- DATI DELLA SALA: è l'unica cosa da aggiornare, a mano o con il pulsante Modifica. Posizioni in unità del disegno: il quadrato è 32 unità, "scala" dice quanti cm vale il suo lato. -->
+<script type="application/json" id="sala">
+{
+  "nome": "Olimpo",
+  "aggiornata": "27/10/2026",
+  "turni": ["20:00", "21:30"],
+  "posti_quadrato_separato": 4,
+  "scala": {"lato_quadrato_cm": 80},
+  "sala": {"x": 40, "y": 40, "w": 420, "h": 625},
+  "ingresso": {"x": 236, "y": 34, "w": 46, "h": 10, "spazio_libero_cm": 90},
+  "muri": [
+    {"punti": [[74, 305], [240, 305], [240, 645]], "spessore_cm": 10},
+    {"punti": [[410, 340], [410, 660]], "spessore_cm": 10},
+    {"punti": [[40, 660], [410, 660]], "spessore_cm": 10},
+    {"punti": [[208, 376], [280, 416], [328, 376]], "spessore_cm": 20}
+  ],
+  "ostacoli": [
+    {"nome": "bancone", "tipo": "bancone", "x": 142, "y": 395, "w": 18, "h": 245},
+    {"nome": "bancone", "tipo": "bancone", "x": 95, "y": 395, "w": 47, "h": 18},
+    {"nome": "bancone", "tipo": "bancone", "x": 42, "y": 170, "w": 16, "h": 205},
+    {"nome": "cucina", "tipo": "cucina", "x": 42, "y": 415, "w": 98, "h": 243},
+    {"nome": "pilastro", "tipo": "pilastro", "forma": "tondo", "x": 252, "y": 376, "w": 16, "h": 16},
+    {"nome": "zona vietata", "tipo": "zona_vietata", "x": 360, "y": 512, "w": 60, "h": 60},
+    {"nome": "bancone", "tipo": "bancone", "x": 292, "y": 316, "w": 80, "h": 24},
+    {"nome": "bagni", "tipo": "bagni", "x": 218, "y": 318, "w": 100, "h": 80},
+    {"nome": "cassa", "tipo": "cassa", "x": 212, "y": 230, "w": 48, "h": 24},
+    {"nome": "credenza", "tipo": "mobile", "x": 268, "y": 232, "w": 64, "h": 20},
+    {"nome": "pedana", "tipo": "pedana", "x": 208, "y": 318, "w": 120, "h": 80},
+    {"nome": "colonna", "tipo": "pilastro", "forma": "tondo", "x": 186, "y": 320, "w": 16, "h": 16},
+    {"nome": "frigo vini", "tipo": "blocco", "x": 160, "y": 204, "w": 40, "h": 40}
+  ],
+  "porte": [
+    {"nome": "porta cucina", "x": 46, "y": 410, "w": 40, "h": 10, "spazio_libero_cm": 90},
+    {"nome": "porta", "x": 250, "y": 356, "w": 36, "h": 4, "spazio_libero_cm": 90}
+  ],
+  "finestre": [
+    {"nome": "finestra", "x": 244, "y": 356, "w": 48, "h": 4}
+  ],
+  "passaggi": [
+    {"nome": "passaggio", "x": 162, "y": 395, "w": 32, "h": 245},
+    {"nome": "passaggio", "x": 422, "y": 298, "w": 32, "h": 120}
+  ],
+  "tavoli": [
+    {"id": "1",   "tipo": "panca",        "x": 82.3,  "y": 104.6, "posti": 4, "fisso": true, "note": "panca fissa", "confermato": true},
+    {"id": "2",   "tipo": "panca",        "x": 130.8, "y": 75.8,  "posti": 4, "fisso": true, "note": "panca fissa", "confermato": true},
+    {"id": "3",   "tipo": "quadrato",     "x": 125.3, "y": 148,   "rot": 30, "posti": 2, "fisso": false, "note": "tavolo da 2, messo di traverso", "confermato": true},
+    {"id": "4",   "tipo": "quadrato",     "x": 74.1,  "y": 186.7, "posti": 2, "fisso": false, "note": "tavolo da 2, appoggiato al bancone di sinistra", "confermato": true},
+    {"id": "5",   "tipo": "blocco",       "x": 202.2, "y": 135.5, "moduli": 3, "verso": "verticale", "posti": 8, "fisso": false, "note": "3 quadrati uniti, si possono separare", "separabile": true, "confermato": true},
+    {"id": "6",   "tipo": "tondo",        "x": 257.3, "y": 106.8, "r": 16, "posti": 3, "fisso": true, "note": "tavolo alto con 3 sgabelli", "confermato": true},
+    {"id": "7",   "tipo": "blocco",       "x": 267.6, "y": 180.7, "moduli": 2, "verso": "verticale", "rot": 18, "posti": 6, "fisso": false, "note": "2 quadrati uniti, di traverso, si possono separare", "separabile": true, "confermato": true},
+    {"id": "8",   "tipo": "blocco",       "x": 336.4, "y": 154,   "moduli": 3, "verso": "verticale", "rot": 19, "posti": 8, "fisso": false, "note": "3 quadrati uniti, di traverso, si possono separare", "separabile": true, "da_regola": true},
+    {"id": "9",   "tipo": "blocco",       "x": 401.7, "y": 145,   "moduli": 2, "verso": "verticale", "rot": -16, "posti": 6, "fisso": false, "note": "2 quadrati uniti, di traverso, si possono separare", "separabile": true, "da_regola": true},
+    {"id": "10",  "tipo": "tondo",        "x": 390.6, "y": 223.3, "r": 27, "posti": 10, "fisso": true, "note": "tondo grande", "confermato": true},
+    {"id": "11",  "tipo": "lungo",        "x": 239.5, "y": 282,   "w": 200, "h": 40, "posti": 20, "fisso": true, "note": "tavolo lungo da 5 m: un gruppo fino a 20 oppure due gruppi fino a 8", "confermato": true},
+    {"id": "12",  "tipo": "blocco",       "x": 394.9, "y": 296,   "moduli": 2, "verso": "verticale", "posti": 6, "fisso": false, "note": "2 quadrati uniti, si possono separare", "separabile": true, "da_regola": true},
+    {"id": "13A", "tipo": "rettangolare", "x": 99,    "y": 354,   "w": 44, "h": 36, "posti": 4, "fisso": true, "note": "tavolo fisso", "confermato": true},
+    {"id": "13B", "tipo": "rettangolare", "x": 145.5, "y": 354,   "w": 44, "h": 36, "posti": 4, "fisso": true, "note": "tavolo fisso", "confermato": true},
+    {"id": "14",  "tipo": "panca",        "x": 212,   "y": 361,   "posti": 4, "fisso": true, "note": "panca fissa", "confermato": true},
+    {"id": "15",  "tipo": "panca",        "x": 212,   "y": 407,   "posti": 4, "fisso": true, "note": "panca fissa", "confermato": true},
+    {"id": "16",  "tipo": "panca",        "x": 212,   "y": 453,   "posti": 4, "fisso": true, "note": "panca fissa", "confermato": true},
+    {"id": "17",  "tipo": "panca",        "x": 212,   "y": 520,   "posti": 4, "fisso": true, "note": "panca fissa", "confermato": true},
+    {"id": "18",  "tipo": "panca",        "x": 212,   "y": 575,   "posti": 4, "fisso": true, "note": "panca fissa", "confermato": true},
+    {"id": "19",  "tipo": "panca",        "x": 212,   "y": 625,   "posti": 4, "fisso": true, "note": "panca fissa", "confermato": true},
+    {"id": "20",  "tipo": "blocco",       "x": 310,   "y": 361,   "moduli": 2, "verso": "orizzontale", "posti": 6, "fisso": false, "note": "2 quadrati uniti, si possono separare", "separabile": true, "da_regola": true},
+    {"id": "21",  "tipo": "blocco",       "x": 310,   "y": 415,   "moduli": 2, "verso": "orizzontale", "posti": 6, "fisso": false, "note": "2 quadrati uniti, si possono separare", "separabile": true, "da_regola": true},
+    {"id": "22",  "tipo": "blocco",       "x": 310,   "y": 474,   "moduli": 2, "verso": "orizzontale", "posti": 6, "fisso": false, "note": "2 quadrati uniti, si possono separare", "separabile": true, "da_regola": true},
+    {"id": "23",  "tipo": "blocco",       "x": 310,   "y": 534,   "moduli": 2, "verso": "orizzontale", "posti": 6, "fisso": false, "note": "2 quadrati uniti, si possono separare", "separabile": true, "da_regola": true},
+    {"id": "24",  "tipo": "blocco",       "x": 310,   "y": 598,   "moduli": 2, "verso": "orizzontale", "posti": 6, "fisso": false, "note": "2 quadrati uniti, si possono separare", "separabile": true, "da_regola": true},
+    {"id": "25",  "tipo": "quadrato",     "x": 384,   "y": 367,   "posti": 2, "fisso": false, "note": "tavolo da 2, contro il muro a destra", "confermato": true},
+    {"id": "26",  "tipo": "quadrato",     "x": 376,   "y": 416,   "posti": 2, "fisso": false, "note": "tavolo da 2, contro il muro a destra", "confermato": true},
+    {"id": "27",  "tipo": "quadrato",     "x": 384,   "y": 477,   "posti": 2, "fisso": false, "note": "tavolo da 2, contro il muro a destra", "confermato": true},
+    {"id": "28",  "tipo": "quadrato",     "x": 384,   "y": 535,   "posti": 2, "fisso": false, "note": "tavolo da 2, contro il muro a destra", "confermato": true},
+    {"id": "29",  "tipo": "quadrato",     "x": 384,   "y": 593,   "posti": 2, "fisso": false, "note": "tavolo da 2, contro il muro a destra", "confermato": true}
+  ],
+  "unioni": [
+    {"tavoli": ["20", "21"], "posti": null, "stato": "proposta"},
+    {"tavoli": ["21", "22"], "posti": null, "stato": "proposta"},
+    {"tavoli": ["22", "23"], "posti": null, "stato": "proposta"},
+    {"tavoli": ["23", "24"], "posti": null, "stato": "proposta"},
+    {"tavoli": ["12", "25"], "posti": null, "stato": "proposta"},
+    {"tavoli": ["25", "26"], "posti": null, "stato": "proposta"},
+    {"tavoli": ["26", "27"], "posti": null, "stato": "proposta"},
+    {"tavoli": ["27", "28"], "posti": null, "stato": "proposta"},
+    {"tavoli": ["28", "29"], "posti": null, "stato": "proposta"}
+  ],
+  "da_sapere": [
+    "Quali delle unioni proposte si possono fare davvero, e con quanti posti diventa il tavolo unito.",
+    "Quanti posti ha un quadrato da solo quando si separa un gruppo: il motore usa posti_quadrato_separato (ora 4).",
+    "La linea a L è un muro o un separé?",
+    "Cucina e porta della cucina: posizione indicativa, da correggere con Modifica.",
+    "Secondo bancone sul bordo sinistro, dal tavolo 4 al 13A: posizione e misure indicative, da correggere con Modifica.",
+    "Misure vere: il disegno non è in scala (il lungo 11 è di 5 m ma è disegnato più corto). Quanto misura il lato di un quadrato? Ora 80 cm.",
+    "Misure della sala, dei muri (spessore ora 10 cm) e delle distanze: si prendono al locale con la Scheda misure (in Modifica)."
+  ],
+  "storico": [
+    "26/10/2026 · prima versione, dalla foto della piantina: tavoli numerati da 1 a 29, ingresso in alto.",
+    "26/10/2026 · 11 è un tavolo lungo da 5 m (20 posti o due gruppi da 8); 13 sono due tavoli fissi da 6 (13A e 13B); da 14 a 19 sono panche fisse da 4.",
+    "26/10/2026 · tondo grande (10) da 10 posti; tondo piccolo (6) con 3 sgabelli. Due turni: 20:00 e 21:30.",
+    "26/10/2026 · 13A e 13B sono da 4 posti, non da 6; 1 e 2 sono panche fisse da 4; 3 e 4 sono tavoli da 2.",
+    "26/10/2026 · 25-29 sono tavoli da 2 perché hanno il muro a destra; c’è un muro anche in basso; i quadrati uniti si possono separare.",
+    "26/10/2026 · 5 ha 8 posti e 7 ne ha 6; aggiunto il bancone a L a sinistra delle panche, con il passaggio tra bancone e panche.",
+    "26/10/2026 · per 8, 9, 12 e 20-24 si usa la regola di 5 e 7: 3 quadrati uniti = 8 posti, 2 quadrati uniti = 6.",
+    "27/10/2026 · proposte 9 unioni tra tavoli vicini (linee arancioni): il motore non le usa finché non sono confermate, con i posti del tavolo unito.",
+    "27/10/2026 · tavoli fissi (tondi 6 e 10, lungo 11, panche, 13A e 13B) e mobili (quadrati e quadrati uniti); aggiunti la cucina con la sua porta e un secondo bancone a sinistra, con posizioni da correggere; il bancone a L ora è fatto di due rettangoli; la piantina si corregge con il pulsante Modifica.",
+    "27/10/2026 · la sala ha le sue misure (contorno modificabile); muri con spessore; misure in cm per ogni pezzo e scheda delle misure da stampare; nuovi elementi fissi (pilastri, porte, finestre, bagni, cassa, mobili, pedane, zone vietate, blocchi).",
+    "27/10/2026 · modificata nell'editor"
+  ]
+}
+</script>
+
+<script id="programma">
+(function () {
+  'use strict';
+  function $(id) { return document.getElementById(id); }
+
+  // La pagina com'è nel file, presa prima di disegnare: "Salva piantina" la riscrive con i dati nuovi.
+  var BASE = {
+    titolo: document.title,
+    stile: $('stile').textContent,
+    pagina: $('pagina').outerHTML,
+    programma: $('programma').textContent
+  };
+  var COMMENTO = '<' + '!-- DATI DELLA SALA: è l\'unica cosa da aggiornare, a mano o con il pulsante Modifica. Posizioni in unità del disegno: il quadrato è 32 unità, "scala" dice quanti cm vale il suo lato. --' + '>';
+  var SALA0 = {x: 40, y: 40, w: 400, h: 625};
+  var S = normalizza(JSON.parse($('sala').textContent));
+  var svg = $('mappa');
+
+  var STILE = {
+    quadrato:     {fill: '#eceae4', stroke: '#888780', nome: 'quadrato'},
+    blocco:       {fill: '#d6efe6', stroke: '#1d9e75', nome: 'quadrati uniti'},
+    lungo:        {fill: '#dbe9f8', stroke: '#378add', nome: 'tavolo lungo'},
+    rettangolare: {fill: '#fae1d8', stroke: '#d85a30', nome: 'rettangolare fisso'},
+    panca:        {fill: '#f8e7c7', stroke: '#ba7517', nome: 'panca fissa'},
+    tondo:        {fill: '#e7e4fb', stroke: '#7f77dd', nome: 'tondo'}
+  };
+  var ZONA = {
+    bancone:      {fill: '#d3d1c7', stroke: '#5f5e5a', testo: '#444441', size: 11, nome: 'bancone'},
+    cucina:       {fill: '#efe8da', stroke: '#8a7f6a', testo: '#5c5241', size: 13, nome: 'cucina'},
+    pilastro:     {fill: '#a8a59c', stroke: '#4f4e49', testo: '#2c2c2a', size: 9, nome: 'pilastro'},
+    bagni:        {fill: '#e2edf0', stroke: '#5f8a93', testo: '#2f5560', size: 12, nome: 'bagni'},
+    cassa:        {fill: '#f3e6c9', stroke: '#8a6d2f', testo: '#5c4718', size: 11, nome: 'cassa'},
+    mobile:       {fill: '#e8dfd2', stroke: '#7d6b52', testo: '#4f4333', size: 10, nome: 'credenza'},
+    pedana:       {fill: '#ece7f6', stroke: '#8577a8', testo: '#4b3f73', size: 12, nome: 'pedana'},
+    zona_vietata: {fill: 'url(#vietato)', stroke: '#c0392b', testo: '#a32d2d', size: 11, nome: 'zona vietata'},
+    blocco:       {fill: '#d9d7d0', stroke: '#6b6a64', testo: '#444441', size: 11, nome: 'blocco fisso'}
+  };
+  var NOME_FISSO = {bancone: 'bancone', cucina: 'cucina', pilastro: 'pilastro o colonna', bagni: 'bagni', cassa: 'cassa', mobile: 'mobile o credenza',
+    pedana: 'pedana', zona_vietata: 'zona vietata ai tavoli', blocco: 'blocco fisso'};
+  var NOME_TIPO = {quadrato: 'quadrato', blocco: 'quadrati uniti', tondo: 'tondo', lungo: 'tavolo lungo', panca: 'panca', rettangolare: 'rettangolare'};
+  var TIPI = ['quadrato', 'blocco', 'tondo', 'lungo', 'panca', 'rettangolare'];
+  var ORDINE_TAVOLO = ['id', 'tipo', 'x', 'y', 'r', 'w', 'h', 'moduli', 'verso', 'rot', 'posti', 'fisso', 'note', 'separabile', 'confermato', 'da_regola'];
+  var ORDINE_ZONA = ['nome', 'tipo', 'forma', 'x', 'y', 'w', 'h', 'rot', 'spazio_libero_cm'];
+  var ZONE = ['ostacoli', 'porte', 'finestre', 'passaggi'];
+  var NUOVI = {             // elementi fissi: lista, campi, larghezza e profondità in cm
+    bancone: ['ostacoli', {nome: 'bancone', tipo: 'bancone'}, 200, 60],
+    pilastro: ['ostacoli', {nome: 'pilastro', tipo: 'pilastro', forma: 'quadrato'}, 40, 40],
+    colonna: ['ostacoli', {nome: 'colonna', tipo: 'pilastro', forma: 'tondo'}, 40, 40],
+    bagni: ['ostacoli', {nome: 'bagni', tipo: 'bagni'}, 250, 200],
+    cassa: ['ostacoli', {nome: 'cassa', tipo: 'cassa'}, 120, 60],
+    mobile: ['ostacoli', {nome: 'credenza', tipo: 'mobile'}, 160, 50],
+    pedana: ['ostacoli', {nome: 'pedana', tipo: 'pedana'}, 300, 200],
+    zona_vietata: ['ostacoli', {nome: 'zona vietata', tipo: 'zona_vietata'}, 150, 150],
+    blocco: ['ostacoli', {nome: 'blocco fisso', tipo: 'blocco'}, 100, 100],
+    porta: ['porte', {nome: 'porta', spazio_libero_cm: 90}, 90, 10],
+    finestra: ['finestre', {nome: 'finestra'}, 120, 10],
+    passaggio: ['passaggi', {nome: 'passaggio'}, 80, 300]
+  };
+  var DIREZIONI = [{nome: 'sinistra', asse: 0, verso: -1, testo: 'a sinistra'}, {nome: 'destra', asse: 0, verso: 1, testo: 'a destra'},
+    {nome: 'sopra', asse: 1, verso: -1, testo: 'in alto'}, {nome: 'sotto', asse: 1, verso: 1, testo: 'in basso'}];
+  var SEGNI = [[-1, -1], [1, -1], [1, 1], [-1, 1]];           // angoli: alto-sx, alto-dx, basso-dx, basso-sx
+  var LATO = 32, GAP = 2, SEDIE_CM = 50, PASSO_CM = 5;
+
+  var ed = {attivo: false, sel: null, vertice: null, aggancio: true, griglia: true, quote: true, sporco: false, cambiate: 0,
+    annulla: [], ripeti: [], avvisati: {}, controlli: []};
+  var drag = null, tocco = null, timerAvviso = null;
+
+  function normalizza(d) {         // file di prima: muri come percorsi "M x y L x y", niente sala
+    d.tavoli = d.tavoli || [];
+    if (!d.sala) d.sala = {x: SALA0.x, y: SALA0.y, w: SALA0.w, h: SALA0.h};
+    d.muri = (d.muri || []).map(function (m) {
+      if (typeof m !== 'string') return m;
+      var p = puntiDaPercorso(m);
+      return p ? {punti: p, spessore_cm: 10} : null;
+    }).filter(Boolean);
+    return d;
+  }
+  function puntiDaPercorso(d) {
+    if (!/^[\sML0-9.,\-]*$/.test(d)) return null;
+    var n = (d.match(/-?\d*\.?\d+/g) || []).map(Number), pts = [];
+    for (var i = 0; i + 1 < n.length; i += 2) pts.push([n[i], n[i + 1]]);
+    return pts.length >= 2 ? pts : null;
+  }
+
+  // ---------------------------------------------------------------- utilità e unità
+  function esc(s) {
+    return String(s == null ? '' : s).replace(/[&<>"]/g, function (c) { return {'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;'}[c]; });
+  }
+  function num(v) { return Math.round(v * 10) / 10; }
+  function num2(v) { return Math.round(v * 100) / 100; }
+  function copia(o) { return JSON.parse(JSON.stringify(o)); }
+  function lato() { var l = S.scala && Number(S.scala.lato_quadrato_cm); return l > 0 ? l : 80; }
+  function cpu() { return lato() / LATO; }                    // cm per unità del disegno
+  function u(c) { return c / cpu(); }                         // cm -> unità
+  function cm(v) { return Math.round(v * cpu()); }
+  function cm5(v) { return Math.round(v * cpu() / 5) * 5; }   // misure mostrate, arrotondate a 5 cm
+  function sala() { return S.sala; }
+  function px(n) { var m = svg.getScreenCTM(); return num(n / (m && m.a > 0 ? m.a : 1)); }   // n pixel dello schermo in unità
+  function passo() { return u(PASSO_CM); }
+  function agg(v, o) { if (!ed.aggancio) return num2(v); var p = passo(); return num2(o + Math.round((v - o) / p) * p); }
+  function misura(v, prima) {          // lato tirato da una maniglia: cambia solo se lo si tira davvero
+    if (Math.abs(v - prima) < 1) return prima;
+    return ed.aggancio ? Math.max(passo(), Math.round(v / passo()) * passo()) : Math.max(4, num2(v));
+  }
+  function normRot(r) {
+    r = Math.round(((Number(r) || 0) % 360) * 10) / 10;
+    if (r > 180) r -= 360;
+    if (r <= -180) r += 360;
+    return r;
+  }
+  function postiIpotesi(t) {
+    if (t.posti != null) return t.posti;
+    if (t.tipo === 'quadrato') return 4;
+    if (t.tipo === 'blocco') return 2 * t.moduli + 2;
+    return 0;
+  }
+  function rect(x, y, w, h, st, extra) {
+    return '<rect x="' + x + '" y="' + y + '" width="' + w + '" height="' + h + '" rx="2" fill="' + st.fill +
+      '" stroke="' + st.stroke + '" stroke-width="1"' + (extra || '') + '/>';
+  }
+  function elemento(sel) {
+    if (!sel) return null;
+    if (sel.k === 'ingresso') return S.ingresso || null;
+    if (sel.k === 'sala') return S.sala;
+    var l = S[sel.k];
+    return Array.isArray(l) && l[sel.i] != null ? l[sel.i] : null;
+  }
+  function isZona(k) { return k === 'ingresso' || ZONE.indexOf(k) >= 0; }
+  function dMuro(pts) {
+    return pts.map(function (p, i) { return (i ? ' L' : 'M') + num2(p[0]) + ' ' + num2(p[1]); }).join('');
+  }
+  function metaMuro(m) { return u(Number(m.spessore_cm) || 10) / 2; }
+  function muroValido(m) { return m && Array.isArray(m.punti) && m.punti.length >= 2; }
+  function nomeTavolo(t) { return (t.tipo === 'panca' ? 'panca ' : 'tavolo ') + t.id; }
+
+  // ---------------------------------------------------------------- geometria (unità del disegno)
+  function dimTavolo(t) {
+    if (t.tipo === 'tondo') { var r = Number(t.r) || 16; return {w: 2 * r, h: 2 * r}; }
+    if (t.tipo === 'blocco') {
+      var k = Math.max(1, Number(t.moduli) || 1), L = k * LATO + (k - 1) * GAP;
+      return t.verso === 'orizzontale' ? {w: L, h: LATO} : {w: LATO, h: L};
+    }
+    return {w: Number(t.w) || LATO, h: Number(t.h) || LATO};
+  }
+  function geo(k, el) {                // centro, misure e rotazione di un pezzo
+    if (k === 'tavoli') { var d = dimTavolo(el); return {cx: el.x, cy: el.y, w: d.w, h: d.h, rot: Number(el.rot) || 0, tondo: el.tipo === 'tondo'}; }
+    return {cx: el.x + el.w / 2, cy: el.y + el.h / 2, w: el.w, h: el.h, rot: k === 'sala' ? 0 : Number(el.rot) || 0, tondo: el.forma === 'tondo'};
+  }
+  function metti(k, el, g) {           // il contrario di geo
+    if (k === 'tavoli') {
+      el.x = num2(g.cx); el.y = num2(g.cy);
+      if (el.tipo === 'tondo') el.r = num2(g.w / 2);
+      else if (el.tipo !== 'blocco' && el.tipo !== 'quadrato') { el.w = num2(g.w); el.h = num2(g.h); }
+    } else {
+      el.w = num2(g.w); el.h = num2(g.h); el.x = num2(g.cx - g.w / 2); el.y = num2(g.cy - g.h / 2);
+    }
+    if (k === 'sala' || (k === 'tavoli' && el.tipo === 'tondo')) return;
+    var r = normRot(g.rot);
+    if (r) el.rot = r; else delete el.rot;
+  }
+  function rettRuotato(cx, cy, w, h, rot) {
+    var a = (rot || 0) * Math.PI / 180, c = Math.cos(a), s = Math.sin(a);
+    return SEGNI.map(function (g) { var x = g[0] * w / 2, y = g[1] * h / 2; return [cx + x * c - y * s, cy + x * s + y * c]; });
+  }
+  function ellisse(cx, cy, rx, ry, rot) {
+    var a = (rot || 0) * Math.PI / 180, c = Math.cos(a), s = Math.sin(a), out = [];
+    for (var i = 0; i < 24; i++) { var x = rx * Math.cos(i * Math.PI / 12), y = ry * Math.sin(i * Math.PI / 12); out.push([cx + x * c - y * s, cy + x * s + y * c]); }
+    return out;
+  }
+  function poliGeo(g, m) {
+    m = m || 0;
+    return g.tondo ? ellisse(g.cx, g.cy, g.w / 2 + m, g.h / 2 + m, g.rot) : rettRuotato(g.cx, g.cy, g.w + 2 * m, g.h + 2 * m, g.rot);
+  }
+  function poli(k, el, m) { return poliGeo(geo(k, el), m); }
+  function poliTavolo(t, m) { return poli('tavoli', t, m); }
+  function scatola(P) {
+    var b = {minx: Infinity, miny: Infinity, maxx: -Infinity, maxy: -Infinity};
+    P.forEach(function (p) { b.minx = Math.min(b.minx, p[0]); b.maxx = Math.max(b.maxx, p[0]); b.miny = Math.min(b.miny, p[1]); b.maxy = Math.max(b.maxy, p[1]); });
+    return b;
+  }
+  function poliStr(p) { return p.map(function (q) { return num(q[0]) + ',' + num(q[1]); }).join(' '); }
+  function dentro(p, poli) {
+    var c = false;
+    for (var i = 0, j = poli.length - 1; i < poli.length; j = i++) {
+      var a = poli[i], b = poli[j];
+      if ((a[1] > p[1]) !== (b[1] > p[1]) && p[0] < (b[0] - a[0]) * (p[1] - a[1]) / (b[1] - a[1]) + a[0]) c = !c;
+    }
+    return c;
+  }
+  function puntoSeg(p, a, b) {
+    var dx = b[0] - a[0], dy = b[1] - a[1], l = dx * dx + dy * dy;
+    var t = l ? ((p[0] - a[0]) * dx + (p[1] - a[1]) * dy) / l : 0;
+    t = Math.max(0, Math.min(1, t));
+    var q = [a[0] + t * dx, a[1] + t * dy];
+    return {d: Math.hypot(p[0] - q[0], p[1] - q[1]), q: q};
+  }
+  function orient(a, b, c) { return (b[0] - a[0]) * (c[1] - a[1]) - (b[1] - a[1]) * (c[0] - a[0]); }
+  function lati(poli, chiuso) {
+    var out = [];
+    for (var i = 0; i + 1 < poli.length; i++) out.push([poli[i], poli[i + 1]]);
+    if (chiuso) out.push([poli[poli.length - 1], poli[0]]);
+    return out;
+  }
+  function vicini(A, B, bLinea) {      // distanza minima tra A (poligono) e B (poligono o spezzata), con i due punti più vicini
+    if (B.some(function (p) { return dentro(p, A); }) || (!bLinea && dentro(A[0], B))) return {d: 0, p: null, q: null};
+    var la = lati(A, true), lb = lati(B, !bLinea), best = {d: Infinity, p: null, q: null};
+    for (var i = 0; i < la.length; i++) {
+      for (var j = 0; j < lb.length; j++) {
+        var s = la[i], t = lb[j], r;
+        if (orient(s[0], s[1], t[0]) * orient(s[0], s[1], t[1]) < 0 && orient(t[0], t[1], s[0]) * orient(t[0], t[1], s[1]) < 0) return {d: 0, p: null, q: null};
+        r = puntoSeg(s[0], t[0], t[1]); if (r.d < best.d) best = {d: r.d, p: s[0], q: r.q};
+        r = puntoSeg(s[1], t[0], t[1]); if (r.d < best.d) best = {d: r.d, p: s[1], q: r.q};
+        r = puntoSeg(t[0], s[0], s[1]); if (r.d < best.d) best = {d: r.d, p: r.q, q: t[0]};
+        r = puntoSeg(t[1], s[0], s[1]); if (r.d < best.d) best = {d: r.d, p: r.q, q: t[1]};
+      }
+    }
+    return best;
+  }
+  function distanza(A, B, bLinea) { return vicini(A, B, bLinea).d; }
+  function toccano(a, b) { return a.x <= b.x + b.w + 1 && b.x <= a.x + a.w + 1 && a.y <= b.y + b.h + 1 && b.y <= a.y + a.h + 1; }
+  function bordoSala() { var s = sala(); return [[s.x, s.y], [s.x + s.w, s.y], [s.x + s.w, s.y + s.h], [s.x, s.y + s.h], [s.x, s.y]]; }
+
+  // cosa conta per lo spazio intorno a un pezzo: tavoli, elementi fissi, muri (il bordo della sala se non c'è niente)
+  function ingombri(k, i) {
+    var out = [];
+    S.tavoli.forEach(function (t, j) { if (!(k === 'tavoli' && i === j)) out.push({nome: nomeTavolo(t), poli: poliTavolo(t), chiuso: true}); });
+    (S.ostacoli || []).forEach(function (o, j) { if (!(k === 'ostacoli' && i === j)) out.push({nome: o.nome || (ZONA[o.tipo] || ZONA.blocco).nome, poli: poli('ostacoli', o), chiuso: true}); });
+    (S.muri || []).forEach(function (m, j) { if (!(k === 'muri' && i === j) && muroValido(m)) out.push({nome: 'muro', poli: m.punti, chiuso: false, meta: metaMuro(m)}); });
+    return out;
+  }
+  function taglia(a, b, o, lo, hi) {   // il tratto ab dentro la fascia lo..hi dell'asse o
+    var ta = a[o], tb = b[o];
+    if ((ta < lo && tb < lo) || (ta > hi && tb > hi)) return null;
+    if (ta === tb) return [a, b];
+    function su(v) { var t = (v - ta) / (tb - ta); return [a[0] + t * (b[0] - a[0]), a[1] + t * (b[1] - a[1])]; }
+    return [ta < lo ? su(lo) : ta > hi ? su(hi) : a, tb < lo ? su(lo) : tb > hi ? su(hi) : b];
+  }
+  function direzioni(P, oggetti) {     // spazio libero a sinistra, a destra, in alto e in basso, con la cosa più vicina
+    var B = scatola(P), sl = sala(), out = {};
+    DIREZIONI.forEach(function (D) {
+      var m = D.asse, o = 1 - m, lo = m === 0 ? B.miny : B.minx, hi = m === 0 ? B.maxy : B.maxx;
+      var bordo = D.verso < 0 ? (m === 0 ? B.minx : B.miny) : (m === 0 ? B.maxx : B.maxy), best = null;
+      oggetti.forEach(function (ob) {
+        lati(ob.poli, ob.chiuso).forEach(function (sg) {
+          var c = taglia(sg[0], sg[1], o, lo, hi);
+          if (!c) return;
+          var v0 = c[0][m], v1 = c[1][m], mn = Math.min(v0, v1), mx = Math.max(v0, v1), d, alt;
+          var L = Math.hypot(sg[1][0] - sg[0][0], sg[1][1] - sg[0][1]) || 1, meta = (ob.meta || 0) * Math.abs((sg[1][o] - sg[0][o]) / L);
+          if (D.verso < 0) {
+            if (mn > bordo + 0.01) return;
+            if (mx > bordo + 0.01) { d = 0; alt = (lo + hi) / 2; }
+            else { var p = v0 >= v1 ? c[0] : c[1]; d = bordo - p[m] - meta; alt = p[o]; }
+          } else {
+            if (mx < bordo - 0.01) return;
+            if (mn < bordo - 0.01) { d = 0; alt = (lo + hi) / 2; }
+            else { var q = v0 <= v1 ? c[0] : c[1]; d = q[m] - meta - bordo; alt = q[o]; }
+          }
+          d = Math.max(0, d);
+          if (!best || d < best.d) best = {d: d, cosa: ob.nome, alt: alt};
+        });
+      });
+      if (!best) {
+        var lim = D.verso < 0 ? (m === 0 ? sl.x : sl.y) : (m === 0 ? sl.x + sl.w : sl.y + sl.h);
+        best = {d: Math.max(0, D.verso < 0 ? bordo - lim : lim - bordo), cosa: 'bordo della sala', alt: (lo + hi) / 2};
+      }
+      var da = [0, 0], a = [0, 0];
+      da[m] = bordo; da[o] = best.alt; a[m] = bordo + D.verso * best.d; a[o] = best.alt;
+      best.da = da; best.a = a;
+      out[D.nome] = best;
+    });
+    return out;
+  }
+  function tavoloVicino() {            // il tavolo più vicino al pezzo scelto, con i due punti
+    var sel = ed.sel, el = elemento(sel), best = null, A, linea = false;
+    if (!el || sel.k === 'sala') return null;
+    if (sel.k === 'muri') { if (!muroValido(el)) return null; A = el.punti; linea = true; } else A = poli(sel.k, el);
+    S.tavoli.forEach(function (t, j) {
+      if (sel.k === 'tavoli' && j === sel.i) return;
+      var r = linea ? vicini(poliTavolo(t), A, true) : vicini(A, poliTavolo(t));
+      var d = linea ? Math.max(0, r.d - metaMuro(el)) : r.d;
+      if (!best || d < best.d) best = {id: t.id, d: d, p: linea ? r.q : r.p, q: linea ? r.p : r.q};
+    });
+    return best;
+  }
+  function aperture() {                // davanti a porte e ingresso va lasciato libero lo spazio di apertura
+    var out = [];
+    function di(k, p, nome) {
+      var s = u(p.spazio_libero_cm == null ? 90 : Number(p.spazio_libero_cm) || 0);
+      if (!(s > 0)) return;
+      var g = geo(k, p), orizz = g.w >= g.h, a = g.rot * Math.PI / 180;
+      [-1, 1].forEach(function (v) {
+        var lx = orizz ? 0 : v * (g.w / 2 + s / 2), ly = orizz ? v * (g.h / 2 + s / 2) : 0;
+        out.push({nome: nome, cm: Math.round(s * cpu()), poli: rettRuotato(g.cx + lx * Math.cos(a) - ly * Math.sin(a), g.cy + lx * Math.sin(a) + ly * Math.cos(a), orizz ? g.w : s, orizz ? s : g.h, g.rot)});
+      });
+    }
+    if (S.ingresso) di('ingresso', S.ingresso, 'ingresso');
+    (S.porte || []).forEach(function (p) { di('porte', p, p.nome || 'porta'); });
+    return out;
+  }
+
+  // ---------------------------------------------------------------- disegno della mappa
+  function rotAttr(g) { return g.rot ? ' transform="rotate(' + g.rot + ' ' + num2(g.cx) + ' ' + num2(g.cy) + ')"' : ''; }
+  function etichettaZona(z, testo, colore, size, rot) {
+    if (testo == null || testo === '') return '';
+    var cx = num2(z.x + z.w / 2), cy = num2(z.y + z.h / 2), largo = String(testo).length * size * 0.56, ang = rot || 0;
+    if (largo > z.w - 2 || size > z.h) {
+      if (largo <= z.h - 2 && size <= z.w) ang -= 90;
+      else return '';
+    }
+    return '<text x="' + cx + '" y="' + cy + '" text-anchor="middle" dominant-baseline="central" font-size="' + size + '" fill="' + colore + '"' +
+      (ang ? ' transform="rotate(' + ang + ' ' + cx + ' ' + cy + ')"' : '') + '>' + esc(testo) + '</text>';
+  }
+  function griglia() {
+    var sl = sala(), passo1m = 100 / cpu(), s = '<g pointer-events="none">';
+    for (var x = sl.x; x <= sl.x + sl.w + 0.01; x += passo1m) s += '<line x1="' + num(x) + '" y1="' + sl.y + '" x2="' + num(x) + '" y2="' + (sl.y + sl.h) + '" stroke="#c9dcf2" stroke-width="0.6"/>';
+    for (var y = sl.y; y <= sl.y + sl.h + 0.01; y += passo1m) s += '<line x1="' + sl.x + '" y1="' + num(y) + '" x2="' + (sl.x + sl.w) + '" y2="' + num(y) + '" stroke="#c9dcf2" stroke-width="0.6"/>';
+    return s + '<text x="' + (sl.x + sl.w) + '" y="' + (sl.y - 20) + '" text-anchor="end" font-size="10" fill="#5f5e5a">griglia: quadretti da 1 m</text></g>';
+  }
+  function vista(quote) {             // la sala con i margini, allargata se qualcosa ne esce; più spazio a destra e sotto per le quote
+    var sl = sala(), x0 = sl.x - 10, y0 = sl.y - 30, x1 = sl.x + sl.w + 10, y1 = sl.y + sl.h + 10, P = [];
+    S.tavoli.forEach(function (t) { P = P.concat(poliTavolo(t)); });
+    ZONE.forEach(function (k) { (S[k] || []).forEach(function (z) { P = P.concat(poli(k, z)); }); });
+    if (S.ingresso) P = P.concat(poli('ingresso', S.ingresso));
+    (S.muri || []).forEach(function (m) { if (muroValido(m)) P = P.concat(m.punti); });
+    if (P.length) {
+      var B = scatola(P);
+      x0 = Math.min(x0, B.minx - 8); y0 = Math.min(y0, B.miny - 20); x1 = Math.max(x1, B.maxx + 8); y1 = Math.max(y1, B.maxy + 8);
+    }
+    return [num2(x0), num2(y0), num2(x1 - x0 + (quote ? 34 : 0)), num2(y1 - y0 + (quote ? 30 : 0))];
+  }
+  function svgMappa(opz) {
+    var sl = sala(), mod = opz.modifica, s = '';
+    s += '<rect x="' + sl.x + '" y="' + sl.y + '" width="' + sl.w + '" height="' + sl.h + '" rx="6" fill="none" stroke="#b4b2a9" stroke-dasharray="6 4"/>';
+    if (mod) s += '<rect data-k="sala" data-i="0" x="' + sl.x + '" y="' + sl.y + '" width="' + sl.w + '" height="' + sl.h + '" fill="none" stroke="transparent" stroke-width="' + px(14) + '"/>';
+    if (mod && ed.griglia) s += griglia();
+    var e = S.ingresso;
+    if (e) s += '<g data-k="ingresso" data-i="0"><rect x="' + e.x + '" y="' + e.y + '" width="' + e.w + '" height="' + e.h + '" rx="2" fill="#ef9f27"' + rotAttr(geo('ingresso', e)) + '/>' +
+      '<text x="' + (e.x + e.w / 2) + '" y="' + (e.y - 6) + '" text-anchor="middle" font-size="12" fill="#854f0b">ingresso</text></g>';
+    s += '<defs><pattern id="righe" width="6" height="6" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><line x1="0" y1="0" x2="0" y2="6" stroke="#b5d4f4" stroke-width="2"/></pattern>' +
+      '<pattern id="vietato" width="8" height="8" patternUnits="userSpaceOnUse" patternTransform="rotate(-45)"><rect width="8" height="8" fill="#fbe9e7"/><line x1="0" y1="0" x2="0" y2="8" stroke="#e8a39b" stroke-width="3"/></pattern></defs>';
+    if (mod) aperture().forEach(function (a) {
+      s += '<polygon points="' + poliStr(a.poli) + '" fill="#fff3e0" fill-opacity="0.7" stroke="#ef9f27" stroke-width="0.8" stroke-dasharray="3 2" pointer-events="none"/>';
+    });
+    (S.passaggi || []).forEach(function (p, i) {
+      var g = geo('passaggi', p), cx = p.x + p.w / 2, cy = p.y + p.h / 2, ang = (g.rot || 0) + (p.h > p.w ? -90 : 0);
+      s += '<g data-k="passaggi" data-i="' + i + '"><rect x="' + p.x + '" y="' + p.y + '" width="' + p.w + '" height="' + p.h + '" fill="url(#righe)" stroke="#85b7eb" stroke-width="0.8"' + rotAttr(g) + '/>' +
+        '<text x="' + cx + '" y="' + cy + '" text-anchor="middle" dominant-baseline="central" font-size="11" fill="#0c447c"' +
+        (ang ? ' transform="rotate(' + ang + ' ' + cx + ' ' + cy + ')"' : '') + '>' + esc(p.nome) + '</text></g>';
+    });
+    (S.ostacoli || []).forEach(function (o, i) {
+      var st = ZONA[o.tipo] || ZONA.blocco, g = geo('ostacoli', o), r = rotAttr(g);
+      var gia = !g.rot && S.ostacoli.slice(0, i).some(function (p) { return p.nome === o.nome && !p.rot && toccano(p, o); });   // una L ha un'etichetta sola
+      var forma = g.tondo ? '<ellipse cx="' + num2(g.cx) + '" cy="' + num2(g.cy) + '" rx="' + num2(o.w / 2) + '" ry="' + num2(o.h / 2) + '" fill="' + st.fill + '" stroke="' + st.stroke + '" stroke-width="1"' + r + '/>'
+        : '<rect x="' + o.x + '" y="' + o.y + '" width="' + o.w + '" height="' + o.h + '" fill="' + st.fill + '" stroke="' + st.stroke + '" stroke-width="1"' + r + '/>';
+      s += '<g data-k="ostacoli" data-i="' + i + '">' + forma + (gia ? '' : etichettaZona(o, o.nome != null ? o.nome : st.nome, st.testo, st.size, g.rot)) + '</g>';
+    });
+    (S.porte || []).forEach(function (p, i) {
+      var g = geo('porte', p), B = scatola(poli('porte', p));
+      s += '<g data-k="porte" data-i="' + i + '"><rect x="' + p.x + '" y="' + p.y + '" width="' + p.w + '" height="' + p.h + '" rx="1" fill="#ffffff" stroke="#ba7517" stroke-width="1.5"' + rotAttr(g) + '/>' +
+        '<text x="' + num2((B.minx + B.maxx) / 2) + '" y="' + num2(B.miny - 4) + '" text-anchor="middle" font-size="10" fill="#854f0b" stroke="#ffffff" stroke-width="3" paint-order="stroke" stroke-linejoin="round">' + esc(p.nome) + '</text></g>';
+    });
+    (S.finestre || []).forEach(function (f, i) {
+      var g = geo('finestre', f), B = scatola(poli('finestre', f)), orizz = f.w >= f.h;
+      var linea = orizz ? '<line x1="' + f.x + '" y1="' + num2(g.cy) + '" x2="' + (f.x + f.w) + '" y2="' + num2(g.cy) + '" stroke="#5b9bd5" stroke-width="0.8"' + rotAttr(g) + '/>'
+        : '<line x1="' + num2(g.cx) + '" y1="' + f.y + '" x2="' + num2(g.cx) + '" y2="' + (f.y + f.h) + '" stroke="#5b9bd5" stroke-width="0.8"' + rotAttr(g) + '/>';
+      s += '<g data-k="finestre" data-i="' + i + '"><rect x="' + f.x + '" y="' + f.y + '" width="' + f.w + '" height="' + f.h + '" fill="#e3f2fc" stroke="#5b9bd5" stroke-width="1"' + rotAttr(g) + '/>' + linea +
+        '<text x="' + num2((B.minx + B.maxx) / 2) + '" y="' + num2(B.miny - 3) + '" text-anchor="middle" font-size="9" fill="#2f6da3" stroke="#ffffff" stroke-width="3" paint-order="stroke" stroke-linejoin="round">' + esc(f.nome) + '</text></g>';
+    });
+    (S.muri || []).forEach(function (m, i) {
+      if (!muroValido(m)) return;
+      var d = dMuro(m.punti), sp = num2(2 * metaMuro(m));
+      s += '<g data-k="muri" data-i="' + i + '"><path d="' + d + '" fill="none" stroke="#2c2c2a" stroke-width="' + sp + '"/>' +
+        (mod ? '<path d="' + d + '" fill="none" stroke="transparent" stroke-width="' + Math.max(sp, px(16)) + '"/>' : '') + '</g>';
+    });
+    S.tavoli.forEach(function (t, n) {
+      var st = STILE[t.tipo] || STILE.quadrato, tratt = (t.confermato || t.da_regola) ? '' : ' stroke-dasharray="3 2"';
+      var rot = t.rot ? ' transform="rotate(' + t.rot + ' ' + t.x + ' ' + t.y + ')"' : '';
+      var g = '', id = esc(t.id);
+      if (t.tipo === 'tondo') {
+        g += '<circle cx="' + t.x + '" cy="' + t.y + '" r="' + t.r + '" fill="' + st.fill + '" stroke="' + st.stroke + '" stroke-width="1"' + tratt + '/>';
+      } else if (t.tipo === 'blocco') {
+        var k = t.moduli, L = k * LATO + (k - 1) * GAP;
+        for (var i = 0; i < k; i++) {
+          var off = -L / 2 + i * (LATO + GAP);
+          var x = t.verso === 'orizzontale' ? t.x + off : t.x - LATO / 2;
+          var y = t.verso === 'orizzontale' ? t.y - LATO / 2 : t.y + off;
+          g += rect(x, y, LATO, LATO, st, tratt + rot);
+        }
+      } else {
+        var w = t.w || LATO, h = t.h || LATO;
+        g += rect(t.x - w / 2, t.y - h / 2, w, h, st, tratt + rot);
+      }
+      var grande = (t.r && t.r >= 20) || (t.w && t.w >= 44);
+      if (grande) {
+        g += '<text x="' + t.x + '" y="' + (t.y - 3) + '" text-anchor="middle" font-size="13" font-weight="600" fill="#2c2c2a" stroke="#ffffff" stroke-width="3.5" paint-order="stroke" stroke-linejoin="round">' + id + '</text>';
+        g += '<text x="' + t.x + '" y="' + (t.y + 11) + '" text-anchor="middle" font-size="10.5" fill="#444441">' + (t.posti != null ? esc(t.posti) : '?') + ' posti</text>';
+      } else {
+        g += '<text x="' + t.x + '" y="' + t.y + '" text-anchor="middle" dominant-baseline="central" font-size="13" font-weight="600" fill="#2c2c2a" stroke="#ffffff" stroke-width="3.5" paint-order="stroke" stroke-linejoin="round">' + id + '</text>';
+      }
+      s += '<g data-k="tavoli" data-i="' + n + '">' + g + '</g>';
+    });
+    var PER_ID = {};
+    S.tavoli.forEach(function (t) { PER_ID[t.id] = t; });
+    (S.unioni || []).forEach(function (un) {
+      var a = PER_ID[un.tavoli[0]], b = PER_ID[un.tavoli[1]];
+      if (!a || !b) return;
+      var dx = b.x - a.x, dy = b.y - a.y, d = Math.sqrt(dx * dx + dy * dy) || 1, tagli = 14;
+      var x1 = a.x + dx / d * tagli, y1 = a.y + dy / d * tagli, x2 = b.x - dx / d * tagli, y2 = b.y - dy / d * tagli;
+      var colore = un.stato === 'confermata' ? '#3b6d11' : '#ef9f27';
+      s += '<line x1="' + x1 + '" y1="' + y1 + '" x2="' + x2 + '" y2="' + y2 + '" stroke="' + colore + '" stroke-width="4" stroke-linecap="round"' +
+        (un.stato === 'confermata' ? '' : ' stroke-dasharray="5 4"') + ' opacity="0.9" pointer-events="none"/>';
+    });
+    if (opz.quote) s += quoteSala(opz.fs);
+    if (mod) s += sopra(opz.fs);
+    return s;
+  }
+  function disegnaMappa() {
+    var q = ed.attivo && ed.quote;
+    svg.setAttribute('viewBox', (drag && drag.vista ? drag.vista : vista(q)).join(' '));   // mentre si trascina la mappa non cambia scala
+    svg.innerHTML = svgMappa({modifica: ed.attivo, quote: q, fs: px(11)});
+  }
+
+  // quote: linee con le freccette e il valore in cm; i valori non coprono i numeri dei tavoli
+  function lineaQuota(p, q, colore, fs) {
+    var dx = q[0] - p[0], dy = q[1] - p[1], L = Math.hypot(dx, dy);
+    if (L < 0.5) return '';
+    var ux = dx / L, uy = dy / L, f = Math.min(fs * 0.65, L / 3), w = fs * 0.3;
+    function punta(a, sx, sy) {
+      var bx = a[0] + sx * f, by = a[1] + sy * f;
+      return '<polygon points="' + num2(a[0]) + ',' + num2(a[1]) + ' ' + num2(bx - sy * w) + ',' + num2(by + sx * w) + ' ' + num2(bx + sy * w) + ',' + num2(by - sx * w) + '" fill="' + colore + '"/>';
+    }
+    return '<line x1="' + num2(p[0]) + '" y1="' + num2(p[1]) + '" x2="' + num2(q[0]) + '" y2="' + num2(q[1]) + '" stroke="' + colore + '" stroke-width="' + num2(fs / 9) + '"/>' +
+      punta(p, ux, uy) + punta(q, -ux, -uy);
+  }
+  function testoQuota(x, y, testo, colore, fs, ang) {
+    return '<text class="valore-quota" x="' + num2(x) + '" y="' + num2(y) + '" text-anchor="middle" dominant-baseline="central" font-size="' + num2(fs) + '" font-weight="600" fill="' + colore +
+      '" stroke="#ffffff" stroke-width="' + num2(fs / 3.5) + '" paint-order="stroke" stroke-linejoin="round"' + (ang ? ' transform="rotate(' + ang + ' ' + num2(x) + ' ' + num2(y) + ')"' : '') + '>' + esc(testo) + '</text>';
+  }
+  function scatoleNumeri() {
+    return S.tavoli.map(function (t) {
+      var grande = (t.r && t.r >= 20) || (t.w && t.w >= 44), l = String(t.id).length;
+      return grande ? {x0: t.x - 26, x1: t.x + 26, y0: t.y - 16, y1: t.y + 16} : {x0: t.x - l * 4.3 - 3, x1: t.x + l * 4.3 + 3, y0: t.y - 9, y1: t.y + 9};
+    });
+  }
+  function scatolaLinea(p, q) {        // per non mettere un valore sopra la linea di un'altra quota
+    return {x0: Math.min(p[0], q[0]) - 1.5, x1: Math.max(p[0], q[0]) + 1.5, y0: Math.min(p[1], q[1]) - 1.5, y1: Math.max(p[1], q[1]) + 1.5};
+  }
+  function quotaConTesto(p, q, testo, colore, fs, evita, linee) {
+    var propria = scatolaLinea(p, q);
+    var tutti = evita.concat((linee || []).filter(function (l) { return l.x0 !== propria.x0 || l.y0 !== propria.y0 || l.x1 !== propria.x1 || l.y1 !== propria.y1; }));
+    var s = lineaQuota(p, q, colore, fs), dx = q[0] - p[0], dy = q[1] - p[1], L = Math.hypot(dx, dy) || 1;
+    var nx = -dy / L, ny = dx / L, tw = testo.length * fs * 0.6 + fs * 0.4, th = fs * 1.25, prove = [], scelta = null;
+    [0.5, 0.3, 0.7].forEach(function (t) { [0.95, -0.95, 2, -2, 3.2, -3.2].forEach(function (o) { prove.push([p[0] + dx * t + nx * o * fs, p[1] + dy * t + ny * o * fs]); }); });
+    prove.push([q[0] + dx / L * (tw / 2 + fs * 0.4), q[1] + dy / L * (th / 2 + fs * 0.4)], [p[0] - dx / L * (tw / 2 + fs * 0.4), p[1] - dy / L * (th / 2 + fs * 0.4)]);
+    for (var i = 0; i < prove.length && !scelta; i++) {
+      var b = {x0: prove[i][0] - tw / 2, x1: prove[i][0] + tw / 2, y0: prove[i][1] - th / 2, y1: prove[i][1] + th / 2};
+      if (!tutti.some(function (e) { return b.x0 < e.x1 && e.x0 < b.x1 && b.y0 < e.y1 && e.y0 < b.y1; })) scelta = b;
+    }
+    if (!scelta) scelta = {x0: prove[0][0] - tw / 2, x1: prove[0][0] + tw / 2, y0: prove[0][1] - th / 2, y1: prove[0][1] + th / 2};
+    evita.push(scelta);
+    return s + testoQuota((scelta.x0 + scelta.x1) / 2, (scelta.y0 + scelta.y1) / 2, testo, colore, fs, 0);
+  }
+  function quoteSala(fs) {
+    var sl = sala(), yb = sl.y + sl.h + 14, xr = sl.x + sl.w + 14, c = '#5f5e5a', sw = num2(fs / 12), s = '<g class="quote" pointer-events="none">';
+    [[sl.x, sl.y + sl.h + 3, sl.x, yb + 4], [sl.x + sl.w, sl.y + sl.h + 3, sl.x + sl.w, yb + 4], [sl.x + sl.w + 3, sl.y, xr + 4, sl.y], [sl.x + sl.w + 3, sl.y + sl.h, xr + 4, sl.y + sl.h]].forEach(function (l) {
+      s += '<line x1="' + l[0] + '" y1="' + l[1] + '" x2="' + l[2] + '" y2="' + l[3] + '" stroke="' + c + '" stroke-width="' + sw + '"/>';
+    });
+    s += lineaQuota([sl.x, yb], [sl.x + sl.w, yb], c, fs) + testoQuota(sl.x + sl.w / 2, yb + fs * 0.95, 'sala ' + cm5(sl.w) + ' cm', c, fs, 0);
+    s += lineaQuota([xr, sl.y], [xr, sl.y + sl.h], c, fs) + testoQuota(xr + fs * 0.95, sl.y + sl.h / 2, 'sala ' + cm5(sl.h) + ' cm', c, fs, -90);
+    return s + '</g>';
+  }
+  function quoteSel(fs) {
+    var sel = ed.sel, el = elemento(sel);
+    if (!el || sel.k === 'sala') return '';
+    var evita = scatoleNumeri(), s = '<g class="quote" pointer-events="none">', fatte = [], linee = [];
+    if (sel.k !== 'muri') {
+      var dir = direzioni(poli(sel.k, el), ingombri(sel.k, sel.i));
+      DIREZIONI.forEach(function (D) { var r = dir[D.nome]; if (r.d >= 0.5) { fatte.push(r); linee.push(scatolaLinea(r.da, r.a)); } });
+    }
+    var v = tavoloVicino();
+    if (!(v && v.p && v.d >= 0.5) || fatte.some(function (r) { return Math.abs(r.d - v.d) < 1.5 && Math.hypot(r.a[0] - v.q[0], r.a[1] - v.q[1]) < 4; })) v = null;
+    fatte.forEach(function (r) { s += quotaConTesto(r.da, r.a, cm5(r.d) + ' cm', '#1f6feb', fs, evita, linee); });
+    if (v) s += quotaConTesto(v.p, v.q, cm5(v.d) + ' cm', '#c0560b', fs, evita, linee);
+    return s + '</g>';
+  }
+  function maniglia(x, y, h, piu, attiva) {
+    var r = px(piu ? 5.5 : 7);
+    return '<g data-k="maniglia" data-h="' + h + '"><circle cx="' + num2(x) + '" cy="' + num2(y) + '" r="' + px(14) + '" fill="transparent"/>' +
+      '<circle cx="' + num2(x) + '" cy="' + num2(y) + '" r="' + r + '" fill="' + (attiva ? '#1f6feb' : '#ffffff') + '" stroke="#1f6feb" stroke-width="' + px(2) + '"/>' +
+      (piu ? '<path d="M' + num2(x - r * 0.55) + ' ' + num2(y) + ' L' + num2(x + r * 0.55) + ' ' + num2(y) + ' M' + num2(x) + ' ' + num2(y - r * 0.55) + ' L' + num2(x) + ' ' + num2(y + r * 0.55) + '" stroke="#1f6feb" stroke-width="' + px(1.6) + '"/>' : '') + '</g>';
+  }
+  function ridimensionabile(k, el) {
+    if (k === 'tavoli') return ['tondo', 'lungo', 'rettangolare', 'panca'].indexOf(el.tipo) >= 0;
+    return k !== 'muri';
+  }
+  function sopra(fs) {                 // in modifica: avvisi, selezione, maniglie e quote
+    var s = '', blu = '#1f6feb', fuori = px(11);
+    S.tavoli.forEach(function (t, i) {
+      if (ed.avvisati[i]) s += '<polygon points="' + poliStr(poliTavolo(t, 2)) + '" fill="none" stroke="#d13c3c" stroke-width="1.3" stroke-dasharray="3 2" pointer-events="none"/>';
+    });
+    var el = elemento(ed.sel);
+    if (el) {
+      var k = ed.sel.k;
+      if (k === 'muri') {
+        var pts = muroValido(el) ? el.punti : [];
+        s += '<path d="' + dMuro(pts) + '" fill="none" stroke="' + blu + '" stroke-width="' + num2(2 * metaMuro(el) + px(5)) + '" opacity="0.35" pointer-events="none"/>';
+        for (var n = 0; n + 1 < pts.length; n++) s += maniglia((pts[n][0] + pts[n + 1][0]) / 2, (pts[n][1] + pts[n + 1][1]) / 2, 'm' + n, true);
+        pts.forEach(function (p, j) { s += maniglia(p[0], p[1], 'v' + j, false, ed.vertice === j); });
+      } else {
+        var g = geo(k, el);
+        s += '<polygon points="' + poliStr(k === 'sala' ? poliGeo(g, 0) : poli(k, el, 3)) + '" fill="none" stroke="' + blu + '" stroke-width="' + px(2) + '" pointer-events="none"/>';
+        if (ridimensionabile(k, el)) {
+          if (k === 'tavoli' && el.tipo === 'tondo') s += maniglia(g.cx + g.w / 2 + fuori, g.cy, 'r');
+          else {
+            var q = Math.SQRT1_2 * fuori;
+            rettRuotato(g.cx, g.cy, g.w + 2 * q, g.h + 2 * q, g.rot).forEach(function (p, j) { s += maniglia(p[0], p[1], 'c' + j); });
+          }
+        }
+      }
+    }
+    if (ed.quote) s += quoteSel(fs);
+    return s;
+  }
+
+  // ---------------------------------------------------------------- testi sotto la mappa (come prima)
+  function disegnaTesti() {
+    var leg = '';
+    Object.keys(STILE).forEach(function (k) {
+      leg += '<span><i class="sw" style="background:' + STILE[k].fill + ';border-color:' + STILE[k].stroke + '"></i>' + STILE[k].nome + '</span>';
+    });
+    if (S.tavoli.some(function (t) { return t.posti == null; }))
+      leg += '<span><i class="sw" style="background:#fff;border-color:#888780;border-style:dashed"></i>posti da confermare</span>';
+    leg += '<span><i class="sw" style="background:#ef9f27;border-color:#ef9f27"></i>ingresso</span>';
+    var tipi = {};
+    (S.ostacoli || []).forEach(function (o) { tipi[ZONA[o.tipo] ? o.tipo : 'blocco'] = 1; });
+    tipi.bancone = 1;
+    Object.keys(ZONA).forEach(function (k) {
+      if (!tipi[k]) return;
+      var z = ZONA[k], bg = k === 'zona_vietata' ? 'repeating-linear-gradient(45deg,#fbe9e7 0 3px,#e8a39b 3px 5px)' : z.fill;
+      leg += '<span><i class="sw" style="background:' + bg + ';border-color:' + z.stroke + '"></i>' + z.nome + '</span>';
+    });
+    if ((S.porte || []).length)
+      leg += '<span><i class="sw" style="background:#ffffff;border-color:#ba7517;border-width:2px"></i>porta</span>';
+    if ((S.finestre || []).length)
+      leg += '<span><i class="sw" style="background:#e3f2fc;border-color:#5b9bd5"></i>finestra</span>';
+    leg += '<span><i class="sw" style="background:#e6f1fb;border-color:#85b7eb"></i>passaggio</span>';
+    leg += '<span><i class="sw" style="background:#2c2c2a;border-color:#2c2c2a;height:4px"></i>muro</span>';
+    if ((S.unioni || []).length)
+      leg += '<span><i class="sw" style="background:#ef9f27;border-color:#ef9f27;height:4px"></i>unione proposta</span>';
+    $('legenda').innerHTML = leg;
+
+    $('sub').textContent = 'Aggiornata il ' + S.aggiornata + ' · ' + S.tavoli.length + ' tavoli · turni ' + (S.turni || []).join(' e ');
+
+    var noti = 0, regola = 0, ipotesi = 0, daConf = 0;
+    S.tavoli.forEach(function (t) {
+      if (t.posti == null) { daConf++; ipotesi += postiIpotesi(t); }
+      else if (t.da_regola) regola += Number(t.posti) || 0;
+      else noti += Number(t.posti) || 0;
+    });
+    var testo = 'Posti per turno: <strong>' + (noti + regola) + '</strong>, di cui ' + noti + ' confermati e ' + regola + ' ricavati dalla regola di 5 e 7.';
+    if (daConf) testo += ' Più ' + daConf + ' tavoli da confermare (con il punto di domanda): con 4 posti a quadrato si arriva a <strong>' + (noti + regola + ipotesi) + '</strong>.';
+    $('totali').innerHTML = testo;
+
+    var righe = '';
+    S.tavoli.slice().sort(function (a, b) { return parseInt(a.id, 10) - parseInt(b.id, 10) || String(a.id).localeCompare(String(b.id)); })
+      .forEach(function (t) {
+        var posti = t.posti != null ? esc(t.posti) : '<span class="dc">' + postiIpotesi(t) + '?</span>';
+        var stato = t.confermato ? '<span class="ok">confermato</span>' : t.da_regola ? '<span style="color:#5f5e5a;font-size:12px">regola di 5 e 7</span>' : '<span class="dc">da confermare</span>';
+        righe += '<tr><td class="num">' + esc(t.id) + '</td><td>' + (STILE[t.tipo] || STILE.quadrato).nome + '</td><td>' + posti + '</td><td>' + esc(t.note || '') + '</td><td>' + stato + '</td></tr>';
+      });
+    $('elenco').innerHTML = righe;
+
+    $('dasapere').innerHTML = (S.da_sapere || []).map(function (s) { return '<li>' + esc(s) + '</li>'; }).join('');
+    $('storico').innerHTML = (S.storico || []).map(function (s) { return '<li>' + esc(s) + '</li>'; }).join('');
+    $('unioni').innerHTML = (S.unioni || []).map(function (un) {
+      var posti = un.posti != null ? un.posti + ' posti' : 'posti ?';
+      var stato = un.stato === 'confermata' ? '<span class="ok">confermata</span>' : un.stato === 'no' ? '<span class="dc">non si può</span>' : '<span class="dc">proposta, da confermare</span>';
+      return '<li><strong>' + esc(un.tavoli.join(' + ')) + '</strong> · ' + posti + ' · ' + stato + '</li>';
+    }).join('');
+  }
+
+  // ---------------------------------------------------------------- controlli (avvisi, non blocchi)
+  function controlli() {              // grave: sovrapposizioni e dati che il motore rifiuta; gli altri: poco spazio per le sedie
+    var out = [], avv = {}, soglia = SEDIE_CM / cpu(), visti = {}, sl = sala();
+    function nomeT(i) { var id = String(S.tavoli[i].id == null ? '' : S.tavoli[i].id).trim(); return id || '(senza numero)'; }
+    function metti(testo, tavoli, lieve) {
+      out.push({t: testo, i: tavoli[0], tavoli: tavoli, grave: !lieve});
+      if (!lieve) tavoli.forEach(function (i) { avv[i] = 1; });
+    }
+    S.tavoli.forEach(function (t, i) {
+      var id = String(t.id == null ? '' : t.id).trim();
+      if (!id) metti('Un tavolo (' + (NOME_TIPO[t.tipo] || t.tipo) + ') non ha il numero.', [i]);
+      else (visti[id] = visti[id] || []).push(i);
+      if (t.posti == null || t.posti === '') metti('Tavolo ' + nomeT(i) + ': mancano i posti.', [i]);
+      else if (!(Number.isInteger(t.posti) && t.posti > 0)) metti('Tavolo ' + nomeT(i) + ': posti non validi (' + t.posti + '), serve un numero intero maggiore di 0.', [i]);
+      if (t.tipo === 'blocco' && !(Number.isInteger(t.moduli) && t.moduli >= 1)) metti('Tavolo ' + nomeT(i) + ': manca il numero di quadrati uniti.', [i]);
+    });
+    Object.keys(visti).forEach(function (id) {
+      if (visti[id].length > 1) metti('Il numero ' + id + ' è usato da ' + visti[id].length + ' tavoli: deve essere unico.', visti[id]);
+    });
+    var P = S.tavoli.map(function (t) { return poliTavolo(t); });
+    var Z = (S.ostacoli || []).map(function (o) { return {nome: o.nome || (ZONA[o.tipo] || ZONA.blocco).nome, poli: poli('ostacoli', o)}; });
+    var M = (S.muri || []).filter(muroValido).map(function (m) { return {p: m.punti, meta: metaMuro(m)}; });
+    var A = aperture();
+    var V = (S.passaggi || []).map(function (z) { return {nome: z.nome || 'passaggio', poli: poli('passaggi', z)}; });
+    for (var i = 0; i < P.length; i++) {
+      for (var j = i + 1; j < P.length; j++) {
+        var d = distanza(P[i], P[j]);
+        if (d < 1) metti('Tavoli ' + nomeT(i) + ' e ' + nomeT(j) + ': si toccano o si sovrappongono.', [i, j]);
+        else if (d < soglia) metti('Tavoli ' + nomeT(i) + ' e ' + nomeT(j) + ': solo ' + cm(d) + ' cm tra i due, con le sedie ne servono ' + SEDIE_CM + '.', [i, j], true);
+      }
+      Z.forEach(function (z) {
+        var d = distanza(P[i], z.poli);
+        if (d < 1) metti('Tavolo ' + nomeT(i) + ' · ' + z.nome + ': si toccano o il tavolo ci sta sopra.', [i]);
+        else if (d < soglia) metti('Tavolo ' + nomeT(i) + ' · ' + z.nome + ': solo ' + cm(d) + ' cm, con le sedie da quel lato ne servono ' + SEDIE_CM + '.', [i], true);
+      });
+      var dm = M.reduce(function (m, mu) { return Math.min(m, distanza(P[i], mu.p, true) - mu.meta); }, Infinity);   // il muro più vicino
+      if (dm < 1) metti('Tavolo ' + nomeT(i) + ' · muro: il tavolo tocca il muro o ci sta sopra.', [i]);
+      else if (dm < soglia) metti('Tavolo ' + nomeT(i) + ' · muro: solo ' + cm(dm) + ' cm, con le sedie da quel lato ne servono ' + SEDIE_CM + '.', [i], true);
+      var porta = A.filter(function (a) { return distanza(P[i], a.poli) < 0.5; })[0];
+      if (porta) metti('Tavolo ' + nomeT(i) + ' · ' + porta.nome + ': davanti alla porta vanno lasciati liberi ' + porta.cm + ' cm.', [i]);
+      V.forEach(function (z) {
+        if (distanza(P[i], z.poli) < 1) metti('Tavolo ' + nomeT(i) + ' · ' + z.nome + ': il tavolo ci sta sopra.', [i]);
+      });
+      if (P[i].some(function (p) { return p[0] < sl.x - 0.5 || p[0] > sl.x + sl.w + 0.5 || p[1] < sl.y - 0.5 || p[1] > sl.y + sl.h + 0.5; }))
+        metti('Tavolo ' + nomeT(i) + ': esce dal contorno della sala.', [i]);
+    }
+    return {lista: out, avvisati: avv};
+  }
+  function disegnaControlli(lista) {
+    var gravi = lista.filter(function (a) { return a.grave; }), lievi = lista.filter(function (a) { return !a.grave; });
+    function voci(l, cls) { return l.map(function (a) { return '<li data-tavolo="' + a.i + '"' + (cls ? ' class="' + cls + '"' : '') + '>' + esc(a.t) + '</li>'; }).join(''); }
+    $('controlli-titolo').textContent = 'Controlli: ' + (gravi.length ? gravi.length + ' da sistemare' : 'niente da sistemare') +
+      (lievi.length ? ', ' + lievi.length + ' con poco spazio per le sedie' : '');
+    $('controlli').innerHTML = voci(gravi, 'grave') + (lievi.length ? '<li class="titoletto">Poco spazio per le sedie (va bene se da quel lato non ci sono sedie, per esempio contro il muro):</li>' + voci(lievi, '') : '');
+  }
+  function avvisiDel(i) {
+    return (ed.controlli || []).filter(function (a) { return a.tavoli.indexOf(i) >= 0; }).map(function (a) { return a.t; });
+  }
+
+  // ---------------------------------------------------------------- pannello del pezzo scelto
+  function testoMisure() {
+    var sel = ed.sel, el = elemento(sel), s;
+    if (!el) return '';
+    if (sel.k === 'sala') return 'sala ' + cm5(el.w) + ' × ' + cm5(el.h) + ' cm';
+    if (sel.k === 'muri') {
+      var p = muroValido(el) ? el.punti : [], l = 0;
+      for (var i = 1; i < p.length; i++) l += Math.hypot(p[i][0] - p[i - 1][0], p[i][1] - p[i - 1][1]);
+      s = 'lunghezza ' + cm5(l) + ' cm, spessore ' + Math.round(Number(el.spessore_cm) || 10) + ' cm';
+    } else {
+      var g = geo(sel.k, el), dir = direzioni(poli(sel.k, el), ingombri(sel.k, sel.i));
+      s = (sel.k === 'tavoli' && el.tipo === 'tondo' ? 'diametro ' + cm5(g.w) + ' cm' : cm5(g.w) + ' × ' + cm5(g.h) + ' cm') + ' · spazio libero: ' +
+        DIREZIONI.map(function (D) { var r = dir[D.nome]; return D.testo + ' ' + cm5(r.d) + ' cm (' + r.cosa + ')'; }).join(', ');
+    }
+    var v = tavoloVicino();
+    if (v) s += ' · tavolo più vicino: ' + v.id + ' a ' + cm5(v.d) + ' cm';
+    return s;
+  }
+  function valoriCm(k, el) {           // i valori dei campi in cm, arrotondati a 5 cm
+    var v = {}, sl = sala();
+    if (k === 'sala') { v['sala-larg'] = cm5(el.w); v['sala-lung'] = cm5(el.h); return v; }
+    if (k === 'muri') {
+      (el.punti || []).forEach(function (p, n) { v['vx' + n] = cm5(p[0] - sl.x); v['vy' + n] = cm5(p[1] - sl.y); });
+      v.spessore = Math.round(Number(el.spessore_cm) || 10);
+      return v;
+    }
+    var B = scatola(poli(k, el)), g = geo(k, el);
+    v['cm-sx'] = cm5(B.minx - sl.x); v['cm-alto'] = cm5(B.miny - sl.y);
+    v['cm-larg'] = cm5(g.w); v['cm-prof'] = cm5(g.h); v['cm-diam'] = cm5(g.w); v.rot = g.rot;
+    if (k === 'porte' || k === 'ingresso') v.spazio = el.spazio_libero_cm == null ? 90 : el.spazio_libero_cm;
+    return v;
+  }
+  function aggiornaMisure() {
+    var m = $('misure'), a = $('avvisi-pezzo');
+    if (m) m.textContent = testoMisure();
+    if (a) a.innerHTML = ed.sel && ed.sel.k === 'tavoli' ? avvisiDel(ed.sel.i).map(function (t) { return '<li>' + esc(t) + '</li>'; }).join('') : '';
+    var k = ed.sel ? ed.sel.k : 'sala', el = elemento(ed.sel || {k: 'sala'});
+    if (!el) return;
+    var v = valoriCm(k, el);
+    Array.prototype.forEach.call($('foglio').querySelectorAll('input[data-campo]'), function (inp) {
+      var c = inp.getAttribute('data-campo');
+      if (v[c] !== undefined) inp.value = v[c];
+    });
+    var r = $('foglio').querySelector('.rot b');
+    if (r && v.rot !== undefined) r.textContent = v.rot + '°';
+  }
+  function testaFoglio(titolo, fisso) {
+    return '<div class="f-testa"><strong>' + titolo + '</strong>' + (fisso ? '<span class="badge">fisso</span>' : '') +
+      '<button type="button" class="btn piccolo" data-az="chiudi">Chiudi</button></div><p class="misure" id="misure"></p>' +
+      (fisso ? '<p class="avviso-fisso">Tavolo fisso: spostalo solo per correggere il disegno.</p>' : '') +
+      '<ul class="avvisi-pezzo" id="avvisi-pezzo"></ul>';
+  }
+  function spunta(campo, si, testo) {
+    return '<label class="spunta"><input type="checkbox" data-campo="' + campo + '"' + (si ? ' checked' : '') + '>' + testo + '</label>';
+  }
+  function inCm(campo, attivo, titolo) {
+    return '<span class="unita"><input type="number" step="5" inputmode="numeric" data-campo="' + campo + '"' + (titolo ? ' title="' + esc(titolo) + '" aria-label="' + esc(titolo) + '"' : '') +
+      (attivo === false ? ' disabled' : '') + '><i>cm</i></span>';
+  }
+  function campiMisure(k, el) {
+    var h = '<div class="largo sottotitolo">Misure in cm (dalla parete sinistra e da quella in alto della sala)</div>' +
+      '<label>Da sinistra' + inCm('cm-sx') + '</label><label>Dall\'alto' + inCm('cm-alto') + '</label>';
+    if (k === 'tavoli' && el.tipo === 'tondo') h += '<label>Diametro' + inCm('cm-diam') + '</label>';
+    else {
+      var fisse = k === 'tavoli' && (el.tipo === 'quadrato' || el.tipo === 'blocco');
+      h += '<label>Larghezza' + inCm('cm-larg', !fisse) + '</label><label>Profondità' + inCm('cm-prof', !fisse) + '</label>';
+      if (fisse) h += '<p class="largo nota-campo">Larghezza e profondità vengono dal lato del quadrato (' + Math.round(lato()) + ' cm, nelle opzioni).</p>';
+    }
+    if (!(k === 'tavoli' && el.tipo === 'tondo')) {
+      h += '<div class="rot largo"><label>Rotazione<span class="unita"><input type="number" step="1" data-campo="rot"><i>°</i></span></label>' +
+        '<button type="button" class="btn piccolo" data-az="rot-15">−15°</button><button type="button" class="btn piccolo" data-az="rot+15">+15°</button>' +
+        '<button type="button" class="btn piccolo" data-az="rot+90">90°</button></div>';
+    }
+    if (k === 'porte' || k === 'ingresso') h += '<label>Spazio libero davanti' + inCm('spazio') + '</label>';
+    return h;
+  }
+  function foglioTavolo(t) {
+    var opz = TIPI.map(function (x) { return '<option value="' + x + '"' + (x === t.tipo ? ' selected' : '') + '>' + NOME_TIPO[x] + '</option>'; }).join('');
+    var h = testaFoglio('Tavolo ' + esc(t.id), t.fisso) + '<div class="dettagli"><div class="campi">' +
+      '<label>Numero<input type="text" data-campo="id" value="' + esc(t.id) + '"></label>' +
+      '<label>Tipo<select data-campo="tipo">' + opz + '</select></label>' +
+      '<label>Posti<span class="passo"><button type="button" class="btn" data-az="posti-1" aria-label="un posto in meno">−</button>' +
+      '<input type="number" inputmode="numeric" min="1" step="1" data-campo="posti" value="' + (t.posti == null ? '' : esc(t.posti)) + '">' +
+      '<button type="button" class="btn" data-az="posti+1" aria-label="un posto in più">+</button></span></label>';
+    if (t.tipo === 'blocco') {
+      h += '<label>Quadrati uniti<span class="passo"><button type="button" class="btn" data-az="moduli-1" aria-label="un quadrato in meno">−</button>' +
+        '<b class="valore">' + esc(t.moduli) + '</b><button type="button" class="btn" data-az="moduli+1" aria-label="un quadrato in più">+</button></span></label>' +
+        '<label>Verso<select data-campo="verso"><option value="orizzontale"' + (t.verso === 'orizzontale' ? ' selected' : '') + '>orizzontale</option>' +
+        '<option value="verticale"' + (t.verso !== 'orizzontale' ? ' selected' : '') + '>verticale</option></select></label>' +
+        spunta('separabile', t.separabile, 'si può separare');
+    }
+    h += campiMisure('tavoli', t) + spunta('fisso', t.fisso, 'fisso (non si sposta)') + spunta('confermato', t.confermato, 'posti confermati') +
+      '<label class="largo">Note<input type="text" data-campo="note" value="' + esc(t.note || '') + '"></label></div>' +
+      '<div class="pulsanti"><button type="button" class="btn" data-az="duplica">Duplica</button>' +
+      '<button type="button" class="btn rosso" data-az="elimina">Elimina</button></div></div>';
+    return h;
+  }
+  function titoloZona(z, k) {
+    if (k === 'ingresso') return 'Ingresso';
+    if (k === 'porte') return 'Porta';
+    if (k === 'finestre') return 'Finestra';
+    if (k === 'passaggi') return 'Passaggio';
+    var n = (ZONA[z.tipo] || ZONA.blocco).nome;
+    return n.charAt(0).toUpperCase() + n.slice(1);
+  }
+  function foglioZona(z, k) {
+    var titolo = titoloZona(z, k), altro = z.nome && k !== 'ingresso' && String(z.nome).toLowerCase() !== titolo.toLowerCase();
+    var h = testaFoglio(titolo + (altro ? ' · ' + esc(z.nome) : ''), false) + '<div class="dettagli"><div class="campi">';
+    if (k !== 'ingresso') h += '<label>Nome<input type="text" data-campo="nome" value="' + esc(z.nome || '') + '"></label>';
+    if (k === 'ostacoli') {
+      var tipi = Object.keys(ZONA).map(function (t) { return '<option value="' + t + '"' + (t === z.tipo ? ' selected' : '') + '>' + NOME_FISSO[t] + '</option>'; }).join('');
+      if (!ZONA[z.tipo]) tipi += '<option value="' + esc(z.tipo) + '" selected>' + esc(z.tipo) + '</option>';
+      h += '<label>Tipo<select data-campo="tipo">' + tipi + '</select></label>';
+      if (z.tipo === 'pilastro') h += '<label>Forma<select data-campo="forma"><option value="quadrato"' + (z.forma !== 'tondo' ? ' selected' : '') + '>quadrato</option>' +
+        '<option value="tondo"' + (z.forma === 'tondo' ? ' selected' : '') + '>tondo</option></select></label>';
+    }
+    h += campiMisure(k, z);
+    var aiuto = k === 'porte' || k === 'ingresso' ? 'Segno sul bordo: non blocca i tavoli, ma davanti va lasciato libero lo spazio di apertura (tratteggiato).'
+      : k === 'finestre' ? 'Segno sul bordo: non blocca i tavoli.'
+      : k === 'passaggi' ? 'Un tavolo sopra il passaggio dà un avviso.'
+      : z.tipo === 'zona_vietata' ? 'Qui non vanno tavoli: un tavolo sopra dà un avviso.' : 'Ostacolo: un tavolo sopra dà un avviso.';
+    h += '<p class="tot largo">' + aiuto + ' Trascina per spostare, tira i pallini agli angoli per cambiare le misure. Una L si fa con due rettangoli.</p></div>';
+    if (k !== 'ingresso') h += '<div class="pulsanti"><button type="button" class="btn" data-az="duplica">Duplica</button>' +
+      '<button type="button" class="btn rosso" data-az="elimina">Elimina</button></div>';
+    return h + '</div>';
+  }
+  function foglioMuro(m) {
+    var pts = muroValido(m) ? m.punti : [];
+    var h = testaFoglio('Muro', false) + '<div class="dettagli"><div class="campi"><label>Spessore' + inCm('spessore') + '</label>' +
+      '<div class="largo sottotitolo">Vertici: distanza dalla parete sinistra e da quella in alto</div>';
+    pts.forEach(function (p, n) {
+      h += '<div class="vertice largo' + (ed.vertice === n ? ' attivo' : '') + '"><b>' + (n + 1) + '</b>' + inCm('vx' + n, true, 'vertice ' + (n + 1) + ', da sinistra') +
+        inCm('vy' + n, true, 'vertice ' + (n + 1) + ', dall\'alto') + '<button type="button" class="btn piccolo" data-az="v-elimina-' + n + '"' + (pts.length <= 2 ? ' disabled' : '') + '>Elimina</button></div>';
+    });
+    h += '</div><p class="tot">Tira i pallini per spostare i vertici; il pallino con il + a metà di un tratto aggiunge un vertice; trascina la linea per spostare tutto il muro.</p>' +
+      '<div class="pulsanti"><button type="button" class="btn" data-az="v-aggiungi">Aggiungi vertice</button>' +
+      '<button type="button" class="btn rosso" data-az="elimina">Elimina muro</button></div></div>';
+    return h;
+  }
+  function foglioSala(scelta) {
+    return (scelta ? testaFoglio('Sala', false) : '<div class="f-testa"><strong>Sala</strong></div><p class="misure">Nessun pezzo scelto: clicca un tavolo o un elemento sulla mappa.</p>') +
+      '<div class="dettagli"><div class="campi"><label>Larghezza' + inCm('sala-larg') + '</label><label>Lunghezza' + inCm('sala-lung') + '</label>' +
+      '<p class="tot largo">Il contorno tratteggiato è la sala misurata da parete a parete: non è un muro (i muri sono le linee nere). Si cambia anche cliccando il contorno e tirando i pallini agli angoli.</p></div></div>';
+  }
+  function disegnaFoglio() {
+    var f = $('foglio'), el = ed.attivo ? elemento(ed.sel) : null;
+    document.body.classList.toggle('con-foglio', !!el);
+    if (!ed.attivo) { f.innerHTML = ''; return; }
+    var k = el ? ed.sel.k : 'sala';
+    if (!el) f.innerHTML = foglioSala(false);
+    else if (k === 'tavoli') f.innerHTML = foglioTavolo(el);
+    else if (k === 'muri') f.innerHTML = foglioMuro(el);
+    else if (k === 'sala') f.innerHTML = foglioSala(true);
+    else f.innerHTML = foglioZona(el, k);
+    aggiornaMisure();
+  }
+
+  // ---------------------------------------------------------------- modifiche, annulla e ripeti
+  function aggiornaBarra() {
+    $('b-annulla').disabled = !ed.annulla.length;
+    $('b-ripeti').disabled = !ed.ripeti.length;
+  }
+  function tutto(foglio) {
+    var c = ed.attivo ? controlli() : {lista: [], avvisati: {}};
+    ed.avvisati = c.avvisati;
+    ed.controlli = c.lista;
+    disegnaMappa();
+    disegnaTesti();
+    disegnaControlli(c.lista);
+    if (foglio === false) aggiornaMisure(); else disegnaFoglio();
+    aggiornaBarra();
+    $('o-lato').value = Math.round(lato() * 10) / 10;
+  }
+  function ricorda(prima) {
+    ed.annulla.push(prima);
+    if (ed.annulla.length > 200) ed.annulla.shift();
+    ed.ripeti = [];
+  }
+  function cambia(fn) {               // fn modifica S; se restituisce true il pannello si ridisegna
+    var prima = JSON.stringify(S);
+    var foglio = fn();
+    if (JSON.stringify(S) !== prima) { ricorda(prima); ed.sporco = true; ed.cambiate++; }
+    tutto(foglio === true ? undefined : false);
+  }
+  function selValida() {
+    if (ed.sel && !elemento(ed.sel)) ed.sel = null;
+    if (!ed.sel || ed.sel.k !== 'muri' || !elemento(ed.sel).punti || ed.vertice >= elemento(ed.sel).punti.length) ed.vertice = null;
+  }
+  function annulla() {
+    if (!ed.annulla.length) return;
+    ed.ripeti.push(JSON.stringify(S));
+    S = JSON.parse(ed.annulla.pop());
+    ed.sporco = true; ed.cambiate++;
+    selValida(); tutto();
+  }
+  function ripeti() {
+    if (!ed.ripeti.length) return;
+    ed.annulla.push(JSON.stringify(S));
+    S = JSON.parse(ed.ripeti.pop());
+    ed.sporco = true; ed.cambiate++;
+    selValida(); tutto();
+  }
+  function avviso(testo) {
+    var a = $('avviso');
+    a.textContent = testo;
+    a.classList.add('visibile');
+    clearTimeout(timerAvviso);
+    timerAvviso = setTimeout(function () { a.classList.remove('visibile'); }, 3500);
+  }
+  function esito(testo) { $('esito').textContent = testo; avviso(testo); }
+
+  function nuovoId() {
+    var max = 0, usati = {};
+    S.tavoli.forEach(function (t) { usati[String(t.id)] = 1; var n = parseInt(t.id, 10); if (n > max) max = n; });
+    var n = max + 1;
+    while (usati[String(n)]) n++;
+    return String(n);
+  }
+  function centroVisibile() {
+    var r = svg.getBoundingClientRect(), top = Math.max(r.top, 0), bottom = Math.min(r.bottom, window.innerHeight);
+    var foglio = $('foglio').getBoundingClientRect(), sl = sala();
+    if (document.body.classList.contains('con-foglio') && foglio.top > top && foglio.top < bottom && foglio.left < r.right && foglio.right > r.left) bottom = Math.max(top + 1, foglio.top);
+    var p = punto({clientX: (r.left + r.right) / 2, clientY: bottom > top ? (top + bottom) / 2 : (r.top + r.bottom) / 2});
+    return {x: Math.max(sl.x + 20, Math.min(sl.x + sl.w - 20, p.x)), y: Math.max(sl.y + 20, Math.min(sl.y + sl.h - 20, p.y))};
+  }
+  function sposta(k, el, dx, dy) {
+    if (k === 'muri') { el.punti = el.punti.map(function (p) { return [num2(p[0] + dx), num2(p[1] + dy)]; }); return; }
+    el.x = num2(el.x + dx); el.y = num2(el.y + dy);
+  }
+  function ridimensiona(k, el, nw, nh) {    // l'angolo in alto a sinistra del pezzo resta fermo
+    var g = geo(k, el), a = g.rot * Math.PI / 180, c = Math.cos(a), s = Math.sin(a), dx = (nw - g.w) / 2, dy = (nh - g.h) / 2;
+    metti(k, el, {cx: g.cx + dx * c - dy * s, cy: g.cy + dx * s + dy * c, w: nw, h: nh, rot: g.rot});
+  }
+  function postoLibero(k, el) {       // il punto libero più vicino: niente tavoli, elementi fissi, passaggi o muri sotto
+    var x0 = el.x, y0 = el.y, sl = sala();
+    var altri = S.tavoli.filter(function (t) { return t !== el; }).map(function (t) { return poliTavolo(t); })
+      .concat((S.ostacoli || []).filter(function (o) { return o !== el; }).map(function (o) { return poli('ostacoli', o); }))
+      .concat((S.passaggi || []).filter(function (o) { return o !== el; }).map(function (o) { return poli('passaggi', o); }))
+      .concat(aperture().map(function (a) { return a.poli; }));
+    var muri = (S.muri || []).filter(muroValido);
+    for (var r = 0; r <= 240; r += 10) {
+      var n = r ? Math.max(8, Math.round(r / 5)) : 1;
+      for (var j = 0; j < n; j++) {
+        el.x = agg(x0 + r * Math.cos(2 * Math.PI * j / n), sl.x); el.y = agg(y0 + r * Math.sin(2 * Math.PI * j / n), sl.y);
+        var P = poli(k, el, 4);
+        if (P.some(function (p) { return p[0] < sl.x + 2 || p[0] > sl.x + sl.w - 2 || p[1] < sl.y + 2 || p[1] > sl.y + sl.h - 2; })) continue;
+        if (altri.every(function (A) { return distanza(P, A) > 0; }) && muri.every(function (m) { return distanza(P, m.punti, true) > metaMuro(m); })) return el;
+      }
+    }
+    el.x = agg(x0, sl.x); el.y = agg(y0, sl.y);
+    return el;
+  }
+  function nuovoTavolo(tipo, c) {
+    var sl = sala(), t = {id: nuovoId(), tipo: tipo, x: agg(c.x, sl.x), y: agg(c.y, sl.y)};
+    if (tipo === 'tondo') t.r = 16;
+    if (tipo === 'lungo') { t.w = 96; t.h = 32; }
+    if (tipo === 'rettangolare') { t.w = 44; t.h = 36; }
+    if (tipo === 'blocco') { t.moduli = 2; t.verso = 'orizzontale'; t.separabile = true; }
+    t.posti = {quadrato: 4, blocco: 6, tondo: 4, lungo: 10, panca: 4, rettangolare: 4}[tipo];
+    t.fisso = false;
+    return postoLibero('tavoli', t);
+  }
+  function nuovoFisso(tipo, c) {      // un elemento fisso nuovo, al centro della parte di mappa che si vede
+    var sl = sala();
+    if (tipo === 'muro') {
+      S.muri = S.muri || [];
+      S.muri.push({punti: [[agg(c.x - u(150), sl.x), agg(c.y, sl.y)], [agg(c.x + u(150), sl.x), agg(c.y, sl.y)]], spessore_cm: 10});
+      return {k: 'muri', i: S.muri.length - 1};
+    }
+    var d = NUOVI[tipo], z = copia(d[1]);
+    z.w = num2(u(d[2])); z.h = num2(u(d[3]));
+    z.x = agg(c.x - z.w / 2, sl.x); z.y = agg(c.y - z.h / 2, sl.y);
+    if (d[0] === 'ostacoli' || d[0] === 'passaggi') postoLibero(d[0], z);
+    S[d[0]] = S[d[0]] || [];
+    S[d[0]].push(z);
+    return {k: d[0], i: S[d[0]].length - 1};
+  }
+  function cambiaTipo(t, tipo) {
+    t.tipo = tipo;
+    if (tipo !== 'blocco') { delete t.moduli; delete t.verso; delete t.separabile; }
+    if (tipo !== 'tondo') delete t.r;
+    if (tipo === 'tondo') { t.r = t.r || 16; delete t.w; delete t.h; delete t.rot; }
+    if (tipo === 'blocco') { t.moduli = t.moduli || 2; t.verso = t.verso || 'orizzontale'; if (t.separabile == null) t.separabile = true; delete t.w; delete t.h; }
+    if (tipo === 'quadrato') { delete t.w; delete t.h; }
+    if (tipo === 'lungo') { t.w = t.w || 96; t.h = t.h || 32; }
+    if (tipo === 'rettangolare') { t.w = t.w || 44; t.h = t.h || 36; }
+  }
+  function rinomina(t, nuovo) {
+    var vecchio = String(t.id);
+    t.id = nuovo;
+    var altri = S.tavoli.some(function (x) { return x !== t && String(x.id) === vecchio; });
+    if (!altri) (S.unioni || []).forEach(function (un) { un.tavoli = un.tavoli.map(function (x) { return String(x) === vecchio ? nuovo : x; }); });
+  }
+  function elimina() {
+    var sel = ed.sel;
+    if (!elemento(sel) || sel.k === 'ingresso' || sel.k === 'sala') return;
+    cambia(function () {
+      if (sel.k === 'tavoli') {
+        var id = String(S.tavoli[sel.i].id);
+        S.tavoli.splice(sel.i, 1);
+        if (S.unioni && !S.tavoli.some(function (x) { return String(x.id) === id; }))
+          S.unioni = S.unioni.filter(function (un) { return un.tavoli.map(String).indexOf(id) < 0; });
+      } else S[sel.k].splice(sel.i, 1);
+      ed.sel = null; ed.vertice = null;
+      return true;
+    });
+  }
+  function eliminaVertice(n) {
+    var sel = ed.sel, m = elemento(sel);
+    if (!m || sel.k !== 'muri' || m.punti.length <= 2) return;
+    cambia(function () { m.punti.splice(n, 1); ed.vertice = null; return true; });
+  }
+  function duplica() {
+    var sel = ed.sel, el = elemento(sel);
+    if (!el || sel.k === 'ingresso' || sel.k === 'sala' || sel.k === 'muri') return;
+    cambia(function () {
+      var c = copia(el), sl = sala();
+      c.x = agg(el.x + 15, sl.x); c.y = agg(el.y + 15, sl.y);
+      if (sel.k === 'tavoli') { c.id = nuovoId(); postoLibero('tavoli', c); }
+      S[sel.k].push(c);
+      ed.sel = {k: sel.k, i: S[sel.k].length - 1};
+      return true;
+    });
+  }
+
+  // ---------------------------------------------------------------- trascinamento (dito e mouse)
+  function punto(e) {
+    var m = svg.getScreenCTM();
+    if (!m) return {x: 0, y: 0};
+    var p = new DOMPoint(e.clientX, e.clientY).matrixTransform(m.inverse());
+    return {x: p.x, y: p.y};
+  }
+  function muovi(p) {
+    var dx = p.x - drag.p0.x, dy = p.y - drag.p0.y, o = drag.orig, h = drag.h, k = drag.k, el = elemento(drag), sl = sala();
+    if (k === 'muri') {
+      var pts = o.punti.map(function (q) { return q.slice(); });
+      if (h) { var n = Number(h.slice(1)); pts[n] = [agg(pts[n][0] + dx, sl.x), agg(pts[n][1] + dy, sl.y)]; }
+      else {
+        var sx = agg(pts[0][0] + dx, sl.x) - pts[0][0], sy = agg(pts[0][1] + dy, sl.y) - pts[0][1];
+        pts = pts.map(function (q) { return [num2(q[0] + sx), num2(q[1] + sy)]; });
+      }
+      el.punti = pts;
+      return;
+    }
+    if (!h) {
+      var ox = k === 'sala' ? 0 : sl.x, oy = k === 'sala' ? 0 : sl.y;
+      el.x = agg(o.x + dx, ox); el.y = agg(o.y + dy, oy);
+      return;
+    }
+    var g = geo(k, o);
+    if (h === 'r') {
+      var r = Math.max(6, g.w / 2 + dx);
+      if (ed.aggancio) r = Math.max(passo() / 2, Math.round(r * 2 / passo()) * passo() / 2);
+      metti(k, el, {cx: g.cx, cy: g.cy, w: 2 * r, h: 2 * r, rot: 0});
+      return;
+    }
+    var sg = SEGNI[Number(h.slice(1))], a = g.rot * Math.PI / 180, c = Math.cos(a), s = Math.sin(a);
+    var lx0 = sg[0] * g.w / 2, ly0 = sg[1] * g.h / 2;
+    var wx = lx0 * c - ly0 * s + dx, wy = lx0 * s + ly0 * c + dy;          // angolo tirato, rispetto al centro di prima
+    var lx = wx * c + wy * s, ly = -wx * s + wy * c, fx = -lx0, fy = -ly0;  // nel verso del pezzo; l'angolo opposto resta fermo
+    var nw = misura(Math.abs(lx - fx), g.w), nh = misura(Math.abs(ly - fy), g.h);
+    var cx = fx + (lx >= fx ? 1 : -1) * nw / 2, cy = fy + (ly >= fy ? 1 : -1) * nh / 2;
+    metti(k, el, {cx: g.cx + cx * c - cy * s, cy: g.cy + cx * s + cy * c, w: nw, h: nh, rot: g.rot});
+  }
+  function confermaCampo() {          // un campo del pannello ancora aperto: lo si conferma prima di fare altro
+    var a = document.activeElement;
+    if (a && a !== document.body && $('foglio').contains(a) && /^(INPUT|SELECT)$/.test(a.tagName)) a.blur();
+  }
+  svg.addEventListener('pointerdown', function (e) {
+    if (!ed.attivo || drag) return;
+    if (e.pointerType === 'mouse' && e.button !== 0) return;
+    confermaCampo();
+    var el = e.target.closest ? e.target.closest('[data-k]') : null;
+    if (!el) { tocco = {id: e.pointerId, x: e.clientX, y: e.clientY}; return; }
+    e.preventDefault();
+    var k = el.getAttribute('data-k'), h = null, i;
+    if (k === 'maniglia') { h = el.getAttribute('data-h'); k = ed.sel.k; i = ed.sel.i; }
+    else i = Number(el.getAttribute('data-i'));
+    var nuova = !ed.sel || ed.sel.k !== k || ed.sel.i !== i;
+    ed.sel = {k: k, i: i};
+    if (nuova) ed.vertice = null;
+    var prima = JSON.stringify(S), inserito = false;
+    if (k === 'muri' && h && h.charAt(0) === 'm') {        // pallino a metà di un tratto: nuovo vertice
+      var muro = elemento(ed.sel), n = Number(h.slice(1)), a = muro.punti[n], b = muro.punti[n + 1];
+      muro.punti.splice(n + 1, 0, [num2((a[0] + b[0]) / 2), num2((a[1] + b[1]) / 2)]);
+      h = 'v' + (n + 1); inserito = true;
+    }
+    if (k === 'muri' && h) ed.vertice = Number(h.slice(1));
+    drag = {id: e.pointerId, k: k, i: i, h: h, p0: punto(e), sx: e.clientX, sy: e.clientY, prima: prima,
+      orig: copia(elemento(ed.sel)), mosso: false, inserito: inserito, vista: svg.getAttribute('viewBox').split(' ').map(Number)};
+    try { svg.setPointerCapture(e.pointerId); } catch (x) { /* niente */ }
+    if (nuova || inserito || k === 'muri') { disegnaMappa(); disegnaFoglio(); }
+  });
+  svg.addEventListener('pointermove', function (e) {
+    if (!drag || e.pointerId !== drag.id) return;
+    e.preventDefault();
+    if (!drag.mosso) {
+      if (Math.hypot(e.clientX - drag.sx, e.clientY - drag.sy) < 5) return;
+      drag.mosso = true;
+      document.body.classList.add('trascina');
+      if (drag.k === 'tavoli' && S.tavoli[drag.i].fisso) avviso('Il tavolo ' + S.tavoli[drag.i].id + ' è fisso: spostalo solo per correggere il disegno.');
+    }
+    muovi(punto(e));
+    disegnaMappa();
+    aggiornaMisure();
+  });
+  function fine(e) {
+    if (tocco && e.pointerId === tocco.id) {
+      if (e.type === 'pointerup' && Math.hypot(e.clientX - tocco.x, e.clientY - tocco.y) < 6 && ed.sel) { ed.sel = null; ed.vertice = null; disegnaMappa(); disegnaFoglio(); }
+      tocco = null;
+    }
+    if (!drag || e.pointerId !== drag.id) return;
+    var d = drag;
+    drag = null;
+    document.body.classList.remove('trascina');
+    if ((d.mosso || d.inserito) && JSON.stringify(S) !== d.prima) { ricorda(d.prima); ed.sporco = true; ed.cambiate++; }
+    tutto();
+  }
+  svg.addEventListener('pointerup', fine);
+  svg.addEventListener('pointercancel', fine);
+  // su telefono: niente scorrimento della pagina se il dito parte da un pezzo
+  svg.addEventListener('touchstart', function (e) {
+    if (ed.attivo && e.target.closest && e.target.closest('[data-k]')) e.preventDefault();
+  }, {passive: false});
+  svg.addEventListener('touchmove', function (e) { if (drag) e.preventDefault(); }, {passive: false});
+
+  // ---------------------------------------------------------------- pannello: campi e pulsanti
+  function applica(sel, el, campo, v) {     // restituisce true se il pannello va ridisegnato
+    var k = sel.k, sl = sala();
+    if (/^(cm-|sala-|spessore$|spazio$|rot$|v[xy]\d+$)/.test(campo)) {
+      var n = Number(v);
+      if (String(v).trim() === '' || !isFinite(n)) return false;       // non è un numero: i campi tornano come prima
+      if (campo !== 'rot') n = Math.round(n / 5) * 5;
+      if (campo === 'cm-sx' || campo === 'cm-alto') {
+        var B = scatola(poli(k, el));
+        if (campo === 'cm-sx') sposta(k, el, sl.x + u(n) - B.minx, 0); else sposta(k, el, 0, sl.y + u(n) - B.miny);
+      } else if (campo === 'cm-larg' || campo === 'cm-prof' || campo === 'cm-diam') {
+        var g = geo(k, el), val = Math.max(u(5), u(n));
+        if (campo === 'cm-diam') ridimensiona(k, el, val, val);
+        else if (campo === 'cm-larg') ridimensiona(k, el, val, g.h);
+        else ridimensiona(k, el, g.w, val);
+      } else if (campo === 'rot') {
+        var g2 = geo(k, el);
+        metti(k, el, {cx: g2.cx, cy: g2.cy, w: g2.w, h: g2.h, rot: n});
+      } else if (campo === 'spazio') el.spazio_libero_cm = Math.max(0, n);
+      else if (campo === 'spessore') el.spessore_cm = Math.max(5, n);
+      else if (campo === 'sala-larg') el.w = num2(Math.max(u(100), u(n)));
+      else if (campo === 'sala-lung') el.h = num2(Math.max(u(100), u(n)));
+      else {
+        var p = el.punti[Number(campo.slice(2))];
+        if (p) { if (campo.charAt(1) === 'x') p[0] = num2(sl.x + u(n)); else p[1] = num2(sl.y + u(n)); }
+      }
+      return false;
+    }
+    if (k === 'tavoli') {
+      if (campo === 'id') { rinomina(el, String(v).trim()); return true; }
+      if (campo === 'tipo') { cambiaTipo(el, v); return true; }
+      if (campo === 'posti') el.posti = String(v).trim() === '' ? null : Number(v);
+      else if (campo === 'verso') el.verso = v;
+      else if (campo === 'note') { if (String(v).trim()) el.note = v; else delete el.note; }
+      else if (campo === 'fisso') { el.fisso = !!v; return true; }
+      else if (campo === 'confermato') { if (v) { el.confermato = true; delete el.da_regola; } else delete el.confermato; }
+      else if (campo === 'separabile') el.separabile = !!v;
+      return false;
+    }
+    if (campo === 'nome') { el.nome = v; return true; }
+    if (campo === 'tipo') {
+      var vecchio = (ZONA[el.tipo] || {}).nome;
+      if (!el.nome || el.nome === vecchio || el.nome === el.tipo) el.nome = (ZONA[v] || ZONA.blocco).nome;
+      el.tipo = v;
+      if (v === 'pilastro') el.forma = el.forma || 'quadrato'; else delete el.forma;
+      return true;
+    }
+    if (campo === 'forma') { el.forma = v; return true; }
+    return false;
+  }
+  $('foglio').addEventListener('change', function (e) {
+    var campo = e.target.getAttribute('data-campo'), sel = ed.sel || {k: 'sala', i: 0}, el = elemento(sel);
+    if (!campo || !el) return;
+    var v = e.target.type === 'checkbox' ? e.target.checked : e.target.value;
+    cambia(function () { return applica(sel, el, campo, v); });
+  });
+  $('foglio').addEventListener('click', function (e) {
+    var b = e.target.closest('[data-az]');
+    if (!b) return;
+    var az = b.getAttribute('data-az');
+    confermaCampo();
+    var sel = ed.sel, el = elemento(sel);
+    if (az === 'chiudi') { ed.sel = null; ed.vertice = null; tutto(); return; }
+    if (!el) return;
+    if (az === 'elimina') { elimina(); return; }
+    if (az === 'duplica') { duplica(); return; }
+    if (az === 'v-aggiungi') {
+      cambia(function () {
+        var p = el.punti, a = p[p.length - 2], c = p[p.length - 1], dx = c[0] - a[0], dy = c[1] - a[1], L = Math.hypot(dx, dy) || 1;
+        p.push([num2(c[0] + dx / L * u(100)), num2(c[1] + dy / L * u(100))]);
+        ed.vertice = p.length - 1;
+        return true;
+      });
+      return;
+    }
+    var ve = /^v-elimina-(\d+)$/.exec(az);
+    if (ve) { eliminaVertice(Number(ve[1])); return; }
+    var m = /^(posti|moduli|rot)([+-]\d+)$/.exec(az);
+    if (!m) return;
+    cambia(function () {
+      var d = Number(m[2]);
+      if (m[1] === 'posti') el.posti = Math.max(1, Math.round(Number.isFinite(Number(el.posti)) && el.posti !== null ? Number(el.posti) : postiIpotesi(el)) + d);
+      if (m[1] === 'moduli') {
+        var k0 = Number(el.moduli) || 1, k1 = Math.max(1, Math.min(8, k0 + d));
+        if (el.posti === 2 * k0 + 2) el.posti = 2 * k1 + 2;
+        el.moduli = k1;
+      }
+      if (m[1] === 'rot') { var g = geo(sel.k, el); metti(sel.k, el, {cx: g.cx, cy: g.cy, w: g.w, h: g.h, rot: g.rot + d}); }
+      return true;
+    });
+  });
+  $('strumenti').addEventListener('click', function (e) {
+    var b = e.target.closest('[data-nuovo], [data-fisso]');
+    if (!b) return;
+    confermaCampo();
+    var tavolo = b.getAttribute('data-nuovo'), fisso = b.getAttribute('data-fisso'), c = centroVisibile();
+    cambia(function () {
+      if (tavolo) { S.tavoli.push(nuovoTavolo(tavolo, c)); ed.sel = {k: 'tavoli', i: S.tavoli.length - 1}; }
+      else ed.sel = nuovoFisso(fisso, c);
+      ed.vertice = null;
+      return true;
+    });
+    avviso('Aggiunto: ora trascinalo dove va, o scrivi le misure in cm.');
+    if (fisso === 'blocco') { var n = $('foglio').querySelector('input[data-campo="nome"]'); if (n) { n.focus(); n.select(); } }
+  });
+  $('controlli').addEventListener('click', function (e) {
+    var li = e.target.closest('[data-tavolo]');
+    if (!li) return;
+    ed.sel = {k: 'tavoli', i: Number(li.getAttribute('data-tavolo'))};
+    selValida(); tutto();
+    svg.scrollIntoView({block: 'start', behavior: 'smooth'});
+  });
+  function entra(si) {
+    ed.attivo = si;
+    ed.sel = null; ed.vertice = null;
+    document.body.classList.toggle('modifica', si);
+    tutto();
+    if (si) tutto();                 // la seconda volta con le misure dello schermo nuovo (mappa più grande da PC)
+    if (!si && ed.sporco) avviso('Ci sono modifiche non salvate: premi Modifica e poi Salva piantina.');
+  }
+  $('b-modifica').addEventListener('click', function () { entra(true); });
+  $('b-annulla').addEventListener('click', function () { confermaCampo(); annulla(); });
+  $('b-ripeti').addEventListener('click', function () { confermaCampo(); ripeti(); });
+  $('o-aggancio').addEventListener('change', function (e) { ed.aggancio = e.target.checked; });
+  $('o-griglia').addEventListener('change', function (e) { ed.griglia = e.target.checked; disegnaMappa(); });
+  $('o-quote').addEventListener('change', function (e) { ed.quote = e.target.checked; disegnaMappa(); disegnaMappa(); });
+  $('o-lato').addEventListener('change', function (e) {
+    var v = Number(e.target.value);
+    if (!(v >= 20 && v <= 200)) { avviso('Il lato del quadrato va da 20 a 200 cm.'); tutto(false); return; }
+    cambia(function () { S.scala = S.scala || {}; S.scala.lato_quadrato_cm = Math.round(v * 10) / 10; return true; });
+  });
+  document.addEventListener('keydown', function (e) {
+    if (document.body.classList.contains('con-scheda')) { if (e.key === 'Escape') chiudiScheda(); return; }
+    if (!ed.attivo) return;
+    var campo = /^(INPUT|SELECT|TEXTAREA)$/.test(e.target.tagName);
+    if ((e.ctrlKey || e.metaKey) && !campo) {
+      var k = e.key.toLowerCase();
+      if (k === 'z' && !e.shiftKey) { e.preventDefault(); annulla(); }
+      else if (k === 'y' || (k === 'z' && e.shiftKey)) { e.preventDefault(); ripeti(); }
+      return;
+    }
+    if (campo) return;
+    var sel = ed.sel;
+    if (/^Arrow(Left|Right|Up|Down)$/.test(e.key) && elemento(sel)) {
+      e.preventDefault();
+      var d = u(e.shiftKey ? 50 : 5), dx = e.key === 'ArrowLeft' ? -d : e.key === 'ArrowRight' ? d : 0, dy = e.key === 'ArrowUp' ? -d : e.key === 'ArrowDown' ? d : 0;
+      cambia(function () {
+        var el = elemento(sel);
+        if (sel.k === 'muri' && ed.vertice != null && el.punti[ed.vertice]) { var p = el.punti[ed.vertice]; p[0] = num2(p[0] + dx); p[1] = num2(p[1] + dy); }
+        else sposta(sel.k, el, dx, dy);
+        return false;
+      });
+      return;
+    }
+    if ((e.key === 'Delete' || e.key === 'Backspace') && sel) {
+      e.preventDefault();
+      if (sel.k === 'muri' && ed.vertice != null && elemento(sel).punti.length > 2) eliminaVertice(ed.vertice); else elimina();
+    }
+    if (e.key === 'Escape' && sel) { ed.sel = null; ed.vertice = null; tutto(); }
+  });
+
+  // ---------------------------------------------------------------- scheda delle misure da prendere al locale
+  function vicinoA(P) {               // il tavolo più vicino a un pezzo, per dire quale bancone è
+    var best = null;
+    S.tavoli.forEach(function (t) { var d = distanza(P, poliTavolo(t)); if (!best || d < best.d) best = {t: t, d: d}; });
+    return best ? best.t : null;
+  }
+  function dalla(cosa) {               // "dal muro", "dalla parete della sala", "dai bagni"
+    var c = String(cosa).toLowerCase();
+    if (/^(parete|cucina|zona|pedana|cassa|credenza|colonna|porta|finestra)/.test(c)) return 'dalla ' + cosa;
+    if (/^bagni/.test(c)) return 'dai ' + cosa;
+    if (/^[aeiou]/.test(c)) return 'dall\'' + cosa;
+    return 'dal ' + cosa;
+  }
+  function verso(p, q) {
+    var dx = q[0] - p[0], dy = q[1] - p[1];
+    return Math.abs(dx) >= Math.abs(dy) ? (dx > 0 ? 'a destra' : 'a sinistra') : (dy > 0 ? 'in basso' : 'in alto');
+  }
+  function colonne() {                 // file di almeno 3 tavoli mobili uguali, uno sotto l'altro
+    var gruppi = [];
+    S.tavoli.forEach(function (t) {
+      if (t.fisso || t.rot) return;
+      var g = gruppi.filter(function (x) { return x.tipo === t.tipo && Math.abs(x.x - t.x) < 3; })[0];
+      if (g) g.t.push(t); else gruppi.push({tipo: t.tipo, x: t.x, t: [t]});
+    });
+    return gruppi.filter(function (g) { return g.t.length >= 3; }).map(function (g) { return g.t.sort(function (a, b) { return a.y - b.y; }); });
+  }
+  function vociScheda() {
+    var V = [], sl = sala();
+    function voce(g, cosa, stima) { V.push({g: g, cosa: cosa, stima: stima}); }
+    voce('Sala', 'Larghezza della sala, da parete a parete (da sinistra a destra)', cm5(sl.w));
+    voce('Sala', 'Lunghezza della sala, da parete a parete (dall\'ingresso in fondo)', cm5(sl.h));
+    var q = S.tavoli.filter(function (t) { return t.tipo === 'quadrato' && !t.rot; })[0];
+    voce('Tavoli', 'Lato di un tavolo quadrato' + (q ? ' (per esempio il ' + q.id + ')' : ''), Math.round(lato()));
+    S.tavoli.forEach(function (t) {
+      var d = dimTavolo(t);
+      if (t.tipo === 'lungo' || t.tipo === 'rettangolare') {
+        voce('Tavoli', 'Tavolo ' + t.id + ' (' + NOME_TIPO[t.tipo] + '): lunghezza', cm5(Math.max(d.w, d.h)));
+        voce('Tavoli', 'Tavolo ' + t.id + ' (' + NOME_TIPO[t.tipo] + '): larghezza', cm5(Math.min(d.w, d.h)));
+      }
+      if (t.tipo === 'tondo') voce('Tavoli', 'Tavolo ' + t.id + ' (tondo): diametro', cm5(d.w));
+    });
+    (S.ostacoli || []).forEach(function (o) {
+      var t = vicinoA(poli('ostacoli', o)), nome = o.nome || (ZONA[o.tipo] || ZONA.blocco).nome, dove = t ? ' vicino al ' + t.id : '';
+      voce('Banconi ed elementi fissi', nome.charAt(0).toUpperCase() + nome.slice(1) + dove + ': lunghezza', cm5(Math.max(o.w, o.h)));
+      voce('Banconi ed elementi fissi', nome.charAt(0).toUpperCase() + nome.slice(1) + dove + ': larghezza', cm5(Math.min(o.w, o.h)));
+    });
+    (S.passaggi || []).forEach(function (p) {
+      var g = geo('passaggi', p), vert = p.h >= p.w;
+      var sonda = vert ? [[g.cx - 0.05, p.y], [g.cx + 0.05, p.y], [g.cx + 0.05, p.y + p.h], [g.cx - 0.05, p.y + p.h]]
+        : [[p.x, g.cy - 0.05], [p.x + p.w, g.cy - 0.05], [p.x + p.w, g.cy + 0.05], [p.x, g.cy + 0.05]];
+      var dir = direzioni(sonda, ingombri(null, null)), a = dir[vert ? 'sinistra' : 'sopra'], b = dir[vert ? 'destra' : 'sotto'];
+      voce('Passaggi', 'Larghezza del ' + (p.nome || 'passaggio') + ' tra ' + a.cosa + ' e ' + b.cosa, cm5(a.d + b.d + 0.1));
+    });
+    colonne().forEach(function (col) {
+      var nomi = col[0].id + '-' + col[col.length - 1].id;
+      for (var i = 0; i + 1 < col.length; i++)
+        voce('File di tavoli', 'Distanza tra il ' + col[i].id + ' e il ' + col[i + 1].id + ' (da bordo a bordo)', cm5(distanza(poliTavolo(col[i]), poliTavolo(col[i + 1]))));
+      var best = null;
+      col.forEach(function (t, j) {
+        var dir = direzioni(poliTavolo(t), ingombri('tavoli', S.tavoli.indexOf(t)));
+        ['sinistra', 'destra'].forEach(function (lato) { var r = dir[lato]; if (r.cosa === 'muro' && (!best || r.d < best.d)) best = {d: r.d, lato: lato}; });
+      });
+      if (best) voce('File di tavoli', 'Fila ' + nomi + ': distanza dal muro a ' + best.lato, cm5(best.d));
+    });
+    var muri = (S.muri || []).filter(muroValido), Z = S.ostacoli || [];
+    S.tavoli.forEach(function (t) {
+      if (t.fisso) return;
+      var P = poliTavolo(t), best = null;
+      muri.forEach(function (m) { var r = vicini(P, m.punti, true); var d = Math.max(0, r.d - metaMuro(m)); if (!best || d < best.d) best = {d: d, cosa: 'muro', p: r.p, q: r.q}; });
+      Z.forEach(function (o) { var r = vicini(P, poli('ostacoli', o)); if (!best || r.d < best.d) best = {d: r.d, cosa: o.nome || o.tipo, p: r.p, q: r.q}; });
+      var rb = vicini(P, bordoSala(), true);
+      if (!best || rb.d < best.d) best = {d: rb.d, cosa: 'parete della sala', p: rb.p, q: rb.q};
+      voce('Tavoli mobili: distanza dal muro o dall\'ostacolo più vicino', 'Tavolo ' + t.id + ': ' + dalla(best.cosa) + (best.p ? ' (' + verso(best.p, best.q) + ')' : ''), cm5(best.d));
+    });
+    return V;
+  }
+  function apriScheda() {
+    var V = vociScheda(), righe = '', gruppo = null, n = 0;
+    V.forEach(function (v) {
+      if (v.g !== gruppo) { gruppo = v.g; righe += '<tr class="gruppo"><td colspan="4">' + esc(gruppo) + '</td></tr>'; }
+      righe += '<tr><td class="num">' + (++n) + '</td><td>' + esc(v.cosa) + '</td><td class="stima">' + v.stima + ' cm</td><td class="misurato"></td></tr>';
+    });
+    var vb = vista(true);
+    $('scheda').innerHTML = '<div class="a4"><div class="comandi"><button type="button" class="btn verde" data-scheda="stampa">Stampa</button>' +
+      '<button type="button" class="btn" data-scheda="chiudi">Chiudi</button></div>' +
+      '<h2>Olimpo · misure da prendere in sala</h2><p>Stime dal disegno del ' + esc(S.aggiornata) + ', con il lato del quadrato a ' + Math.round(lato()) + ' cm. ' +
+      'Misura ogni voce con il metro, da bordo a bordo, e scrivi il valore nella colonna "misurato". "In alto" è il lato dell\'ingresso, come nello schizzo in fondo. ' +
+      'Poi apri la piantina, premi Modifica, clicca il pezzo e scrivi le misure nei campi in cm.</p>' +
+      '<table><thead><tr><th>N°</th><th>Cosa misurare</th><th>Stima</th><th>Misurato</th></tr></thead><tbody>' + righe + '</tbody></table>' +
+      '<div class="schizzo"><strong>Schizzo della pianta</strong><svg viewBox="' + vb.join(' ') + '" role="img" aria-label="Schizzo della pianta con i numeri dei tavoli">' +
+      svgMappa({modifica: false, quote: true, fs: 13}) + '</svg></div></div>';
+    document.body.classList.add('con-scheda');
+    $('scheda').scrollTop = 0;
+  }
+  function chiudiScheda() { document.body.classList.remove('con-scheda'); $('scheda').innerHTML = ''; }
+  $('scheda').addEventListener('click', function (e) {
+    var b = e.target.closest('[data-scheda]');
+    if (!b) return;
+    if (b.getAttribute('data-scheda') === 'stampa') window.print(); else chiudiScheda();
+  });
+  $('b-scheda').addEventListener('click', function () { confermaCampo(); apriScheda(); });
+
+  // ---------------------------------------------------------------- salvataggio
+  function compatto(v) {
+    if (Array.isArray(v)) return '[' + v.map(compatto).join(', ') + ']';
+    if (v && typeof v === 'object') return '{' + Object.keys(v).filter(function (k) { return v[k] !== undefined; })
+      .map(function (k) { return JSON.stringify(k) + ': ' + compatto(v[k]); }).join(', ') + '}';
+    if (typeof v === 'number' && !isFinite(v)) return 'null';
+    return JSON.stringify(v);
+  }
+  function ordina(t, ordine) {
+    var o = {};
+    ordine.forEach(function (k) { if (t[k] !== undefined) o[k] = t[k]; });
+    Object.keys(t).forEach(function (k) { if (o[k] === undefined && t[k] !== undefined) o[k] = t[k]; });
+    return o;
+  }
+  function righeTavoli(lista) {           // una riga per tavolo, con numero, tipo, x e y in colonna
+    var COL = ['id', 'tipo', 'x', 'y'], tav = lista.map(function (t) { return ordina(t, ORDINE_TAVOLO); });
+    var larg = COL.map(function (c) {
+      return tav.reduce(function (m, t) { return t[c] === undefined ? m : Math.max(m, (JSON.stringify(c) + ': ' + compatto(t[c]) + ',').length); }, 0) + 1;
+    });
+    return tav.map(function (t) {
+      var ks = Object.keys(t), s = '';
+      ks.forEach(function (k, n) {
+        var parte = JSON.stringify(k) + ': ' + compatto(t[k]), ultimo = n === ks.length - 1;
+        if (!ultimo && n < 4 && k === COL[n]) { parte += ','; while (parte.length < larg[n]) parte += ' '; s += parte; }
+        else s += parte + (ultimo ? '' : ', ');
+      });
+      return '{' + s + '}';
+    });
+  }
+  function formatta(dati) {
+    var ks = Object.keys(dati).filter(function (k) { return dati[k] !== undefined; });
+    return '{\n' + ks.map(function (k, n) {
+      var v = dati[k];
+      if (k === 'ingresso' && v && typeof v === 'object') v = ordina(v, ORDINE_ZONA);
+      if (ZONE.indexOf(k) >= 0 && Array.isArray(v)) v = v.map(function (z) { return ordina(z, ORDINE_ZONA); });
+      if (k === 'muri' && Array.isArray(v)) v = v.map(function (m) { return ordina(m, ['punti', 'spessore_cm']); });
+      var testo = compatto(v);
+      if (Array.isArray(v) && v.length && (k === 'tavoli' || testo.length > 100 || v.some(function (x) { return x && typeof x === 'object'; }))) {
+        var el = k === 'tavoli' ? righeTavoli(v) : v.map(compatto);
+        testo = '[\n' + el.map(function (x, j) { return '    ' + x + (j < el.length - 1 ? ',' : ''); }).join('\n') + '\n  ]';
+      }
+      return '  ' + JSON.stringify(k) + ': ' + testo + (n < ks.length - 1 ? ',' : '');
+    }).join('\n') + '\n}';
+  }
+  function fileHtml() {
+    var json = formatta(S).replace(/<(?=[\/!])/g, '\\u003c');      // un testo con "<" seguito da "/" o "!" non chiude il blocco
+    var fine = '<' + '/script>';
+    return '<!doctype html>\n<html lang="it">\n<head>\n<meta charset="utf-8">\n<meta name="viewport" content="width=device-width, initial-scale=1">\n' +
+      '<title>' + esc(BASE.titolo) + '</title>\n<style id="stile">' + BASE.stile + '</style>\n</head>\n<body>\n' + BASE.pagina + '\n\n' + COMMENTO + '\n' +
+      '<script type="application/json" id="sala">\n' + json + '\n' + fine + '\n\n<script id="programma">' + BASE.programma + fine + '\n</body>\n</html>\n';
+  }
+  function oggi() {
+    var d = new Date();
+    return ('0' + d.getDate()).slice(-2) + '/' + ('0' + (d.getMonth() + 1)).slice(-2) + '/' + d.getFullYear();
+  }
+  function preparaSalvataggio() {
+    if (!ed.cambiate) return;
+    var riga = oggi() + ' · modificata nell\'editor';
+    S.aggiornata = oggi();
+    if (!Array.isArray(S.storico)) S.storico = [];
+    if (S.storico[S.storico.length - 1] !== riga) S.storico.push(riga);
+    ed.cambiate = 0;
+    tutto(false);
+  }
+  function salva() {
+    preparaSalvataggio();
+    var url = URL.createObjectURL(new Blob([fileHtml()], {type: 'text/html;charset=utf-8'}));
+    var a = document.createElement('a');
+    a.href = url; a.download = 'piantina.html';
+    document.body.appendChild(a);
+    a.click();
+    setTimeout(function () { URL.revokeObjectURL(url); a.remove(); }, 2000);
+    ed.sporco = false;
+    esito('Piantina salvata: trovi piantina.html tra i download. Mandamela su WhatsApp.');
+  }
+  function copiaDati() {
+    var testo = formatta(S);
+    function vecchioModo() {
+      var t = document.createElement('textarea');
+      t.value = testo; t.setAttribute('readonly', ''); t.style.position = 'fixed'; t.style.opacity = '0';
+      document.body.appendChild(t); t.select();
+      var ok = false;
+      try { ok = document.execCommand('copy'); } catch (x) { ok = false; }
+      t.remove();
+      esito(ok ? 'Dati copiati: incollali nel messaggio.' : 'Non riesco a copiare: usa Salva piantina.');
+    }
+    if (navigator.clipboard && window.isSecureContext) navigator.clipboard.writeText(testo).then(function () { esito('Dati copiati: incollali nel messaggio.'); }, vecchioModo);
+    else vecchioModo();
+  }
+  function condividi() {
+    preparaSalvataggio();
+    var file = null;
+    try { file = new File([fileHtml()], 'piantina.html', {type: 'text/html'}); } catch (x) { file = null; }
+    if (file && navigator.canShare && navigator.share && navigator.canShare({files: [file]})) {
+      navigator.share({files: [file], title: 'Piantina Olimpo'}).then(function () { ed.sporco = false; esito('Piantina condivisa.'); }, function (err) {
+        if (!err || err.name !== 'AbortError') esito('Non sono riuscito a condividere: premi Salva piantina e manda il file da WhatsApp.');
+      });
+    } else esito('Da qui il telefono non condivide il file: premi Salva piantina e mandalo da WhatsApp.');
+  }
+  [['b-salva', salva], ['b-salva2', salva], ['b-copia', copiaDati], ['b-condividi', condividi], ['b-fine', function () { entra(false); }]].forEach(function (b) {
+    $(b[0]).addEventListener('click', function () { confermaCampo(); b[1](); });
+  });
+  window.addEventListener('beforeunload', function (e) {
+    if (!ed.sporco) return undefined;
+    e.preventDefault();
+    e.returnValue = '';
+    return '';
+  });
+  window.addEventListener('resize', function () { if (ed.attivo) disegnaMappa(); });
+
+  $('o-aggancio').checked = ed.aggancio;
+  $('o-griglia').checked = ed.griglia;
+  $('o-quote').checked = ed.quote;
+  tutto();
+  // per le prove automatiche: i dati in memoria, il file che "Salva piantina" scaricherebbe, la scheda delle misure
+  window.piantina = {dati: function () { return S; }, file: fileHtml, json: function () { return formatta(S); }, voci: vociScheda};
+})();
+</script>
+</body>
+</html>

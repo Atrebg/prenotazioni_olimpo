@@ -18,6 +18,85 @@ STILE = {
     "rettangolare": ("#fae1d8", "#d85a30"), "panca": ("#f8e7c7", "#ba7517"), "tondo": ("#e7e4fb", "#7f77dd"),
 }
 PIENO = "#ffd98a"              # tavolo o pezzo occupato nel turno
+SALA = {"x": 40, "y": 40, "w": 400, "h": 625}                     # contorno della sala se la piantina non lo dice
+GRIGIO = ("#d9d7d0", "#6b6a64")                                     # elementi fissi di tipo che qui non si conosce
+ZONE = {"bancone": ("#d3d1c7", "#5f5e5a"), "cucina": ("#efe8da", "#8a7f6a"), "pilastro": ("#a8a59c", "#4f4e49"),
+        "bagni": ("#e2edf0", "#5f8a93"), "cassa": ("#f3e6c9", "#8a6d2f"), "mobile": ("#e8dfd2", "#7d6b52"),
+        "pedana": ("#ece7f6", "#8577a8"), "zona_vietata": ("#f6dede", "#c0392b"), "blocco": GRIGIO}
+
+
+def _num(v, d: float = 0.0) -> float:
+    try:
+        return float(v)
+    except (TypeError, ValueError):
+        return d
+
+
+def _rett(o: dict) -> tuple[float, float, float, float] | None:
+    """x, y, larghezza e altezza di un elemento rettangolare; None se mancano."""
+    if not isinstance(o, dict) or any(k not in o for k in ("x", "y", "w", "h")):
+        return None
+    return _num(o["x"]), _num(o["y"]), _num(o["w"]), _num(o["h"])
+
+
+def _toccano(a: dict, b: dict) -> bool:
+    ra, rb = _rett(a), _rett(b)
+    if not ra or not rb:
+        return False
+    return ra[0] <= rb[0] + rb[2] + 1 and rb[0] <= ra[0] + ra[2] + 1 and ra[1] <= rb[1] + rb[3] + 1 and rb[1] <= ra[1] + ra[3] + 1
+
+
+def _ruota_attr(o: dict, cx: float, cy: float) -> str:
+    rot = _num(o.get("rot"))
+    return f' transform="rotate({rot:g} {cx:.1f} {cy:.1f})"' if rot else ""
+
+
+def _ostacolo(o: dict, prima: list[dict]) -> str:
+    """Un elemento fisso: rettangolo (o ellisse, se è un pilastro tondo) col suo nome, anche ruotato; una L sono due
+    rettangoli con un'etichetta sola; i tipi che qui non si conoscono sono grigi. Formato di prima: un poligono."""
+    if "punti" in o:                       # formato di prima: un poligono con l'etichetta a parte
+        s = f'<polygon points="{o["punti"]}" fill="#d3d1c7" stroke="#5f5e5a" stroke-width="1"/>'
+        return s + (_testo(o["etichetta"]["x"], o["etichetta"]["y"], o["nome"], "et-piccola") if o.get("etichetta") else "")
+    r = _rett(o)
+    if not r:
+        return ""
+    x, y, w, h = r
+    fill, stroke = ZONE.get(o.get("tipo"), GRIGIO)
+    cx, cy = x + w / 2, y + h / 2
+    rot = _ruota_attr(o, cx, cy)
+    if o.get("forma") == "tondo":
+        s = f'<ellipse cx="{cx:.1f}" cy="{cy:.1f}" rx="{w / 2:.1f}" ry="{h / 2:.1f}" fill="{fill}" stroke="{stroke}" stroke-width="1"{rot}/>'
+    else:
+        s = f'<rect x="{x:g}" y="{y:g}" width="{w:g}" height="{h:g}" fill="{fill}" stroke="{stroke}" stroke-width="1"{rot}/>'
+    if not o.get("rot") and any(p.get("nome") == o.get("nome") and "punti" not in p and not p.get("rot") and _toccano(p, o)
+                                for p in prima):
+        return s
+    ang = _num(o.get("rot")) + (-90 if h > w else 0)
+    tr = f' transform="rotate({ang:g} {cx:.1f} {cy:.1f})"' if ang else ""
+    return s + (f'<text x="{cx:.1f}" y="{cy:.1f}" class="et-piccola" text-anchor="middle" dominant-baseline="central"{tr}>'
+                f'{escape(str(o.get("nome", o.get("tipo", ""))))}</text>')
+
+
+def _segno(o: dict, fill: str, stroke: str) -> str:
+    """Porta o finestra: un segno sul bordo, col suo nome sopra."""
+    r = _rett(o)
+    if not r:
+        return ""
+    x, y, w, h = r
+    return (f'<rect x="{x:g}" y="{y:g}" width="{w:g}" height="{h:g}" rx="1" fill="{fill}" stroke="{stroke}" stroke-width="1.5"'
+            f'{_ruota_attr(o, x + w / 2, y + h / 2)}/>' + _testo(x + w / 2, y - 3, str(o.get("nome", "")), "et-piccola"))
+
+
+def _muro(m, cm_per_unita: float) -> str:
+    """Un muro: percorso "M x y L x y" (formato di prima) o spezzata {"punti", "spessore_cm"}."""
+    if isinstance(m, str):
+        return f'<path d="{escape(m)}" fill="none" stroke="#2c2c2a" stroke-width="3"/>'
+    punti = [p for p in (m.get("punti") or []) if isinstance(p, (list, tuple)) and len(p) >= 2] if isinstance(m, dict) else []
+    if len(punti) < 2:
+        return ""
+    d = "M" + " L".join(f"{_num(p[0]):g} {_num(p[1]):g}" for p in punti)
+    spessore = _num(m.get("spessore_cm"), 10) / cm_per_unita
+    return f'<path d="{d}" fill="none" stroke="#2c2c2a" stroke-width="{spessore:.1f}"/>'
 
 
 def _ruota(px: float, py: float, cx: float, cy: float, gradi: float) -> tuple[float, float]:
@@ -54,22 +133,30 @@ def _svg_turno(dati: dict, sol: dict, turno: str) -> str:
         if r["turno"] == turno:
             per_tav.setdefault(r["tavolo"], []).append(r)
     part = {t["id"]: t.get("partizioni", {}).get(turno) for t in sol["tavoli"]}
-    out = ['<svg class="sala" viewBox="30 10 420 665" xmlns="http://www.w3.org/2000/svg" role="img" '
+    sala = _rett(dati.get("sala")) or tuple(SALA.values())
+    sx, sy, sw, sh = sala
+    cm_per_unita = _num((dati.get("scala") or {}).get("lato_quadrato_cm"), 80) / LATO or 2.5
+    out = [f'<svg class="sala" viewBox="{sx - 10:g} {sy - 30:g} {sw + 20:g} {sh + 40:g}" xmlns="http://www.w3.org/2000/svg" role="img" '
            f'aria-label="Sala nel {escape(turno)} turno">',
-           '<rect x="40" y="40" width="400" height="625" rx="6" fill="none" stroke="#b4b2a9" stroke-dasharray="6 4"/>']
+           f'<rect x="{sx:g}" y="{sy:g}" width="{sw:g}" height="{sh:g}" rx="6" fill="none" stroke="#b4b2a9" stroke-dasharray="6 4"/>']
     e = dati.get("ingresso")
-    if e:
+    if _rett(e):
         out.append(f'<rect x="{e["x"]}" y="{e["y"]}" width="{e["w"]}" height="{e["h"]}" rx="2" fill="#ef9f27"/>'
                    + _testo(e["x"] + e["w"] / 2, e["y"] - 4, "ingresso", "et-piccola"))
     for p in dati.get("passaggi", []):
-        out.append(f'<rect x="{p["x"]}" y="{p["y"]}" width="{p["w"]}" height="{p["h"]}" fill="#eef5fc" stroke="#85b7eb" '
-                   f'stroke-width="0.8"/>')
-    for o in dati.get("ostacoli", []):
-        out.append(f'<polygon points="{o["punti"]}" fill="#d3d1c7" stroke="#5f5e5a" stroke-width="1"/>')
-        if o.get("etichetta"):
-            out.append(_testo(o["etichetta"]["x"], o["etichetta"]["y"], o["nome"], "et-piccola"))
-    for d in dati.get("muri", []):
-        out.append(f'<path d="{d}" fill="none" stroke="#2c2c2a" stroke-width="3"/>')
+        r = _rett(p)
+        if r:
+            out.append(f'<rect x="{r[0]:g}" y="{r[1]:g}" width="{r[2]:g}" height="{r[3]:g}" fill="#eef5fc" stroke="#85b7eb" '
+                       f'stroke-width="0.8"{_ruota_attr(p, r[0] + r[2] / 2, r[1] + r[3] / 2)}/>')
+    ostacoli = [o for o in dati.get("ostacoli", []) if isinstance(o, dict)]
+    for n, o in enumerate(ostacoli):
+        out.append(_ostacolo(o, ostacoli[:n]))
+    for p in dati.get("porte", []):
+        out.append(_segno(p, "#fff", "#ba7517"))
+    for f in dati.get("finestre", []):
+        out.append(_segno(f, "#e3f2fc", "#5b9bd5"))
+    for m in dati.get("muri", []):
+        out.append(_muro(m, cm_per_unita))
     for t in dati["tavoli"]:
         tid = str(t["id"])
         fill, stroke = STILE.get(t["tipo"], ("#eee", "#888"))
