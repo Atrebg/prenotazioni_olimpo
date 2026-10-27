@@ -16,6 +16,7 @@ Disposizione (config `disposizione`):
 
 Modalità a turni (`turni` nella sala): il modello è in `modello_turni.py` (ogni turno è un problema di sola
 sistemazione); `_costruisci`, `_estrai` e il conteggio dei moduli passano lì da soli.
+Sala vera dalla piantina (`piantina` nella sala): modello in `modello_piantina.py`, tavoli fermi, niente geometria.
 
 Variabili (G = cella di griglia, P = passo orario):
 - slot a moduli (opzionali): presenza p, forma b[f] (k, orientamento), angolo dell'ingombro x, y,
@@ -93,6 +94,8 @@ class _Modello:
     turni: bool = False                          # modello a turni (modello_turni.py)
     info_slot: dict = field(default_factory=dict)    # a turni: chiave -> (tipo "m"/"t", indice, turno | None)
     turni_slot: dict = field(default_factory=dict)   # a turni: chiave -> turni in cui lo slot esiste
+    piantina: bool = False                       # sala vera (modello_piantina.py)
+    unita: dict = field(default_factory=dict)        # sala vera: chiave unità.turno -> (Unita, turno)
 
 
 def _pesi(ist: Istanza) -> dict:
@@ -125,6 +128,9 @@ def _costruisci(ist: Istanza, voci: list[_Voce], disposizione: str, obiettivo: s
     obiettivo "completo": somma pesata di tutte le componenti; "nessuno": sola ammissibilità (decisioni di
     accettazione). `non_sistemate_fisse` aggiunge al costo le prenotazioni già rifiutate (costante, per la
     piantina finale). `rinforzo`: vincoli ridondanti per dimostrare prima l'impossibilità."""
+    if ist.piantina is not None:
+        from .modello_piantina import costruisci_piantina
+        return costruisci_piantina(ist, voci, disposizione, obiettivo, non_sistemate_fisse, proiezioni, rinforzo)
     if ist.turni:
         from .modello_turni import costruisci_turni
         return costruisci_turni(ist, voci, disposizione, obiettivo, non_sistemate_fisse, proiezioni, rinforzo)
@@ -513,6 +519,9 @@ def _risolvi_modello(mod: _Modello, tempo_s: float, worker: int, seed: int, log:
 
 def _estrai(ist: Istanza, mod: _Modello, piano: dict) -> tuple[list, list, set]:
     """Tavoli e assegnazioni dal piano (valori per nome di variabile)."""
+    if mod.piantina:
+        from .modello_piantina import estrai_piantina
+        return estrai_piantina(ist, mod, piano)
     if mod.turni:
         from .modello_turni import estrai_turni
         return estrai_turni(ist, mod, piano)
@@ -636,6 +645,9 @@ def _non_sistemata(ist: Istanza, pr: Prenotazione, ops, motivo: str | None = Non
 
 def calcola_componenti(ist: Istanza, tavoli: list, assegnazioni: list, non_sistemate: list) -> dict:
     """Componenti dell'obiettivo ricalcolate dalla soluzione estratta (non dalle variabili ausiliarie)."""
+    if ist.piantina is not None:
+        from .modello_piantina import componenti_piantina
+        return componenti_piantina(ist, tavoli, assegnazioni, non_sistemate)
     pesi = _pesi(ist)
     soglia = int(ist.sala.get("picco_cucina_soglia_coperti", 30))
     cap = {t["id"]: t["capienza"] for t in tavoli}
@@ -675,7 +687,8 @@ def modalita_turni(ist: Istanza) -> dict:
     """Voci della modalità a turni da dichiarare nella soluzione (le controlla il verificatore)."""
     if not ist.turni:
         return {}
-    return {"turni": [{"nome": t.nome, "inizio": min_a_hhmm(t.inizio_min), "fine": min_a_hhmm(t.fine_min)}
+    extra = {"sala_vera": ist.sala.get("fonte", "piantina")} if ist.piantina is not None else {}
+    return extra | {"turni": [{"nome": t.nome, "inizio": min_a_hhmm(t.inizio_min), "fine": min_a_hhmm(t.fine_min)}
                       for t in ist.turni], "turno_a_parita": ist.turno_a_parita}
 
 
@@ -736,6 +749,9 @@ def _impossibile_per_conteggio(ist: Istanza, accettate: list[_Voce], pr: Prenota
     (riapparecchiatura compresa) le prenotazioni attive chiedono più moduli dell'inventario, anche usando al meglio
     i tondi. Ogni prenotazione attiva occupa un tavolo suo; un tavolo a moduli per c coperti usa almeno kmin(c) moduli.
     A turni il conteggio è per turno (e in "fissa" sui tavoli che servono tutti i turni)."""
+    if ist.piantina is not None:
+        from .modello_piantina import impossibile_per_conteggio_piantina
+        return impossibile_per_conteggio_piantina(ist, accettate, pr, st)
     if ist.turni:
         from .modello_turni import impossibile_per_conteggio_turni
         return impossibile_per_conteggio_turni(ist, accettate, pr, st, disposizione)

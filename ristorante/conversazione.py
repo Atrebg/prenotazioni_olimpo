@@ -773,17 +773,49 @@ class _Conversazione:
             return f"{etichetta_data(d)}: nessuna prenotazione."
         righe = [f"{etichetta_data(d)} · {len(acc)} {'prenotazione' if len(acc) == 1 else 'prenotazioni'} · {sum(a['coperti'] for a in acc)} coperti"]
         if self.turni:
+            tavoli = self._tavoli_attuali(stato) if "piantina" in self.sala else {}
             for t in self.turni:
                 inizio = min_a_hhmm(t.inizio_min)
                 nel = [a for a in acc if a["orario"] == inizio]
                 righe.append(f"{t.nome.capitalize()} turno ({inizio}) · {len(nel)} "
                              f"{'prenotazione' if len(nel) == 1 else 'prenotazioni'} · {sum(a['coperti'] for a in nel)} coperti")
-                righe += [f"  {a['nome']} {a['coperti']}" + (f" ({a['note']})" if a.get("note") else "") for a in nel]
+                if tavoli:
+                    nel.sort(key=lambda a: tavoli.get(a["id"], ((999,), ""))[0])
+                righe += [f"  {a['nome']} {a['coperti']}" + (f" ({a['note']})" if a.get("note") else "")
+                          + (f" · {tavoli[a['id']][1]}" if a["id"] in tavoli else "") for a in nel]
             fuori = [a for a in acc if self._k_turno(a["orario"]) is None]
             righe += [f"{a['orario']} {a['nome']} {a['coperti']} (fuori dai turni)" for a in fuori]
+            if tavoli:
+                righe.append("Tavoli indicativi: possono ancora cambiare fino alla piantina della serata.")
             return "\n".join(righe)
         righe += [f"{a['orario']} {a['nome']} {a['coperti']}" + (f" ({a['note']})" if a.get("note") else "") for a in acc]
         return "\n".join(righe)
+
+    def _tavoli_attuali(self, stato: dict) -> dict[str, tuple]:
+        """Sala vera: a che tavolo siede ognuno, nella disposizione migliore trovata in pochi secondi partendo
+        dall'ultimo piano registrato (id -> (chiave d'ordine, "tavolo 12" / "tavolo 5, quadrato 1"))."""
+        if not stato["accettate"]:
+            return {}
+        pren = [{"id": a["id"], "nome": a["nome"], "coperti": a["coperti"], "orario": a["orario"]}
+                for a in stato["accettate"]]
+        ist = costruisci_istanza(self.sala, {"serata": stato["data"], "prenotazioni": pren})
+        voci = [_Voce(p, [(0, ist.a_passi(p.orario_min))], True) for p in ist.prenotazioni]
+        mod = _costruisci(ist, voci, self.cfg["disposizione"])
+        hint = self._piano_salvato(stato["data"])
+        _, piano, _ = _risolvi_modello(mod, float(_cfg_solver(ist, "tempo_riepilogo_s", 3)), 8, 42, False, hint=hint)
+        if piano is None:
+            return {}
+        _, assegnazioni, _ = _estrai(ist, mod, piano)
+        ordine = {str(t["id"]): n for n, t in enumerate(ist.piantina.tavoli)}
+        out = {}
+        for r in assegnazioni:
+            t = ist.piantina.per_id[r["tavolo"]]
+            dove = f"tavolo {r['tavolo']}"
+            if r.get("quadrati") and r["quadrati"] != [0, int(t["moduli"]) - 1]:
+                a, b = r["quadrati"]
+                dove += f", quadrato {a + 1}" if a == b else f", quadrati {a + 1}-{b + 1}"
+            out[r["id"]] = ((ordine[r["tavolo"]], (r["quadrati"] or [0])[0], r.get("gruppo") or 0), dove)
+        return out
 
     # ------------------------------------------------------------------ modifica e annullamento
     def _cerca_e_esegui(self, azione: str, lett: Lettura) -> tuple[str, date | None]:
@@ -820,7 +852,8 @@ class _Conversazione:
             stato["accettate"] = [x for x in stato["accettate"] if x["id"] != id_pren]
             stato["annullate"].append({**a, "annullata_il": self.ora.isoformat(timespec="seconds")})
             self._nuova_versione(stato)
-            return f"✗ Annullata {a['nome']} · {etichetta_data(d)} · {a['orario']}", d
+            quando = self._turno(a["orario"]) if self.turni else a["orario"]
+            return f"✗ Annullata {a['nome']} · {etichetta_data(d)} · {quando}", d
         nuovi_coperti = lett.coperti or a["coperti"]
         nuovo_orario = lett.orario or a["orario"]
         if lett.data and lett.data != d:

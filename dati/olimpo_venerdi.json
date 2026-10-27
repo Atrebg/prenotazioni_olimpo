@@ -1,0 +1,254 @@
+{
+ "serata": "Venerdì 30/10/2026 all'Olimpo (prova: serata normale, 35 prenotazioni)",
+ "prenotazioni": [
+  {
+   "id": "O21",
+   "nome": "Galli",
+   "coperti": 2,
+   "orario": "20:00",
+   "prenotata_il": "2026-10-25T09:48"
+  },
+  {
+   "id": "O32",
+   "nome": "Pellegrino",
+   "coperti": 2,
+   "orario": "21:30",
+   "prenotata_il": "2026-10-25T17:22"
+  },
+  {
+   "id": "O13",
+   "nome": "Pellegrini",
+   "coperti": 10,
+   "orario": "20:00",
+   "prenotata_il": "2026-10-25T20:30"
+  },
+  {
+   "id": "O08",
+   "nome": "Coppola",
+   "coperti": 4,
+   "orario": "21:15",
+   "prenotata_il": "2026-10-25T21:48"
+  },
+  {
+   "id": "O09",
+   "nome": "Conti",
+   "coperti": 2,
+   "orario": "20:45",
+   "prenotata_il": "2026-10-26T09:00"
+  },
+  {
+   "id": "O35",
+   "nome": "Cattaneo",
+   "coperti": 6,
+   "orario": "19:45",
+   "prenotata_il": "2026-10-26T09:07"
+  },
+  {
+   "id": "O18",
+   "nome": "Santoro",
+   "coperti": 2,
+   "orario": "22:00",
+   "prenotata_il": "2026-10-26T13:15"
+  },
+  {
+   "id": "O34",
+   "nome": "Barone",
+   "coperti": 4,
+   "orario": "20:00",
+   "prenotata_il": "2026-10-26T18:22"
+  },
+  {
+   "id": "O16",
+   "nome": "Longo",
+   "coperti": 5,
+   "orario": "20:45",
+   "prenotata_il": "2026-10-27T10:30"
+  },
+  {
+   "id": "O02",
+   "nome": "Bianchi",
+   "coperti": 4,
+   "orario": "20:00",
+   "prenotata_il": "2026-10-27T11:15"
+  },
+  {
+   "id": "O11",
+   "nome": "Gentile",
+   "coperti": 8,
+   "orario": "20:00",
+   "prenotata_il": "2026-10-27T12:07"
+  },
+  {
+   "id": "O27",
+   "nome": "Rossi",
+   "coperti": 2,
+   "orario": "21:45",
+   "prenotata_il": "2026-10-27T12:41"
+  },
+  {
+   "id": "O10",
+   "nome": "Villa",
+   "coperti": 2,
+   "orario": "21:15",
+   "prenotata_il": "2026-10-27T13:48"
+  },
+  {
+   "id": "O07",
+   "nome": "Messina",
+   "coperti": 2,
+   "orario": "21:30",
+   "prenotata_il": "2026-10-27T15:00"
+  },
+  {
+   "id": "O05",
+   "nome": "Giuliani",
+   "coperti": 4,
+   "orario": "20:15",
+   "prenotata_il": "2026-10-27T15:30"
+  },
+  {
+   "id": "O25",
+   "nome": "Giordano",
+   "coperti": 2,
+   "orario": "22:00",
+   "prenotata_il": "2026-10-28T10:48"
+  },
+  {
+   "id": "O14",
+   "nome": "Palumbo",
+   "coperti": 2,
+   "orario": "20:15",
+   "prenotata_il": "2026-10-28T13:41"
+  },
+  {
+   "id": "O04",
+   "nome": "Greco",
+   "coperti": 3,
+   "orario": "22:00",
+   "prenotata_il": "2026-10-28T16:15"
+  },
+  {
+   "id": "O33",
+   "nome": "Russo",
+   "coperti": 2,
+   "orario": "20:15",
+   "prenotata_il": "2026-10-28T16:15"
+  },
+  {
+   "id": "O17",
+   "nome": "Valentini",
+   "coperti": 5,
+   "orario": "21:15",
+   "prenotata_il": "2026-10-28T21:07",
+   "note": "allergia alle noci"
+  },
+  {
+   "id": "O19",
+   "nome": "Vitale",
+   "coperti": 4,
+   "orario": "20:00",
+   "prenotata_il": "2026-10-29T13:30",
+   "note": "anniversario"
+  },
+  {
+   "id": "O03",
+   "nome": "Ferri",
+   "coperti": 3,
+   "orario": "20:15",
+   "prenotata_il": "2026-10-29T13:41"
+  },
+  {
+   "id": "O24",
+   "nome": "Bruno",
+   "coperti": 2,
+   "orario": "19:45",
+   "prenotata_il": "2026-10-29T14:22"
+  },
+  {
+   "id": "O30",
+   "nome": "Costa",
+   "coperti": 4,
+   "orario": "21:00",
+   "prenotata_il": "2026-10-29T18:07"
+  },
+  {
+   "id": "O28",
+   "nome": "Parisi",
+   "coperti": 4,
+   "orario": "21:15",
+   "prenotata_il": "2026-10-29T18:30"
+  },
+  {
+   "id": "O31",
+   "nome": "De Luca",
+   "coperti": 4,
+   "orario": "20:30",
+   "prenotata_il": "2026-10-29T18:30"
+  },
+  {
+   "id": "O12",
+   "nome": "Mazza",
+   "coperti": 6,
+   "orario": "20:00",
+   "prenotata_il": "2026-10-29T19:22"
+  },
+  {
+   "id": "O22",
+   "nome": "Fabbri",
+   "coperti": 2,
+   "orario": "20:45",
+   "prenotata_il": "2026-10-30T09:00"
+  },
+  {
+   "id": "O26",
+   "nome": "Gatti",
+   "coperti": 2,
+   "orario": "21:30",
+   "prenotata_il": "2026-10-30T11:22"
+  },
+  {
+   "id": "O20",
+   "nome": "Ferrara",
+   "coperti": 3,
+   "orario": "20:00",
+   "prenotata_il": "2026-10-30T13:30"
+  },
+  {
+   "id": "O01",
+   "nome": "Barbieri",
+   "coperti": 4,
+   "orario": "21:15",
+   "prenotata_il": "2026-10-30T13:41"
+  },
+  {
+   "id": "O29",
+   "nome": "Serra",
+   "coperti": 4,
+   "orario": "19:30",
+   "prenotata_il": "2026-10-30T14:30"
+  },
+  {
+   "id": "O15",
+   "nome": "D'Angelo",
+   "coperti": 2,
+   "orario": "21:30",
+   "prenotata_il": "2026-10-30T15:22",
+   "note": "anniversario"
+  },
+  {
+   "id": "O06",
+   "nome": "Lombardi",
+   "coperti": 2,
+   "orario": "21:30",
+   "prenotata_il": "2026-10-30T16:30"
+  },
+  {
+   "id": "O23",
+   "nome": "Testa",
+   "coperti": 2,
+   "orario": "20:00",
+   "prenotata_il": "2026-10-30T16:30",
+   "note": "seggiolone"
+  }
+ ]
+}

@@ -572,4 +572,8 @@ def genera_html(sala: dict, prenotazioni: dict, sol: dict) -> str:
 
 def scrivi_html(sala: dict, prenotazioni: dict, sol: dict, percorso: str | Path) -> None:
     Path(percorso).parent.mkdir(parents=True, exist_ok=True)
+    if "piantina" in sala:          # sala vera: mappa dalla piantina (mappa_piantina.py)
+        from .mappa_piantina import genera_html as genera_piantina
+        Path(percorso).write_text(genera_piantina(sala, prenotazioni, sol), encoding="utf-8")
+        return
     Path(percorso).write_text(genera_html(sala, prenotazioni, sol), encoding="utf-8")

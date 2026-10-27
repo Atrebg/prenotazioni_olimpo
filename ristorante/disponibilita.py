@@ -55,6 +55,9 @@ def classi_coperti(ist) -> list[Classe]:
     forme = list(ist.forme_moduli) + ([ist.forma_tondo] if ist.forma_tondo is not None else [])
     chiavi = []
     for c in range(1, ist.capienza_massima + 1):
+        if ist.piantina is not None:     # sala vera: contano solo le capacità reali dei tavoli e dei pezzi
+            chiavi.append((c, 0, frozenset(x for x in ist.piantina.capacita() if x >= c)))
+            continue
         chiavi.append((c, 0 if ist.turni else ist.durata_min(c), frozenset(f.nome for f in forme if f.capienza >= c)))
     classi = []
     for (durata, fs), gruppo in itertools.groupby(chiavi, key=lambda k: (k[1], k[2])):
@@ -599,10 +602,14 @@ class Disponibilita:
         self.disposizione = sala.get("chat", {}).get("disposizione", "fissa")
         ist0, _, _ = istanza(sala, "2000-01-01", [], 2, sala["servizio"]["inizio"])
         self.classi = classi_coperti(ist0)
-        self.geo = Geometria(cartella_geometria or Path(__file__).resolve().parent.parent / "dati" / "cache", sala,
-                             soglie_capienza(self.classi))
         self.geo_pronta = threading.Event()
-        self._avvia_geometria()
+        if "piantina" in sala:          # sala vera: tavoli fermi, niente limite geometrico da calcolare
+            self.geo = None
+            self.geo_pronta.set()
+        else:
+            self.geo = Geometria(cartella_geometria or Path(__file__).resolve().parent.parent / "dati" / "cache", sala,
+                                 soglie_capienza(self.classi))
+            self._avvia_geometria()
 
     def _avvia_geometria(self) -> None:
         """Limiti geometrici mancanti: calcolati una volta per sala, in background (poi restano su file)."""
@@ -697,7 +704,7 @@ class Disponibilita:
             self._dom = dom
             base = {"sala": self.sala, "data": data_iso, "versione": versione, "accettate": accettate,
                     "disposizione": self.disposizione, "tempo_s": self.tempo_cella_s, "hint": hint,
-                    "max_tavoli": self.geo.limite(tuple([0] * len(self.geo.soglie)))}
+                    "max_tavoli": self.geo.limite(tuple([0] * len(self.geo.soglie))) if self.geo else None}
             if tab.da_fare == 0:
                 tab.t_fine = time.perf_counter()
                 self._scrivi(tab)
@@ -869,7 +876,7 @@ class Disponibilita:
         base = {"sala": self.sala, "data": data_iso, "versione": versione, "accettate": stato["accettate"],
                 "escludi": escludi, "disposizione": self.disposizione, "tempo_s": self.tempo_urgente_s,
                 "hint": hint, "coperti": coperti, "orario": orario, "token": token,
-                "max_tavoli": self.geo.limite(tuple([0] * len(self.geo.soglie)))}
+                "max_tavoli": self.geo.limite(tuple([0] * len(self.geo.soglie))) if self.geo else None}
         if self.worker_urgenti:
             base["worker"] = self.worker_urgenti
         attese = [o for o in tutti if esito_di(o) is None]

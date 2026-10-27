@@ -9,7 +9,8 @@ Convenzioni:
   `passo_orari_min` (15 min) contati dall'apertura del servizio;
 - modalità a turni (`turni` nella sala): ogni prenotazione occupa il tavolo per tutto il suo turno, durate e
   riapparecchiatura non contano, l'orario chiesto va nel turno più vicino (a parità: `turno_a_parita`) oppure nel
-  turno chiesto esplicitamente (campo `turno` della prenotazione).
+  turno chiesto esplicitamente (campo `turno` della prenotazione);
+- sala vera dalla piantina (`piantina` nella sala, vedi `piantina.py`): niente geometria, i tavoli sono quelli disegnati.
 """
 from __future__ import annotations
 
@@ -129,6 +130,7 @@ class Istanza:
     proposta_a_parita: str = "prima"        # a parità di distanza: "prima" | "dopo"
     turni: list[Turno] = field(default_factory=list)    # vuota = orari liberi (modalità classica)
     turno_a_parita: str = "prima"           # orario a metà tra due turni: "prima" (il turno prima) | "dopo"
+    piantina: object = None                 # sala vera: piantina.Piantina (tavoli fermi, niente geometria)
     turni_vicino_min: int = 45              # chat: oltre questa distanza dal turno più vicino si chiede conferma
 
     # ---- turni -------------------------------------------------------------------
@@ -222,6 +224,8 @@ class Istanza:
     # ---- capienze ------------------------------------------------------------------
     @property
     def capienza_massima(self) -> int:
+        if self.piantina is not None:
+            return self.piantina.capienza_massima
         caps = [f.capienza for f in self.forme_moduli]
         if self.forma_tondo is not None:
             caps.append(self.forma_tondo.capienza)
@@ -335,6 +339,21 @@ def posizioni_libere(lg: int, hg: int, W: int, H: int, fissi: list[Rettangolo]) 
 
 
 def costruisci_istanza(sala: dict, serata: dict) -> Istanza:
+    if "piantina" in sala:
+        from .piantina import Piantina
+        piantina = Piantina(sala["piantina"])
+        g, W, H, margine, fissi_g, fissi_disgiunti, forme, posizioni = 1, 0, 0, 0, [], [], [], {}
+        n_moduli, n_tondi, forma_tondo = 0, 0, None
+        if not sala.get("turni"):
+            raise ErroreDati("la sala vera lavora a turni: mancano i turni")
+    else:
+        piantina = None
+        g, W, H, margine, fissi_g, fissi_disgiunti, forme, posizioni, n_moduli, n_tondi, forma_tondo = _geometria(sala)
+    return _istanza(sala, serata, piantina, g, W, H, margine, fissi_g, fissi_disgiunti, forme, posizioni, n_moduli,
+                    n_tondi, forma_tondo)
+
+
+def _geometria(sala: dict):
     g = int(sala.get("griglia_cm", 10))
     if g <= 0:
         raise ErroreDati("griglia_cm deve essere positiva")
@@ -381,7 +400,11 @@ def costruisci_istanza(sala: dict, serata: dict) -> Istanza:
         if xs:
             forma_tondo = ft
             posizioni[ft.nome] = (xs, ys)
+    return g, W, H, margine, fissi_g, fissi_disgiunti, forme, posizioni, n_moduli, n_tondi, forma_tondo
 
+
+def _istanza(sala, serata, piantina, g, W, H, margine, fissi_g, fissi_disgiunti, forme, posizioni, n_moduli, n_tondi,
+             forma_tondo) -> Istanza:
     passo = int(sala.get("passo_orari_min", 15))
     inizio = hhmm_a_min(sala["servizio"]["inizio"])
     fine = hhmm_a_min(sala["servizio"]["fine"])
@@ -461,6 +484,7 @@ def costruisci_istanza(sala: dict, serata: dict) -> Istanza:
         slot_variabile_moduli=slot_var_mod, slot_variabile_tondi=slot_var_tondi,
         cliente_accetta_proposta=politica, proposta_max_distanza_min=prop_max, proposta_a_parita=a_parita,
         turni=turni, turno_a_parita=t_parita, turni_vicino_min=int(sala.get("turni_vicino_min", 45)),
+        piantina=piantina,
     )
 
 
@@ -495,4 +519,5 @@ def leggi_json(percorso: str | Path) -> dict:
 
 
 def carica(percorso_sala: str | Path, percorso_prenotazioni: str | Path) -> Istanza:
-    return costruisci_istanza(leggi_json(percorso_sala), leggi_json(percorso_prenotazioni))
+    from .piantina import carica_sala
+    return costruisci_istanza(carica_sala(percorso_sala), leggi_json(percorso_prenotazioni))

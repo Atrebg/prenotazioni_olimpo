@@ -83,8 +83,8 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--orario", required=True, help="HH:MM sulla griglia da 15 minuti")
     ap.add_argument("--tempo", type=float, default=None, help="limite del solver per ogni orario provato (s)")
     a = ap.parse_args(argv)
-    with open(a.sala, encoding="utf-8") as fh:
-        sala = json.load(fh)
+    from ristorante.piantina import carica_sala
+    sala = carica_sala(a.sala)
     with open(a.stato, encoding="utf-8") as fh:
         stato = json.load(fh)
     try:

@@ -5,7 +5,9 @@ controlli con geometria in centimetri e aritmetica dei minuti proprie (niente gr
 Copre la disposizione "fissa" e "variabile" (tavoli con esistenza [esiste_dal, esiste_al)), il registro
 dell'accettazione in ordine di arrivo e la modalità a turni (turni della sala; ogni prenotazione occupa il tavolo per
 tutto il suo turno, al più una per turno su ogni tavolo, turno finale = turno promesso, in "fissa" gli stessi tavoli in
-tutti i turni). Stampa PASS/FAIL per controllo con i conteggi; exit code 0 se tutto PASS.
+tutti i turni). Con la sala vera (`--sala olimpo/piantina.html`) legge da sé il blocco `id="sala"` della piantina e
+controlla tavoli, pezzi dei blocchi, tavolo lungo e turni (vedi `verifica_piantina`). Stampa PASS/FAIL per controllo con
+i conteggi; exit code 0 se tutto PASS.
 
 Limite dichiarato: il verificatore controlla che la soluzione sia AMMISSIBILE e coerente; non può dimostrare
 che un rifiuto fosse inevitabile né che la piantina sia ottima.
@@ -18,6 +20,7 @@ from __future__ import annotations
 import argparse
 import json
 import sys
+from html.parser import HTMLParser
 from dataclasses import dataclass, field
 from datetime import datetime
 
@@ -31,6 +34,42 @@ M_PROPOSTA_RIFIUTATA = "proposta non accettata dal cliente"
 M_TURNO_PIENO = "turno pieno, con le prenotazioni già accettate"
 M_TURNI_PIENI = "tutti i turni pieni, con le prenotazioni già accettate"
 ACCETTATE = ("accettata", "accettata su proposta")
+LUNGO_DUE_GRUPPI = 8           # tavolo lungo: "un gruppo fino a 20 oppure due gruppi fino a 8"
+
+
+class _BloccoSala(HTMLParser):
+    def __init__(self):
+        super().__init__(convert_charrefs=True)
+        self.dentro, self.testo, self.n = False, [], 0
+
+    def handle_starttag(self, tag, attrs):
+        if tag == "script" and dict(attrs).get("id") == "sala":
+            self.dentro, self.n = True, self.n + 1
+
+    def handle_endtag(self, tag):
+        if tag == "script":
+            self.dentro = False
+
+    def handle_data(self, data):
+        if self.dentro:
+            self.testo.append(data)
+
+
+def leggi_sala(percorso: str) -> dict:
+    """La sala: JSON, oppure il blocco <script id="sala"> di una piantina .html (letto qui, senza il motore)."""
+    with open(percorso, encoding="utf-8") as fh:
+        testo = fh.read()
+    if not percorso.lower().endswith((".html", ".htm")):
+        return json.loads(testo)
+    b = _BloccoSala()
+    b.feed(testo)
+    if b.n != 1:
+        raise ValueError(f"{percorso}: atteso un blocco <script id=\"sala\">, trovati {b.n}")
+    return json.loads("".join(b.testo))
+
+
+def _e_piantina(sala: dict) -> bool:
+    return "inventario" not in sala and isinstance(sala.get("tavoli"), list)
 
 
 def _turni(sala: dict) -> list[tuple[str, int, int]]:
@@ -142,6 +181,8 @@ def _capienza_massima_possibile(sala: dict) -> int:
 # --------------------------------------------------------------------------- verifica
 
 def verifica(sala: dict, prenotazioni: dict, sol: dict) -> list[Esito]:
+    if _e_piantina(sala):
+        return verifica_piantina(sala, prenotazioni, sol)
     esiti: list[Esito] = []
     margine = sala["margine_sedie_cm"]
     W, H = sala["larghezza_cm"], sala["altezza_cm"]
@@ -487,6 +528,16 @@ def verifica(sala: dict, prenotazioni: dict, sol: dict) -> list[Esito]:
     e.dettaglio = f"totale ricalcolato {totale} (" + ", ".join(f"{k} {v}" for k, v in atteso.items()) + ")"
     esiti.append(e)
 
+    esiti += _controlli_registro(sol, sala, registro, in_ordine, input_pr, ass, nons, a_turni, turni, t_parita,
+                                 ammessi, prop_max, inizio, passo, fine)
+    return esiti
+
+
+def _controlli_registro(sol, sala, registro, in_ordine, input_pr, ass, nons, a_turni, turni, t_parita, ammessi,
+                        prop_max, inizio, passo, fine) -> list[Esito]:
+    """Registro dell'accettazione in ordine di arrivo: ordine, orari/turni promessi, coerenza con sedute e rifiuti,
+    proposte e politica del cliente."""
+    esiti: list[Esito] = []
     # 16-18. registro dell'accettazione in ordine di arrivo
     if in_ordine:
         reg = registro or []
@@ -622,6 +673,200 @@ def verifica(sala: dict, prenotazioni: dict, sol: dict) -> list[Esito]:
         e.dettaglio = (f"{sum(r.get('esito') == 'accettata su proposta' for r in reg)} accettate su proposta, "
                        f"{sum(r.get('motivo') == M_PROPOSTA_RIFIUTATA for r in reg)} proposte rifiutate dal cliente")
         esiti.append(e)
+    return esiti
+
+
+def _posti_pezzo(t: dict, a: int, b: int, separato: int) -> int:
+    k = int(t["moduli"])
+    if (a, b) == (0, k - 1):
+        return int(t["posti"])
+    j = b - a + 1
+    return 2 * j + 2 if j >= 2 else separato
+
+
+def verifica_piantina(dati: dict, prenotazioni: dict, sol: dict) -> list[Esito]:
+    """Sala vera dalla piantina: tavoli fermi; per turno, ogni prenotazione su un tavolo o su un pezzo contiguo di un
+    blocco; il lungo con un gruppo fino ai suoi posti o due gruppi fino a 8; mai due prenotazioni sullo stesso quadrato
+    nello stesso turno; turni e registro come nella modalità a turni."""
+    esiti: list[Esito] = []
+    modalita = sol.get("modalita", {})
+    ass, nons, registro = sol.get("assegnazioni", []), sol.get("non_sistemate", []), sol.get("registro")
+    in_ordine = modalita.get("accettazione") == "ordine_di_arrivo" or registro is not None
+    input_pr = {p["id"]: p for p in prenotazioni["prenotazioni"]}
+    su_proposta = {r["id"] for r in (registro or []) if r.get("esito") == "accettata su proposta"}
+    piantina = {str(t["id"]): t for t in dati["tavoli"]}
+    separato = int(dati.get("posti_quadrato_separato", 4))
+    turni = [(str(t["nome"]), _min(t["inizio"]), _min(t["fine"])) for t in modalita.get("turni") or []]
+    per_nome = {t[0]: t for t in turni}
+    t_parita = modalita.get("turno_a_parita", "prima")
+
+    e = Esito("turni (quelli della piantina, consecutivi)")
+    inizi = [_min(x) for x in dati.get("turni") or []]
+    if [t[1] for t in turni] != inizi:
+        e.errore(f"inizi dei turni dichiarati {[_hhmm(t[1]) for t in turni]} diversi dalla piantina {dati.get('turni')}")
+    for (n1, a1, b1), (n2, a2, b2) in zip(turni, turni[1:]):
+        if b1 != a2:
+            e.errore(f"il turno {n1} finisce alle {_hhmm(b1)}, il {n2} comincia alle {_hhmm(a2)}")
+    for n, a, b in turni:
+        if b <= a:
+            e.errore(f"turno {n}: fine {_hhmm(b)} non dopo l'inizio {_hhmm(a)}")
+    e.dettaglio = ", ".join(f"{n} {_hhmm(a)}-{_hhmm(b)}" for n, a, b in turni)
+    esiti.append(e)
+
+    e = Esito("tavoli uguali a quelli della piantina")
+    sol_tav = {str(t["id"]): t for t in sol.get("tavoli", [])}
+    if set(sol_tav) != set(piantina):
+        e.errore(f"tavoli diversi: in più {sorted(set(sol_tav) - set(piantina))}, mancano {sorted(set(piantina) - set(sol_tav))}")
+    for tid, t in sol_tav.items():
+        q = piantina.get(tid)
+        if q is not None and (t.get("tipo"), t.get("posti")) != (q["tipo"], q["posti"]):
+            e.errore(f"{tid}: {t.get('tipo')} da {t.get('posti')} invece di {q['tipo']} da {q['posti']}")
+    for r in ass:
+        if str(r.get("tavolo")) not in piantina:
+            e.errore(f"{r['id']}: tavolo {r.get('tavolo')!r} inesistente")
+    e.dettaglio = f"{len(piantina)} tavoli, {sum(int(t['posti']) for t in piantina.values())} posti per turno"
+    esiti.append(e)
+
+    e = Esito("ogni prenotazione presente esattamente una volta")
+    conteggio: dict[str, int] = {}
+    for r in ass + nons:
+        conteggio[r["id"]] = conteggio.get(r["id"], 0) + 1
+    for pid, n in conteggio.items():
+        if pid not in input_pr:
+            e.errore(f"{pid}: non è tra le prenotazioni in ingresso")
+        elif n != 1:
+            e.errore(f"{pid}: compare {n} volte")
+    for pid, p in input_pr.items():
+        if pid not in conteggio:
+            e.errore(f"{pid}: manca (né seduta né non sistemata)")
+    for r in ass + nons:
+        p = input_pr.get(r["id"])
+        if p is not None and (r["coperti"] != p["coperti"] or r["nome"] != p["nome"]
+                              or _min(r["orario_richiesto"]) != _min(p["orario"])):
+            e.errore(f"{r['id']}: nome/coperti/orario richiesto diversi dall'ingresso")
+    e.dettaglio = f"{len(input_pr)} in ingresso = {len(ass)} sedute + {len(nons)} non sistemate"
+    esiti.append(e)
+
+    e = Esito("partizioni dei blocchi contigue, per turno")
+    n_div = 0
+    for tid, q in piantina.items():
+        if q["tipo"] != "blocco":
+            continue
+        k = int(q["moduli"])
+        part = (sol_tav.get(tid) or {}).get("partizioni") or {}
+        for n, _, _ in turni:
+            pezzi = sorted(tuple(x) for x in part.get(n, [[0, k - 1]]))
+            atteso = 0
+            for a, b in pezzi:
+                if a != atteso or b < a:
+                    e.errore(f"{tid} nel turno {n}: pezzi {pezzi} non contigui o non coprono i {k} quadrati")
+                    break
+                atteso = b + 1
+            if atteso != k:
+                e.errore(f"{tid} nel turno {n}: pezzi {pezzi} non coprono i {k} quadrati")
+            if len(pezzi) > 1 and not q.get("separabile"):
+                e.errore(f"{tid}: diviso nel turno {n} ma non è separabile")
+            n_div += len(pezzi) - 1
+    e.dettaglio = f"{n_div} divisioni in tutto"
+    esiti.append(e)
+
+    e = Esito("posti: ogni prenotazione su un tavolo o pezzo del suo turno, coperti <= posti")
+    occupati: dict[tuple, str] = {}            # (tavolo, turno, quadrato | "t" | gruppo) -> prenotazione
+    lungo: dict[tuple, list] = {}
+    vuoti = 0
+    for r in ass:
+        q = piantina.get(str(r.get("tavolo")))
+        if q is None or r.get("turno") not in per_nome:
+            continue
+        tid, n = str(q["id"]), r["turno"]
+        if q["tipo"] == "blocco":
+            qq = r.get("quadrati")
+            k = int(q["moduli"])
+            pezzi = [tuple(x) for x in ((sol_tav.get(tid) or {}).get("partizioni") or {}).get(n, [[0, k - 1]])]
+            if not qq or tuple(qq) not in pezzi:
+                e.errore(f"{r['id']}: quadrati {qq} di {tid} non sono un pezzo della partizione del turno {n} {pezzi}")
+                continue
+            posti = _posti_pezzo(q, qq[0], qq[1], separato)
+            chiavi = [(tid, n, x) for x in range(qq[0], qq[1] + 1)]
+        elif q["tipo"] == "lungo":
+            g = r.get("gruppo")
+            if g not in (1, 2):
+                e.errore(f"{r['id']}: sul lungo {tid} senza gruppo 1 o 2")
+                continue
+            posti = int(q["posti"]) if g == 1 else min(LUNGO_DUE_GRUPPI, int(q["posti"]))
+            chiavi = [(tid, n, f"g{g}")]
+            lungo.setdefault((tid, n), []).append(r)
+        else:
+            if r.get("quadrati") or r.get("gruppo"):
+                e.errore(f"{r['id']}: {tid} è un tavolo semplice ma ha quadrati/gruppo")
+            posti = int(q["posti"])
+            chiavi = [(tid, n, "t")]
+        if r.get("posti_tavolo") != posti:
+            e.errore(f"{r['id']}: posti_tavolo {r.get('posti_tavolo')} invece di {posti}")
+        if r["coperti"] > posti:
+            e.errore(f"{r['id']}: {r['coperti']} coperti su {posti} posti ({tid})")
+        vuoti += posti - r["coperti"] if q["tipo"] != "lungo" else 0
+        for c in chiavi:
+            if c in occupati:
+                e.errore(f"{tid} nel turno {n}: {occupati[c]} e {r['id']} sullo stesso posto ({c[2]})")
+            occupati[c] = r["id"]
+    e.dettaglio = f"{len(ass)} assegnazioni"
+    esiti.append(e)
+
+    e = Esito("tavolo lungo: un gruppo fino ai suoi posti, oppure due gruppi fino a 8")
+    for (tid, n), lst in lungo.items():
+        vuoti += int(piantina[tid]["posti"]) - sum(r["coperti"] for r in lst)    # il lungo: posti meno tutti i seduti
+        if any(r.get("gruppo") == 2 for r in lst) and not any(r.get("gruppo") == 1 for r in lst):
+            e.errore(f"{tid} nel turno {n}: c'è il secondo gruppo senza il primo")
+        if len(lst) > 2:
+            e.errore(f"{tid} nel turno {n}: {len(lst)} gruppi")
+        if len(lst) == 2 and any(r["coperti"] > LUNGO_DUE_GRUPPI for r in lst):
+            e.errore(f"{tid} nel turno {n}: due gruppi ma uno supera {LUNGO_DUE_GRUPPI} ({[r['coperti'] for r in lst]})")
+    e.dettaglio = " · ".join(f"{n}: " + " + ".join(str(r["coperti"]) for r in lst) for (_, n), lst in sorted(lungo.items())) or "non usato"
+    esiti.append(e)
+
+    tutto = {tid: (turni[0][1], turni[-1][2]) for tid in piantina} if turni else {}
+    esiti.append(_controlli_turni(ass, input_pr, su_proposta, turni, per_nome, t_parita, tutto)[0])
+
+    e = Esito("motivi delle non sistemate coerenti")
+    capmax = max([int(t["posti"]) for t in piantina.values()] + [0])
+    pol, _ = _politica(sol, dati)
+    for r in nons:
+        mot = r.get("motivo", "")
+        if r["coperti"] > capmax:
+            attesi = {M_TROPPO_GRANDE}
+        elif not in_ordine:
+            attesi = {M_SALA_PIENA}
+        elif pol == "mai":
+            attesi = {M_TURNO_PIENO, M_TEMPO}
+        else:
+            attesi = {M_TURNI_PIENI, M_TEMPO} | ({M_PROPOSTA_RIFIUTATA} if pol == "entro" else set())
+        if mot not in attesi:
+            e.errore(f"{r['id']}: motivo {mot!r}, atteso uno tra {sorted(attesi)}")
+    e.dettaglio = f"{len(nons)} non sistemate, capienza massima {capmax}"
+    esiti.append(e)
+
+    e = Esito("componenti dell'obiettivo ricalcolate (posti vuoti, divisioni, cambi di partizione)")
+    comp = sol.get("obiettivo_componenti", {})
+    nomi = [t[0] for t in turni]
+    cambi = sum(1 for t in sol.get("tavoli", []) if t.get("partizioni")
+                for a, b in zip(nomi, nomi[1:])
+                if sorted(map(tuple, t["partizioni"].get(a, []))) != sorted(map(tuple, t["partizioni"].get(b, []))))
+    for chiave, campo, valore in (("non_sistemate", "numero", len(nons)), ("posti_vuoti", "posti", vuoti),
+                                  ("divisioni_blocchi", "numero", n_div), ("riallestimenti", "numero", cambi)):
+        if comp.get(chiave, {}).get(campo) != valore:
+            e.errore(f"{chiave}: riportato {comp.get(chiave, {}).get(campo)}, ricalcolato {valore}")
+    totale = sum(v.get("costo", 0) for k, v in comp.items() if isinstance(v, dict))
+    if comp.get("totale") != totale:
+        e.errore(f"totale {comp.get('totale')} diverso dalla somma dei costi {totale}")
+    ob = sol.get("solver", {}).get("obiettivo")
+    if ob is not None and sol.get("solver", {}).get("origine", "solver") == "solver" and ob != comp.get("totale"):
+        e.errore(f"obiettivo del solver {ob} diverso dal totale {comp.get('totale')}")
+    e.dettaglio = f"posti vuoti {vuoti}, divisioni {n_div}, cambi di partizione {cambi}, totale {comp.get('totale')}"
+    esiti.append(e)
+
+    esiti += _controlli_registro(sol, dati, registro, in_ordine, input_pr, ass, nons, True, turni, t_parita,
+                                 set(), 0, 0, 1, 24 * 60)
     return esiti
 
 
@@ -806,7 +1051,7 @@ def stampa(esiti: list[Esito], sol: dict, out=sys.stdout, sala: dict | None = No
     if sol.get("non_sistemate"):
         print("INFO  il verificatore controlla l'ammissibilità e la coerenza dei motivi, ma in generale non può "
               "dimostrare che un rifiuto fosse inevitabile", file=out)
-        if sol.get("registro") and sala is not None and prenotazioni is not None:
+        if sol.get("registro") and sala is not None and prenotazioni is not None and not _e_piantina(sala):
             dim, n = rifiuti_inevitabili_per_inventario(sala, prenotazioni, sol)
             print(f"INFO  rifiuti per sala piena dimostrati inevitabili dal solo conteggio dei moduli (in qualunque "
                   f"disposizione): {len(dim)}/{n}" + (f" ({', '.join(dim)})" if dim else "")
@@ -825,8 +1070,7 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--prenotazioni", required=True)
     ap.add_argument("--soluzione", required=True)
     a = ap.parse_args(argv)
-    with open(a.sala, encoding="utf-8") as fh:
-        sala = json.load(fh)
+    sala = leggi_sala(a.sala)
     with open(a.prenotazioni, encoding="utf-8") as fh:
         pren = json.load(fh)
     with open(a.soluzione, encoding="utf-8") as fh:

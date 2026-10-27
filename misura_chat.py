@@ -13,6 +13,10 @@ Uso:
 A turni lo stato iniziale sono le 21 prenotazioni accettate entro venerdì 30/10 alle 16:00 nel replay in ordine di
 arrivo (turni, disposizione fissa, politica "mai": out/confronto_turni/fissa_mai, prodotto da confronto.py): il primo
 turno ha 8 prenotazioni, il secondo 13 ed è pieno.
+
+Sala vera dell'Olimpo (`--olimpo`, olimpo/piantina.html): stato = le prenotazioni del sabato di prova
+(dati/olimpo_sabato.json) accettate entro venerdì 30/10 a mezzanotte nel replay in ordine di arrivo con la politica
+"sempre" (out/confronto_olimpo/fissa_sempre, prodotto da confronto.py): primo turno pieno, secondo con posto.
 """
 from __future__ import annotations
 
@@ -56,6 +60,20 @@ COPIONE_TURNI = [
 ]
 
 
+COPIONE_OLIMPO = [
+    "annulla Ricci sab",          # libera il tavolo lungo nel primo turno
+    "Marini 10 sab 21:45",        # rifiutata nel replay: secondo turno pieno per 10, ora si propone il primo
+    "ok",                         # conferma della proposta
+    "Neri 4 sab 20:00",           # posto libero nel primo turno (liberato da Ricci)
+    "Moro 2 sab 1t",              # posto libero
+    "Lupi 3 sab 20:30",           # primo turno pieno: proposta del secondo
+    "Verdi 5 sab 19:45",          # primo turno pieno: proposta
+    "Pace 2 sab 2t",              # posto libero nel secondo turno
+    "Esposti 4 sab 20:15",        # primo turno pieno: proposta
+    "riepilogo sab",              # riepilogo per turno, con i tavoli
+]
+
+
 class SenzaLLM:
     """Il copione è tutto in formato compatto: l'LLM non serve (e non va chiamato)."""
     disponibile = False
@@ -75,12 +93,13 @@ def stato_iniziale(cartella: Path) -> None:
     scrivi_json_atomico(cartella / "2026-10-31.json", st)
 
 
-def stato_iniziale_turni(cartella: Path) -> None:
+def stato_iniziale_turni(cartella: Path, sorgente: Path = RADICE / "out" / "confronto_turni" / "fissa_mai",
+                         limite: str = "2026-10-30T16:00") -> None:
     from ristorante.serate import scrivi_json_atomico, serata_vuota
-    sol = json.loads((RADICE / "out" / "confronto_turni" / "fissa_mai" / "soluzione.json").read_text(encoding="utf-8"))
+    sol = json.loads((sorgente / "soluzione.json").read_text(encoding="utf-8"))
     reg = {r["id"]: r for r in sol["registro"]}
     st = serata_vuota(date(2026, 10, 31))
-    entro = [a for a in sol["assegnazioni"] if reg[a["id"]]["prenotata_il"] < "2026-10-30T16:00"]
+    entro = [a for a in sol["assegnazioni"] if reg[a["id"]]["prenotata_il"] < limite]
     for i, a in enumerate(sorted(entro, key=lambda a: reg[a["id"]]["prenotata_il"]), 1):
         st["accettate"].append({"id": f"C20261031-{i:03d}", "nome": a["nome"], "coperti": a["coperti"],
                                 "orario": a["orario_assegnato"], "orario_richiesto": a["orario_richiesto"],
@@ -98,18 +117,26 @@ def main(argv=None) -> int:
     ap.add_argument("--worker", type=int, default=None)
     ap.add_argument("--json", default=None, help="salva le misure in questo file")
     ap.add_argument("--turni", action="store_true", help="sala a turni e copione adattato")
+    ap.add_argument("--olimpo", action="store_true", help="sala vera dell'Olimpo (piantina) e copione adattato")
     a = ap.parse_args(argv)
     t0 = time.perf_counter()
     from ristorante import conversazione
     from ristorante.dati import leggi_json
-    sala = leggi_json(RADICE / "dati" / ("sala_turni.json" if a.turni else "sala_esempio.json"))
-    copione = COPIONE_TURNI if a.turni else COPIONE
+    from ristorante.piantina import carica_sala
+    if a.olimpo:
+        sala, copione = carica_sala(RADICE / "olimpo" / "piantina.html"), COPIONE_OLIMPO
+    else:
+        sala = leggi_json(RADICE / "dati" / ("sala_turni.json" if a.turni else "sala_esempio.json"))
+        copione = COPIONE_TURNI if a.turni else COPIONE
     t_import = time.perf_counter() - t0
     disp = None
     with tempfile.TemporaryDirectory(ignore_cleanup_errors=True) as tmp:
         try:
             cartella = Path(tmp)
-            (stato_iniziale_turni if a.turni else stato_iniziale)(cartella)
+            if a.olimpo:
+                stato_iniziale_turni(cartella, RADICE / "out" / "confronto_olimpo" / "fissa_sempre", "2026-10-31T00:00")
+            else:
+                (stato_iniziale_turni if a.turni else stato_iniziale)(cartella)
             if not a.senza_tabella and hasattr(conversazione, "avvia_disponibilita"):
                 t1 = time.perf_counter()
                 disp = conversazione.avvia_disponibilita(cartella, sala, processi=a.processi, worker=a.worker,

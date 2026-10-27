@@ -9,7 +9,8 @@ Uso:
     .venv\\Scripts\\python.exe chat.py --messaggio "Rossi 4 sab 20:30"    # un colpo solo
     .venv\\Scripts\\python.exe chat.py --ora 2026-10-27T10:00             # finge l'orologio
     .venv\\Scripts\\python.exe chat.py --senza-tabella                     # senza tabella: verifica diretta
-    .venv\\Scripts\\python.exe chat.py --sala dati\\sala_turni.json            # ristorante a turni (Rossi 4 sab 1t)
+    .venv\\Scripts\\python.exe chat.py --sala olimpo\\piantina.html            # sala vera dell'Olimpo (turni, Rossi 4 sab 1t)
+    .venv\\Scripts\\python.exe chat.py --sala dati\\sala_turni.json            # sala di prova a turni
     .venv\\Scripts\\python.exe chat.py --piantina 2026-10-31              # piantina della serata + verifica
 """
 from __future__ import annotations
@@ -27,7 +28,7 @@ sys.path.insert(0, str(RADICE))
 t_import = time.perf_counter()
 from ristorante.conversazione import (avvia_disponibilita, cfg_chat, ferma_disponibilita,  # noqa: E402
                                       gestisci_messaggio, lettore_predefinito, piantina_serata)
-from ristorante.dati import leggi_json  # noqa: E402
+from ristorante.piantina import carica_sala  # noqa: E402
 T_IMPORT = time.perf_counter() - t_import
 
 
@@ -56,7 +57,7 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--processi", type=int, default=None, help="processi di calcolo della tabella")
     ap.add_argument("--worker", type=int, default=None, help="worker CP-SAT per processo")
     a = ap.parse_args(argv)
-    sala = leggi_json(a.sala)
+    sala = carica_sala(a.sala)
     if a.piantina:
         d = date.fromisoformat(a.piantina)
         sol, p_pren, p_sol = piantina_serata(a.cartella, d, sala)

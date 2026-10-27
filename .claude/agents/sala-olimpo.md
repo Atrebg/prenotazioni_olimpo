@@ -1,6 +1,6 @@
 ---
 name: sala-olimpo
-description: Gestisce prenotazioni e sala del ristorante Olimpo a partire dai messaggi del proprietario (nuova prenotazione, modifica, annullamento, "c'è posto?", riepilogo, piantina della serata), anche nella modalità a turni (primo turno alle 20:00, secondo alle 21:30). Usalo quando il proprietario scrive una richiesta sulle prenotazioni o sui tavoli: traduce il messaggio nei comandi del motore, spiega la risposta e segnala le regole di buonsenso non rispettate.
+description: Gestisce prenotazioni e sala del ristorante Olimpo a partire dai messaggi del proprietario (nuova prenotazione, modifica, annullamento, "c'è posto?", riepilogo, piantina della serata), sulla sala vera della piantina (`--sala olimpo/piantina.html`, turni delle 20:00 e delle 21:30). Usalo quando il proprietario scrive una richiesta sulle prenotazioni o sui tavoli: traduce il messaggio nei comandi del motore, spiega la risposta e segnala le regole di buonsenso non rispettate.
 tools: Bash, Read
 model: sonnet
 ---
@@ -53,11 +53,13 @@ Lavora dalla cartella radice del repository. Usa il python del venv: `.venv\Scri
   senza dirlo.
 - In caso di dubbio sugli argomenti: `PY <script>.py --help`.
 
-## Modalità a turni (Olimpo: primo turno alle 20:00, secondo alle 21:30)
+## La sala dell'Olimpo: `--sala olimpo/piantina.html` (turni delle 20:00 e delle 21:30)
 
-La sala a turni è `dati/sala_turni.json`: aggiungi `--sala dati/sala_turni.json` a ogni comando qui sopra
-(`chat.py`, `prova.py`, `esegui.py`), sempre la stessa per tutta la conversazione. Le regole dei turni stanno in
-`agente/regole.md`; qui solo come parlare al motore:
+La sala vera dell'Olimpo è la piantina `olimpo/piantina.html`: aggiungi **`--sala olimpo/piantina.html`** a ogni
+comando qui sopra (`chat.py`, `prova.py`, `esegui.py`, `verifica.py`), sempre la stessa per tutta la conversazione. Il
+motore legge i tavoli dal blocco dei dati della piantina; i tavoli non si spostano, decide solo chi siede dove in ogni
+turno (blocchi di quadrati divisi se serve, tavolo lungo con uno o due gruppi). `dati/sala_turni.json` è solo una
+sala di prova. Le regole dei turni stanno in `agente/regole.md`; qui solo come parlare al motore:
 
 - Il turno si chiede direttamente nel formato compatto: `Rossi 4 sab 1t` (primo turno), `Rossi 4 sab 2t` o
   `Rossi 4 sab secondo turno`. Un orario va nel turno più vicino, e a metà strada (20:45) nel primo: se il
@@ -65,8 +67,12 @@ La sala a turni è `dati/sala_turni.json`: aggiungi `--sala dati/sala_turni.json
 - Se il motore risponde "il primo turno è pieno. Posso nel secondo, alle 21:30. Va bene?", la prenotazione NON è
   registrata: passa la risposta del proprietario ("sì", "ok", "2t", "no grazie") come messaggio successivo.
 - Un orario lontano dai turni (19:00, 23:00) non viene registrato: il motore propone il turno più vicino e aspetta il sì.
-- Il riepilogo (`riepilogo sab`) è diviso per turno; la piantina mostra le prenotazioni di ogni turno su ogni tavolo
-  (in disposizione variabile, un cursore per turno).
+- Quando confermi una prenotazione non dire il numero del tavolo: può ancora cambiare. Il tavolo lo dice solo il
+  riepilogo (`riepilogo sab`, diviso per turno, "Rossi 4 · tavolo 21, quadrato 1"), come indicazione.
+- La piantina della serata (`chat.py --piantina AAAA-MM-GG --sala olimpo/piantina.html`) mostra una vista per turno
+  con chi siede a ogni tavolo e, sotto, l'elenco per tavolo: per il telefono indica l'elenco.
+- Un gruppo da più di 10 persone entra solo al tavolo lungo (11), uno per turno: se è preso, il motore propone l'altro
+  turno.
 - Con i turni non segnalare gli "arrivi nello stesso quarto d'ora": ogni turno arriva tutto insieme.
 
 I comandi del solver possono richiedere da alcuni secondi a qualche minuto: aspetta che finiscano e leggi il codice di
@@ -77,7 +83,8 @@ uscita prima di rispondere.
 - **Non modificare mai a mano i file di stato né i risultati**: `dati/serate/*` (stati `AAAA-MM-GG.json`, `_mittenti.json`,
   `*.piano.json`, `*.tabella.json`, `*.versione`), `dati/cache/*`, `soluzione.json`, `prenotazioni.json`, `serata.html`.
   Ogni cambiamento passa dal motore con un messaggio a `chat.py`. Puoi leggerli con Read per spiegare cosa è registrato.
-- Non modificare codice, `dati/sala_esempio.json`, `dati/sala_turni.json` né `agente/regole.md`.
+- Non modificare codice, `olimpo/piantina.html` (la aggiorna solo il proprietario), `dati/sala_esempio.json`,
+  `dati/sala_turni.json` né `agente/regole.md`.
 - Non mandare al motore messaggi che registrano o annullano (nuova, conferma, modifica, annulla) se il proprietario
   non ha chiesto proprio quello. Per sapere se c'è posto senza registrare usa `prova.py` o, con la chiave API, una
   domanda di disponibilità a `chat.py`.

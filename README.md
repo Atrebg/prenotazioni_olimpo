@@ -16,8 +16,10 @@ Due scelte in configurazione (`dati/sala_esempio.json`, sovrascrivibili da riga 
 | `disposizione` | `fissa` (default) · `variabile` | tavoli fermi tutta la sera · la piantina può cambiare durante il servizio |
 | `turni` | assente (default) · elenco di turni | orari liberi · ogni prenotazione occupa il tavolo per tutto il suo turno ([modalità a turni](#modalità-a-turni)) |
 
-La sala del ristorante Olimpo a turni (primo alle 20:00, secondo alle 21:30) è `dati/sala_turni.json`: la sala di
-esempio più i turni (un test controlla che il resto resti uguale).
+**La sala vera dell'Olimpo si usa con `--sala olimpo/piantina.html`**: il motore legge direttamente il blocco
+`<script type="application/json" id="sala">` della piantina, che è l'unica fonte e che il proprietario aggiorna
+([sala vera](#sala-vera-dellolimpo-piantina-data)). `dati/sala_turni.json` resta come sala di prova a turni con la
+geometria della sala di esempio (un test controlla che il resto resti uguale).
 
 ## Installazione
 
@@ -50,6 +52,8 @@ Negli esempi qui sotto si usa `.venv\Scripts\python.exe` (Windows); su Linux e m
 | `chat.py --piantina` | disposizione dei tavoli di una serata già in chat, con verifica | `.venv\Scripts\python.exe chat.py --piantina 2026-10-31 --cartella dati\serate` |
 | `prova.py` | "c'è posto?" al telefono, senza scrivere file | `.venv\Scripts\python.exe prova.py --stato out\soluzione.json --coperti 2 --orario 21:00` |
 | `confronto.py` | confronta disposizione fissa e variabile, o politiche di proposta | `.venv\Scripts\python.exe confronto.py --modi fissa variabile` |
+| sala vera | tutti i comandi con `--sala olimpo/piantina.html` | `.venv\Scripts\python.exe esegui.py --sala olimpo\piantina.html --prenotazioni dati\olimpo_sabato.json --out out\olimpo_sabato` |
+| `confronto.py` sala vera | sabato con politica "sempre" e "mai" | `.venv\Scripts\python.exe confronto.py --sala olimpo\piantina.html --prenotazioni dati\olimpo_sabato.json --combinazioni fissa:sempre fissa:mai --out out\confronto_olimpo` |
 | `confronto.py` a turni | le tre combinazioni a turni su sabato_pieno | `.venv\Scripts\python.exe confronto.py --sala dati\sala_turni.json --combinazioni fissa:mai fissa:sempre variabile:sempre --out out\confronto_turni` |
 | `verifica.py` | verifica indipendente di una soluzione | `.venv\Scripts\python.exe verifica.py --sala dati\sala_esempio.json --prenotazioni dati\sabato_pieno.json --soluzione out\soluzione.json` |
 | `valuta_lettura.py` | misura la precisione della lettura via Claude sui messaggi di `valutazione/` (serve la chiave) | `.venv\Scripts\python.exe valuta_lettura.py` |
@@ -216,6 +220,80 @@ secondo (54). Riferimento: senza turni 22/30 (75 coperti), con proposte 26/30 (8
   primo turno su proposta); variabile "sempre" Esposito ×2, Ferrari ×8, Marino ×6.
 - In "variabile" alle 21:30 si smontano due tavoli da un modulo e si uniscono 4 moduli per Rizzo ×10: è l'unico
   riallestimento, e vale il ventisettesimo cliente.
+
+## Sala vera dell'Olimpo (piantina data)
+
+`--sala olimpo/piantina.html` (esegui, chat, prova, confronto, verifica, misura_chat `--olimpo`): il motore estrae il
+blocco `id="sala"` della piantina (`ristorante/piantina.py`) e non ne fa copie. Turni dalla chiave `turni`: il primo
+dalle 20:00 alle 21:30, il secondo dalle 21:30 alla chiusura (24:00, la piantina non la dice). Le impostazioni del
+motore (pesi, tempi, politica "sempre", 3 processi × 4 worker per la tabella) sono in `piantina.IMPOSTAZIONI`.
+
+- **I tavoli non si spostano e non si inventano posizioni**: niente geometria 2D (`ristorante/modello_piantina.py`).
+  Per ogni turno si decide solo chi siede dove.
+- **Tavoli semplici** (panche, rettangolari, tondi, quadrati): una prenotazione per turno, coperti ≤ posti.
+- **Tavolo lungo (11)**: per turno un gruppo fino a 20 oppure due gruppi fino a 8 ciascuno; i posti vuoti sono i suoi
+  posti meno tutti i seduti (un gruppo da 8 da solo lascia 12 posti vuoti, quindi va a un blocco da 8 se è libero).
+- **Blocchi separabili** (5, 8 da 3 quadrati; 7, 9, 12, 20-24 da 2): in ogni turno una partizione in pezzi contigui;
+  intero = i posti del blocco, un pezzo da j ≥ 2 quadrati 2j + 2 posti, un quadrato da solo `posti_quadrato_separato`
+  (4). Un blocco da 3 diventa 3, 2+1 o 1+1+1; ogni pezzo ospita al più una prenotazione e, se il blocco è diviso,
+  ogni pezzo è occupato (un pezzo vuoto si riunirebbe al vicino). La partizione può cambiare tra i turni.
+- **Obiettivo**: più prenotazioni possibile in ordine di arrivo (chi prenota prima resta dentro, turno promesso
+  congelato, orario nel turno più vicino, se il turno è pieno si propone l'altro), poi meno posti vuoti per tavolo
+  (`posto_vuoto` 10 per posto: una coppia non va al tondo da 10 o al lungo se c'è altro), poi poche divisioni dei blocchi
+  (`divisione_blocco` 4 per pezzo in più), poi pochi cambi di partizione tra i turni (`riallestimento` 2, lieve).
+  Tra tavoli semplici identici le simmetrie si rompono ordinando le prenotazioni.
+- **Conteggio** che chiude subito i "turno pieno" ovvi: per ogni soglia c, le prenotazioni del turno da almeno c coperti
+  non possono superare le unità da almeno c posti che possono esserci insieme (tavoli, gruppi del lungo, pezzi dei
+  blocchi). **Tabella delle disponibilità**: classe di coperti × turno, con le classi delle capacità reali
+  (1-2, 3, 4, 5-6, 7-8, 9-10, 11-20).
+- **Mappa** (`ristorante/mappa_piantina.py`): una vista per turno con le posizioni della piantina, chi siede a ogni
+  tavolo, i blocchi divisi come quadrati separati con chi ci siede, il lungo con uno o due gruppi; sotto, l'elenco per
+  tavolo con i due turni affiancati (leggibile su telefono) e il registro.
+- **Chat** (`chat.py --sala olimpo/piantina.html`): come a turni; la conferma non cita il tavolo (può ancora
+  cambiare), il riepilogo sì ("Rossi 4 · tavolo 21, quadrato 1"), dalla disposizione migliore trovata in 1,5 s.
+- **Verificatore**: legge da sé il blocco della piantina e controlla turni, tavoli, partizioni contigue e posti dei
+  pezzi, lungo (un gruppo fino a 20 o due fino a 8, il secondo solo con il primo), mai due prenotazioni sullo stesso
+  quadrato o tavolo nello stesso turno, turno finale = turno promesso, registro ordinato, ogni prenotazione una volta.
+
+### Risultati sulla sala vera (esecuzione del 26/10/2026)
+
+Sabato di prova `dati/olimpo_sabato.json`: 67 prenotazioni, 260 coperti, orari chiesti dalle 19:30 alle 22:00 (41 nel
+primo turno, 152 coperti; 26 nel secondo, 108), un gruppo da 18 alle 20:00 e uno da 14 alle 20:15: solo il lungo può
+prenderli. 151 posti per turno con i blocchi interi, 43 prenotazioni al massimo per turno con tutti i blocchi divisi.
+
+| | politica "sempre" | politica "mai" |
+|---|---|---|
+| accettate (su proposta) / rifiutate | 66 (5) / 1 | 64 (0) / 3 |
+| coperti accettati | 250 | 230 |
+| primo turno: prenotazioni / coperti / tavoli usati | 38 / 134 / 30 su 30 | 39 / 132 / 30 su 30 |
+| secondo turno: prenotazioni / coperti / tavoli usati | 28 / 116 / 26 | 25 / 98 / 23 |
+| posti vuoti primo · secondo | 33 · 17 | 37 · 13 |
+| blocchi divisi, primo turno | 5 e 8 in 1+1+1; 20, 21, 22, 23 in 1+1 | 5 e 8 in 1+1+1; 12, 21, 22, 23, 24 in 1+1 |
+| blocchi divisi, secondo turno | 20, 23 in 1+1 | 24 in 1+1 |
+| lungo primo · secondo | Ricci ×18 · Ferrara ×14 | Ricci ×18 · Ferri ×8 + Pellegrini ×8 |
+| decisioni: dimostrate impossibili · UNKNOWN | 1 · 0 | 3 · 0 |
+| piantina · tempo totale | OPTIMAL · 15,6 s | OPTIMAL · 15,9 s |
+| verifica indipendente | PASS (14/14) | PASS (14/14) |
+
+- "Sempre": Ferrara ×14 passa al secondo turno (il lungo del primo è di Ricci ×18), Lombardi ×8 al primo, Sanna ×2,
+  Bruno ×6 e Sala ×4 al secondo; rifiutata solo Marini ×10 alle 21:45 (tondo da 10 e lungo occupati in tutti e due i turni).
+- "Mai": rifiutate Ferrara ×14, Marini ×10 e Bruno ×6 (turno pieno).
+- Venerdì `dati/olimpo_venerdi.json` (35 prenotazioni, 121 coperti): tutte dentro. Primo turno 20 prenotazioni e 79
+  coperti, 10 tavoli liberi (58 posti) e 2 posti vuoti ai tavoli usati; secondo turno 15 prenotazioni e 42 coperti,
+  15 tavoli liberi (104 posti) e 5 posti vuoti.
+
+Tempi della chat (`misura_chat.py --olimpo`): stato = le 59 accettate del sabato entro venerdì a mezzanotte (primo turno
+pieno); 10 messaggi: annullamento di Ricci ×18, Marini ×10 che prima non entrava (proposta del primo turno), la
+conferma, due posti liberi nel primo turno, tre richieste nel primo turno pieno con proposta del secondo, un posto
+libero nel secondo, il riepilogo con i tavoli. Risposte identiche nei tre casi.
+
+| | senza tabella | tabella pronta | tabella non pronta (raffica) |
+|---|---|---|---|
+| mediana | 1,31 s | 0,35 s | 1,84 s |
+| massimo | 2,12 s (riepilogo) | 2,19 s (riepilogo; le altre risposte ≤ 0,96 s) | 2,53 s |
+
+Ricalcolo della tabella dopo una modifica: mediana 4,3 s, massimo 4,5 s. Con 2 worker per processo CP-SAT non
+dimostrava "turno pieno" nemmeno in 30 s (UNKNOWN), con 4 in mezzo secondo: per questo 3 processi × 4 worker.
 
 ## Il modello in parole
 
@@ -423,6 +501,11 @@ Ricalcolo della tabella dopo una modifica: mediana 0,9 s, massimo 1,1 s; prima t
   legato alle chiavi geometriche della sala (dimensioni, griglia, ostacoli, corsie, inventario, margine sedie): se
   cambia altro che incide sulla disposizione va cancellato il file in `dati/cache`. Una verifica rimasta a metà
   occupa un processo fino a `tempo_verifica_s`. I processi di calcolo occupano circa 100 MB l'uno.
+- Sala vera: tavoli diversi non si uniscono tra loro (non è stato chiesto), si dividono solo i blocchi separabili, in
+  pezzi contigui. Il buonsenso "gruppi da 8 in su lontani dai tavoli da 2" non è nel modello (le coordinate del disegno
+  non sono in scala). La chiusura (24:00), i posti del lungo con due gruppi (8) e le impostazioni del motore non sono
+  nella piantina: stanno in `ristorante/piantina.py`. Il riepilogo in chat mostra la disposizione migliore trovata in
+  1,5 s, che può cambiare con la piantina della serata.
 - Turni: la tabella delle disponibilità e la chat usano la disposizione `chat.disposizione` della sala (fissa); con
   più di due turni il codice funziona (proposte prima e dopo, riallestimento tra turni consecutivi) ma è provato solo
   con due. In "variabile" la rottura delle simmetrie vale solo nel primo turno: una decisione può richiedere decine di

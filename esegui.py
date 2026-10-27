@@ -22,6 +22,8 @@ from ristorante.dati import (  # noqa: E402
     FISSA, MAI, ORDINE_DI_ARRIVO, SEMPRE, TUTTE_INSIEME, VARIABILE, costruisci_istanza, entro_minuti, leggi_json)
 from ristorante.mappa import scrivi_html  # noqa: E402
 from ristorante.modello import accetta_in_ordine, risolvi  # noqa: E402
+from ristorante.modello_piantina import posti_vuoti  # noqa: E402
+from ristorante.piantina import carica_sala  # noqa: E402
 
 
 def stampa_sintesi(sol: dict, n_pren: int, n_cop: int) -> None:
@@ -52,6 +54,15 @@ def stampa_sintesi(sol: dict, n_pren: int, n_cop: int) -> None:
           f"{len(sol['tavoli'])} tavoli")
     for t in mod.get("turni") or []:
         nel = [r for r in ass if r.get("turno") == t["nome"]]
+        if mod.get("sala_vera"):        # sala vera: tavoli usati, posti vuoti, blocchi divisi, lungo
+            div = [f"{x['id']} {'+'.join(str(b - a + 1) for a, b in x['partizioni'][t['nome']])}" for x in sol["tavoli"]
+                   if len(x.get("partizioni", {}).get(t["nome"], [])) > 1]
+            lungo = [f"{r['nome']} ×{r['coperti']}" for r in nel if r.get("gruppo")]
+            print(f"  {t['nome']} turno ({t['inizio']}-{t['fine']}): {len(nel)} prenotazioni, "
+                  f"{sum(r['coperti'] for r in nel)} coperti, {len({r['tavolo'] for r in nel})}/{len(sol['tavoli'])} tavoli, "
+                  f"{posti_vuoti(nel, {x['id']: x['posti'] for x in sol['tavoli'] if x['tipo'] == 'lungo'})} posti vuoti · blocchi divisi: {', '.join(div) or 'nessuno'}"
+                  f" · lungo: {' + '.join(lungo) or 'libero'}")
+            continue
         print(f"  {t['nome']} turno ({t['inizio']}-{t['fine']}): {len(nel)} prenotazioni, "
               f"{sum(r['coperti'] for r in nel)} coperti, {sum(1 for x in sol['tavoli'] if t['nome'] in x.get('turni', []))} tavoli")
     for r in sol["non_sistemate"]:
@@ -62,7 +73,7 @@ def esegui(sala_p: str, pren_p: str, out: Path, accettazione: str | None, dispos
            tempo: float | None = None, tempo_decisione: float | None = None, tempo_spareggio: float | None = None,
            tempo_piantina: float | None = None, log: bool = False, proposta: str | None = None,
            tempo_proposta: float | None = None) -> tuple[dict, int]:
-    sala, pren = leggi_json(sala_p), leggi_json(pren_p)
+    sala, pren = carica_sala(sala_p), leggi_json(pren_p)
     ist = costruisci_istanza(sala, pren)
     if proposta:
         if proposta not in (MAI, SEMPRE):

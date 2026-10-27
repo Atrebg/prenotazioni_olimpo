@@ -79,7 +79,8 @@ def main(argv: list[str] | None = None) -> int:
     if trova_chiave() is None:
         print("Manca la chiave ANTHROPIC_API_KEY: valutazione non eseguita (nessuna chiamata all'API).")
         return 0
-    sala = leggi_json(a.sala)
+    from ristorante.piantina import carica_sala
+    sala = carica_sala(a.sala)
     c = cfg_chat(sala)
     lettore = LettoreAnthropic(modello=a.modello or c["modello"], effort=a.effort or c["effort"],
                                max_tokens=c["max_tokens"], timeout_s=c["timeout_s"])

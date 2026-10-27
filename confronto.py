@@ -6,6 +6,8 @@ Uso:
     .venv\\Scripts\\python.exe confronto.py --da-json                         # solo mappe, verifiche e tabella dai JSON
     .venv\\Scripts\\python.exe confronto.py --sala dati\\sala_turni.json --combinazioni fissa:mai fissa:sempre variabile:sempre ^
         --out out\\confronto_turni                                             # modalità a turni
+    .venv\\Scripts\\python.exe confronto.py --sala olimpo\\piantina.html --prenotazioni dati\\olimpo_sabato.json ^
+        --combinazioni fissa:sempre fissa:mai --out out\\confronto_olimpo            # sala vera dell'Olimpo
 Per ogni combinazione scrive <out>\\<nome>\\{soluzione.json, serata.html} e <out>\\confronto.json.
 """
 from __future__ import annotations
@@ -22,6 +24,8 @@ sys.path.insert(0, str(RADICE))
 from esegui import esegui  # noqa: E402
 from ristorante.dati import FISSA, ORDINE_DI_ARRIVO, VARIABILE, leggi_json  # noqa: E402
 from ristorante.mappa import scrivi_html  # noqa: E402
+from ristorante.modello_piantina import posti_vuoti  # noqa: E402
+from ristorante.piantina import carica_sala  # noqa: E402
 
 
 def riga(nome: str, sol: dict, rc: int) -> dict:
@@ -58,10 +62,7 @@ def riga(nome: str, sol: dict, rc: int) -> dict:
                       (f', {"/".join(t["turni"])} turno)' if turni else ")")
                       for t in sol["tavoli"] if t["tipo"] == "moduli" and t["moduli"] > 1],
         "moduli_oltre_il_primo": c["accostamenti"]["moduli_oltre_il_primo"],
-        "per_turno": {t["nome"]: {"prenotazioni": sum(1 for r in sol["assegnazioni"] if r.get("turno") == t["nome"]),
-                                  "coperti": sum(r["coperti"] for r in sol["assegnazioni"] if r.get("turno") == t["nome"]),
-                                  "tavoli": sum(1 for x in sol["tavoli"] if t["nome"] in x.get("turni", []))}
-                      for t in turni},
+        "per_turno": {t["nome"]: _per_turno(sol, t["nome"]) for t in turni},
         "riallestimenti": c["riallestimenti"]["numero"],
         "obiettivo_piantina": s["obiettivo"],
         "obiettivo_senza_rifiuti": c["totale"] - c["non_sistemate"]["costo"],
@@ -81,6 +82,19 @@ def riga(nome: str, sol: dict, rc: int) -> dict:
     }
 
 
+def _per_turno(sol: dict, turno: str) -> dict:
+    nel = [r for r in sol["assegnazioni"] if r.get("turno") == turno]
+    out = {"prenotazioni": len(nel), "coperti": sum(r["coperti"] for r in nel),
+           "tavoli": sum(1 for x in sol["tavoli"] if turno in x.get("turni", []))}
+    if sol["modalita"].get("sala_vera"):      # sala vera: tavoli usati, posti vuoti, blocchi divisi, lungo
+        out.update(tavoli=len({r["tavolo"] for r in nel}), posti_vuoti=posti_vuoti(nel, {x["id"]: x["posti"] for x in sol["tavoli"] if x["tipo"] == "lungo"}),
+                   blocchi_divisi=[f'{x["id"]} ({"+".join(str(b - a + 1) for a, b in x["partizioni"][turno])})'
+                                   for x in sol["tavoli"] if len(x.get("partizioni", {}).get(turno, [])) > 1],
+                   lungo=" + ".join(str(r["coperti"]) for r in nel if r.get("gruppo")) or "libero",
+                   posti_liberi=sum(int(x["posti"]) for x in sol["tavoli"] if x["id"] not in {r["tavolo"] for r in nel}))
+    return out
+
+
 def tabella(righe: list[dict]) -> str:
     voci = [("accettate (su proposta) / rifiutate", lambda r: f'{r["accettate"]} ({r["accettate_su_proposta"]}) / {r["rifiutate"]}'),
             ("coperti accettati / rifiutati", lambda r: f'{r["coperti_accettati"]} / {r["coperti_rifiutati"]}'),
@@ -97,6 +111,11 @@ def tabella(righe: list[dict]) -> str:
     if any(r["per_turno"] for r in righe):
         voci.insert(2, ("per turno: prenotazioni / coperti / tavoli", lambda r: " · ".join(
             f'{n} {v["prenotazioni"]}/{v["coperti"]}/{v["tavoli"]}' for n, v in r["per_turno"].items())))
+    if any("posti_vuoti" in v for r in righe for v in r["per_turno"].values()):
+        voci.insert(3, ("per turno: posti vuoti ai tavoli usati · lungo", lambda r: " · ".join(
+            f'{n} {v["posti_vuoti"]} · lungo {v["lungo"]}' for n, v in r["per_turno"].items())))
+        voci.insert(4, ("blocchi divisi", lambda r: " · ".join(
+            f'{n}: {", ".join(v["blocchi_divisi"]) or "nessuno"}' for n, v in r["per_turno"].items())))
     out = ["| | " + " | ".join(r["nome"] for r in righe) + " |", "|---|" + "---|" * len(righe)]
     for nome, f in voci:
         out.append(f"| {nome} | " + " | ".join(str(f(r)) for r in righe) + " |")
@@ -137,7 +156,7 @@ def main(argv: list[str] | None = None) -> int:
         print(f"\n=== {nome} ===", flush=True)
         if a.da_json:
             sol = json.loads((cartella / "soluzione.json").read_text(encoding="utf-8"))
-            scrivi_html(leggi_json(a.sala), leggi_json(a.prenotazioni), sol, cartella / "serata.html")
+            scrivi_html(carica_sala(a.sala), leggi_json(a.prenotazioni), sol, cartella / "serata.html")
             rc = subprocess.run([sys.executable, str(RADICE / "verifica.py"), "--sala", a.sala, "--prenotazioni",
                                  a.prenotazioni, "--soluzione", str(cartella / "soluzione.json")]).returncode
         else:
