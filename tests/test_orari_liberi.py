@@ -84,9 +84,18 @@ def test_nessuna_uscita_anticipata_se_c_e_un_tavolo_per_90_minuti():
 def test_uscita_anticipata_e_chiusura():
     pia = Piantina({"tavoli": [{"id": "1", "tipo": "quadrato", "posti": 4}]})
     assert valuta_con_uscita_anticipata(pia, [], p("nuova", 4, "23:00"))["fine"] == "24:00"
+    assert valuta_con_uscita_anticipata(pia, [], p("nuova", 4, "23:01"))["stato"] == "non entra"
 
 
 def test_non_si_propone_se_il_tavolo_e_occupato_fin_dall_inizio():
     pia = Piantina({"tavoli": [{"id": "1", "tipo": "quadrato", "posti": 4}]})
     assert valuta_con_uscita_anticipata(pia, [p("esistente", 4, "19:30")],
                                        p("nuova", 4, "20:00"))["stato"] == "non entra"
+
+
+def test_permanenza_minima_60_minuti():
+    pia = Piantina({"tavoli": [{"id": "1", "tipo": "quadrato", "posti": 4}]})
+    nuova = p("nuova", 4, "20:00")
+    assert valuta_con_uscita_anticipata(pia, [p("altra", 4, "20:59")], nuova)["stato"] == "non entra"
+    assert valuta_con_uscita_anticipata(pia, [p("altra", 4, "21:00")], nuova)["fine"] == "21:00"
+    assert verifica(pia, [nuova | {"durata_concordata_min": 59}], {"nuova": "t1"})

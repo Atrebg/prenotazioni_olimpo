@@ -9,6 +9,7 @@ from ortools.sat.python import cp_model
 from .piantina import Piantina, LUNGO_DUE_GRUPPI
 
 DURATA_STANDARD_MIN = 90
+DURATA_MINIMA_MIN = 60
 
 
 def durata(coperti: int) -> int:
@@ -21,7 +22,7 @@ def durata_prenotazione(p: dict) -> int:
     """Le durate ridotte sono vincoli espliciti già accettati o proposte in verifica."""
     normale = durata(p["coperti"])
     ridotta = p.get("durata_concordata_min", normale)
-    if isinstance(ridotta, bool) or not isinstance(ridotta, int) or not 1 <= ridotta <= normale:
+    if isinstance(ridotta, bool) or not isinstance(ridotta, int) or not DURATA_MINIMA_MIN <= ridotta <= normale:
         raise ValueError("durata concordata non valida")
     return ridotta
 
@@ -157,7 +158,7 @@ def valuta_con_uscita_anticipata(pia: Piantina, accettate: list[dict], nuova: di
     # Le disponibilità possono cambiare solo quando inizia una prenotazione o il servizio termina.
     fini = {minuti(p["orario"]) for p in accettate}
     fini.add(24 * 60)
-    for fine in sorted((t for t in fini if start < t < start + DURATA_STANDARD_MIN), reverse=True):
+    for fine in sorted((t for t in fini if start + DURATA_MINIMA_MIN <= t < start + DURATA_STANDARD_MIN), reverse=True):
         proposta = nuova | {"durata_concordata_min": fine - start}
         esito = risolvi(pia, accettate + [proposta], tempo_s)
         if esito.stato == "non verificato":

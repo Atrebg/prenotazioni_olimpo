@@ -20,9 +20,9 @@ rifiuto; un timeout non è una prova di impossibilità.
 La funzione `valuta_con_uscita_anticipata` verifica prima i 90 minuti, poi cerca una permanenza
 più breve e restituisce una proposta con l'ora di uscita. Non registra nulla: l'interfaccia dovrà
 ottenere una conferma esplicita e ripetere il calcolo sullo stato aggiornato prima di registrare,
-conservando la durata concordata. Non è ancora integrata nella chat né nel confronto CLI, che
-continuano a valutare esclusivamente richieste da 90 minuti. Non è stata definita una permanenza
-minima: la funzione può proporre qualsiasi durata positiva.
+conservando la durata concordata. La permanenza minima proposta è di 60 minuti. Non è ancora
+integrata nella chat né nel confronto CLI, che continuano a valutare esclusivamente richieste
+da 90 minuti.
 
 Installare le dipendenze dal README, poi eseguire dalla radice:
 
