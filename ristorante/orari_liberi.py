@@ -8,13 +8,22 @@ from dataclasses import dataclass
 from ortools.sat.python import cp_model
 from .piantina import Piantina, LUNGO_DUE_GRUPPI
 
-DURATE = ((2, 90), (4, 105), (None, 120))
+DURATA_STANDARD_MIN = 90
 
 
 def durata(coperti: int) -> int:
     if isinstance(coperti, bool) or not isinstance(coperti, int) or coperti <= 0:
         raise ValueError("coperti deve essere un intero positivo")
-    return next(minuti for limite, minuti in DURATE if limite is None or coperti <= limite)
+    return DURATA_STANDARD_MIN
+
+
+def durata_prenotazione(p: dict) -> int:
+    """Le durate ridotte sono vincoli espliciti già accettati o proposte in verifica."""
+    normale = durata(p["coperti"])
+    ridotta = p.get("durata_concordata_min", normale)
+    if isinstance(ridotta, bool) or not isinstance(ridotta, int) or not 1 <= ridotta <= normale:
+        raise ValueError("durata concordata non valida")
+    return ridotta
 
 
 def minuti(ora: str) -> int:
@@ -37,7 +46,7 @@ def valida_richieste(prenotazioni: list[dict], apertura=19 * 60, chiusura=24 * 6
             raise ValueError("id mancante o duplicato")
         ids.add(p["id"])
         inizio = minuti(p["orario"])
-        if inizio < apertura or inizio + durata(p["coperti"]) > chiusura:
+        if inizio < apertura or inizio + durata_prenotazione(p) > chiusura:
             raise ValueError(f"{p['id']}: fuori dal servizio")
 
 
@@ -53,7 +62,7 @@ def _conflitto(u, v, cop_u: int, cop_v: int) -> bool:
 
 def si_sovrappongono(a: dict, b: dict) -> bool:
     x, y = minuti(a["orario"]), minuti(b["orario"])
-    return x < y + durata(b["coperti"]) and y < x + durata(a["coperti"])
+    return x < y + durata_prenotazione(b) and y < x + durata_prenotazione(a)
 
 
 def verifica(pia: Piantina, prenotazioni: list[dict], piano: dict[str, str]) -> list[str]:
@@ -125,3 +134,35 @@ def risolvi(pia: Piantina, prenotazioni: list[dict], tempo_s: float = 20) -> Esi
             raise RuntimeError("Piano non valido: " + "; ".join(errori))
         return Esito("entra", piano)
     return Esito("non entra" if stato == cp_model.INFEASIBLE else "non verificato", None)
+
+
+def valuta_con_uscita_anticipata(pia: Piantina, accettate: list[dict], nuova: dict,
+                                  tempo_s: float = 20) -> dict:
+    """Cerca prima 90 minuti, poi una proposta di uscita, senza registrare nulla.
+
+    Il chiamante deve chiedere e ricevere un sì esplicito; dopo il sì deve ricontrollare
+    con risolvi contro lo stato corrente, conservando durata_concordata_min.
+    """
+    if "durata_concordata_min" in nuova:
+        raise ValueError("Una nuova richiesta deve partire dalla durata standard")
+    valida_richieste(accettate)
+    start = minuti(nuova["orario"])
+    durata(nuova["coperti"])
+    if not 19 * 60 <= start < 24 * 60:
+        raise ValueError("richiesta fuori dal servizio")
+    if start + DURATA_STANDARD_MIN <= 24 * 60:
+        esito = risolvi(pia, accettate + [nuova], tempo_s)
+        if esito.stato != "non entra":
+            return {"stato": esito.stato, "piano": esito.piano}
+    # Le disponibilità possono cambiare solo quando inizia una prenotazione o il servizio termina.
+    fini = {minuti(p["orario"]) for p in accettate}
+    fini.add(24 * 60)
+    for fine in sorted((t for t in fini if start < t < start + DURATA_STANDARD_MIN), reverse=True):
+        proposta = nuova | {"durata_concordata_min": fine - start}
+        esito = risolvi(pia, accettate + [proposta], tempo_s)
+        if esito.stato == "non verificato":
+            return {"stato": "non verificato", "piano": None}
+        if esito.stato == "entra":
+            return {"stato": "proposta", "fine": f"{fine // 60:02}:{fine % 60:02}",
+                    "prenotazione_proposta": proposta, "piano": esito.piano}
+    return {"stato": "non entra", "piano": None}

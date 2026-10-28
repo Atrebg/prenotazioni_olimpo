@@ -6,8 +6,8 @@ prenotazioni reali**. L'integrazione con chat, proposte, stato, mappa e verifica
 
 La piantina predefinita è `olimpo/piantina.html`. Il servizio ipotizzato è 19:00–24:00, come nella
 configurazione esistente. Gli arrivi possono essere a qualsiasi minuto; il pasto deve finire entro
-la chiusura. Durate: 1–2 coperti 90 minuti, 3–4 105, da 5 in su 120; riapparecchiatura zero.
-Le durate sono in `ristorante/orari_liberi.py`. Le prenotazioni già accettate mantengono l'orario,
+la chiusura. Durata standard: 90 minuti per tutti; riapparecchiatura zero.
+La durata è in `ristorante/orari_liberi.py`. Le prenotazioni già accettate mantengono l'orario,
 ma il tavolo può cambiare nel piano successivo.
 
 Il prototipo assume valide le posizioni dei tavoli della piantina; **non controlla geometricamente
@@ -16,6 +16,13 @@ contemporaneamente. Il lungo ospita un gruppo fino a 20 o due gruppi fino a 8 ci
 accostano tavoli diversi. L'agente propone un piano completo; un controllo separato lo verifica
 prima di accettarlo. Se l'agente dice che non entra, il solver tenta di dimostrare o smentire il
 rifiuto; un timeout non è una prova di impossibilità.
+
+La funzione `valuta_con_uscita_anticipata` verifica prima i 90 minuti, poi cerca una permanenza
+più breve e restituisce una proposta con l'ora di uscita. Non registra nulla: l'interfaccia dovrà
+ottenere una conferma esplicita e ripetere il calcolo sullo stato aggiornato prima di registrare,
+conservando la durata concordata. Non è ancora integrata nella chat né nel confronto CLI, che
+continuano a valutare esclusivamente richieste da 90 minuti. Non è stata definita una permanenza
+minima: la funzione può proporre qualsiasi durata positiva.
 
 Installare le dipendenze dal README, poi eseguire dalla radice:
 
