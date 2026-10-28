@@ -171,6 +171,27 @@ def test_mappa_della_serata_con_elementi_sconosciuti_o_incompleti():
     assert "senza misure" not in mappa and "corridoio" not in mappa
 
 
+def test_mappa_della_serata_ingresso_ruotato_ed_etichette_che_non_stanno():
+    """L'ingresso storto della piantina (rot -28,5) si disegna ruotato attorno al suo centro, come nell'editor; un'etichetta
+    che non sta nel rettangolo (né dritta né girata) non si scrive, una che ci sta sì (anche girata nel verso lungo)."""
+    from ristorante.mappa_piantina import genera_html
+    sala = sala_vera(DA2)
+    sala["piantina"] |= {
+        "ingresso": {"x": 153.8, "y": 90, "w": 100, "h": 8, "rot": -28.5, "spazio_libero_cm": 90},
+        "ostacoli": [{"nome": "elemento in angolo (da chiarire)", "tipo": "mobile", "x": 66, "y": 180, "w": 36, "h": 20},
+                     {"nome": "bancone", "tipo": "bancone", "x": 50, "y": 270, "w": 20, "h": 210},
+                     {"nome": "cucina", "tipo": "cucina", "x": 50, "y": 480, "w": 224, "h": 208}],
+    }
+    pren = in_arrivo(("A", 2, "20:00"))
+    sol = ordine(sala, pren)
+    mappa = genera_html(sala, pren, sol)
+    assert mappa.count('fill="#ef9f27" transform="rotate(-28.5 203.8 94.0)"') == 2           # una vista per turno
+    assert mappa.count(">ingresso<") == 2
+    assert "elemento in angolo" not in mappa                                                  # 32 caratteri in 36 x 20 unità
+    assert mappa.count(">cucina<") == 2 and mappa.count(">bancone<") == 2
+    assert mappa.count('transform="rotate(-90 60.0 375.0)"') == 2                             # bancone stretto e lungo: girato
+
+
 def _arco(a, b, prof, n):
     """n punti di un arco di cerchio da a a b (estremi esclusi): a metà dista `prof` dalla corda."""
     c = math.dist(a, b)
@@ -190,7 +211,8 @@ def test_muro_curvo_dal_comando_curva_dell_editor(tmp_path, verificatore):
     testo = PIANTINA.read_text(encoding="utf-8")
     dati = leggi_blocco_sala(PIANTINA)
     muro = dati["muri"][0]
-    a, b = muro["punti"][1], muro["punti"][2]                                  # il tratto verticale, 850 cm
+    punti_prima = len(muro["punti"])
+    a, b = muro["punti"][1], muro["punti"][2]                                  # il lato sinistro, verticale
     arco = _arco(a, b, 40, 30)                                                 # 100 cm di profondità
     assert len(arco) == 30 and max(abs(p[0] - a[0]) for p in arco) == pytest.approx(40, abs=0.5)
     muro["punti"][2:2] = arco
@@ -199,7 +221,8 @@ def test_muro_curvo_dal_comando_curva_dell_editor(tmp_path, verificatore):
                             lambda m: m.group(1) + "\n" + json.dumps(dati, ensure_ascii=False) + "\n" + m.group(2), testo, count=1, flags=re.S),
                      encoding="utf-8")
     letti = leggi_blocco_sala(curva)
-    assert letti == dati and len(letti["muri"][0]["punti"]) == 3 + 30 and letti["muri"][0]["punti"][-1] == b
+    punti = letti["muri"][0]["punti"]
+    assert letti == dati and len(punti) == punti_prima + 30 and punti[1] == a and punti[2 + 30] == b   # i 30 vertici stanno tra a e b
     assert letti["tavoli"] == leggi_blocco_sala(PIANTINA)["tavoli"]
     sala = carica_sala(curva)
     assert sala["piantina"] == letti and Piantina(letti).posti_per_turno() == 151
@@ -208,8 +231,9 @@ def test_muro_curvo_dal_comando_curva_dell_editor(tmp_path, verificatore):
     assert sol["accettazione"]["accettate"] == 2
     verifica_ok(verificatore, sala, pren, sol)
     mappa = genera_html(sala, pren, sol)
-    percorsi = re.findall(r'<path d="(M74 305 L240 305 L[^"]*)" fill="none" stroke="#2c2c2a"', mappa)
-    assert len(percorsi) == 2 and all(p.count(" L") == 32 for p in percorsi)    # una vista per turno; 33 punti = 32 tratti
+    inizio = f"M{punti[0][0]:g} {punti[0][1]:g} L{punti[1][0]:g} {punti[1][1]:g} L"    # il percorso parte dai primi punti dei dati
+    percorsi = re.findall(r'<path d="(' + re.escape(inizio) + r'[^"]*)" fill="none" stroke="#2c2c2a"', mappa)
+    assert len(percorsi) == 2 and all(p.count(" L") == len(punti) - 1 for p in percorsi)    # una vista per turno; N punti = N-1 tratti
 
 
 def test_partizioni_di_un_blocco_da_tre(verificatore):

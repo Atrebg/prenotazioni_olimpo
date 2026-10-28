@@ -13,6 +13,7 @@ from .mappa import _registro
 from .modello_piantina import posti_vuoti
 
 LATO, GAP = 32, 2
+ET_PICCOLA = 9                 # corpo del testo delle etichette piccole (classe CSS et-piccola)
 STILE = {
     "quadrato": ("#eceae4", "#888780"), "blocco": ("#d6efe6", "#1d9e75"), "lungo": ("#dbe9f8", "#378add"),
     "rettangolare": ("#fae1d8", "#d85a30"), "panca": ("#f8e7c7", "#ba7517"), "tondo": ("#e7e4fb", "#7f77dd"),
@@ -71,10 +72,23 @@ def _ostacolo(o: dict, prima: list[dict]) -> str:
     if not o.get("rot") and any(p.get("nome") == o.get("nome") and "punti" not in p and not p.get("rot") and _toccano(p, o)
                                 for p in prima):
         return s
-    ang = _num(o.get("rot")) + (-90 if h > w else 0)
+    nome = str(o.get("nome", o.get("tipo", "")))
+    giro = _giro_etichetta(nome, w, h)
+    if giro is None:                       # l'etichetta non sta nel rettangolo, né dritta né girata: si lascia vuoto
+        return s
+    ang = _num(o.get("rot")) + giro
     tr = f' transform="rotate({ang:g} {cx:.1f} {cy:.1f})"' if ang else ""
     return s + (f'<text x="{cx:.1f}" y="{cy:.1f}" class="et-piccola" text-anchor="middle" dominant-baseline="central"{tr}>'
-                f'{escape(str(o.get("nome", o.get("tipo", ""))))}</text>')
+                f'{escape(nome)}</text>')
+
+
+def _giro_etichetta(nome: str, w: float, h: float) -> int | None:
+    """Di quanti gradi girare l'etichetta di un rettangolo w x h (0 o -90: nel verso lungo, come prima); None se non ci sta."""
+    larga = sum(0.3 if c in " iljtfr.,;:'!|()" else 0.8 if c in "mwMW" else 0.52 for c in nome) * ET_PICCOLA   # lunghezza stimata, in unità del disegno
+    for giro, lungo, corto in ((-90 if h > w else 0, max(w, h), min(w, h)), (0 if h > w else -90, min(w, h), max(w, h))):
+        if larga <= lungo - 2 and ET_PICCOLA <= corto:
+            return giro
+    return None
 
 
 def _segno(o: dict, fill: str, stroke: str) -> str:
@@ -141,8 +155,9 @@ def _svg_turno(dati: dict, sol: dict, turno: str) -> str:
            f'<rect x="{sx:g}" y="{sy:g}" width="{sw:g}" height="{sh:g}" rx="6" fill="none" stroke="#b4b2a9" stroke-dasharray="6 4"/>']
     e = dati.get("ingresso")
     if _rett(e):
-        out.append(f'<rect x="{e["x"]}" y="{e["y"]}" width="{e["w"]}" height="{e["h"]}" rx="2" fill="#ef9f27"/>'
-                   + _testo(e["x"] + e["w"] / 2, e["y"] - 4, "ingresso", "et-piccola"))
+        out.append(f'<rect x="{e["x"]}" y="{e["y"]}" width="{e["w"]}" height="{e["h"]}" rx="2" fill="#ef9f27"'
+                   f'{_ruota_attr(e, _num(e["x"]) + _num(e["w"]) / 2, _num(e["y"]) + _num(e["h"]) / 2)}/>'
+                   + _testo(_num(e["x"]) + _num(e["w"]) / 2, _num(e["y"]) - 4, "ingresso", "et-piccola"))
     for p in dati.get("passaggi", []):
         r = _rett(p)
         if r:

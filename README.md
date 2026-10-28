@@ -262,9 +262,10 @@ Da telefono e da PC si apre da https://atrebg.github.io/prenotazioni_olimpo/olim
 file sul telefono (WhatsApp, File) possono non eseguirla: va aperta nel browser.
 
 `olimpo/piantina.html` si apre nel browser (anche da file, senza server) ed è anche l'editor della sala: **Modifica**
-per spostare i tavoli col mouse, **Salva piantina** per scaricare lo stesso file con i dati aggiornati e una riga nello
+per spostare i tavoli col mouse, **Scarica il file** per scaricare lo stesso file con i dati aggiornati e una riga nello
 storico, da rimettere al posto di quello in `olimpo/`.
 
+- Sala bloccata: si muovono solo i tavoli mobili (`?sblocca` nell'indirizzo sblocca tutto). **Manda a Giacomo** apre WhatsApp con le modifiche e il link.
 - Pannello a lato (da 900 px), Annulla/Ripeti, tastiera: Canc, Ctrl+Z/Y, frecce di 5 cm (Maiusc 50 cm), Esc.
 - Misure in centimetri per ogni pezzo (da sinistra, dall'alto, larghezza, profondità, rotazione) e per la sala;
   "Mostra misure" disegna le quote, griglia di 1 m, scatto di 5 cm.

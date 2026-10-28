@@ -32,10 +32,20 @@
   .btn.verde { background: #3b6d11; border-color: #3b6d11; color: #fff; }
   .btn.rosso { color: #a32d2d; border-color: #e0b4b4; }
   .btn.piccolo { min-height: 36px; font-size: 14px; padding: 0 10px; }
+  .btn.grande { min-height: 48px; font-size: 16px; font-weight: 600; }
+  a.btn { display: inline-flex; align-items: center; justify-content: center; box-sizing: border-box; text-align: center; text-decoration: none; }
+  [hidden] { display: none !important; }
+  body:not(.sbloccata) .solo-sblocca { display: none !important; }
   body:not(.modifica) .solo-modifica { display: none; }
   body.modifica .solo-vista { display: none; }
+  .manda-vista { margin: 0 0 12px; }
+  .manda-vista .btn { width: 100%; }
+  .banner { font-size: 14px; background: #eaf3ff; border: 1px solid #b9d3f3; border-radius: 10px; padding: 8px 12px; margin: 0 0 10px; }
+  .banner p { margin: 0; }
+  .banner.errore { background: #fdecec; border-color: #e0b4b4; color: #7a1f1f; }
   .barra { position: sticky; top: 0; z-index: 5; display: flex; gap: 6px; padding: 8px 0; background: #faf9f6; }
   .barra .btn { flex: 1 1 auto; padding: 0 8px; }
+  .barra .b-manda { flex: 2 1 auto; }
   .istruzioni { font-size: 15px; background: #fff7e6; border: 1px solid #f0d9a8; border-radius: 10px; padding: 8px 12px; margin: 0 0 10px; }
   .pulsanti { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; }
   .sottotitolo { font-size: 13px; font-weight: 600; color: #5f5e5a; margin: 12px 0 0; }
@@ -49,6 +59,8 @@
   body.modifica #mappa { -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
   body.modifica #mappa [data-k] { cursor: move; touch-action: none; }
   body.modifica #mappa [data-k] * { touch-action: none; }   /* il dito tocca rect e text, non il g: senza, il browser annulla il trascinamento */
+  body.modifica #mappa [data-k][data-fermo] { cursor: pointer; touch-action: auto; }     /* sala bloccata, tavolo fisso: si tocca ma non si trascina, la pagina scorre */
+  body.modifica #mappa [data-k][data-fermo] * { touch-action: auto; }
   body.modifica #mappa [data-k="maniglia"] { cursor: crosshair; }
   .foglio { display: none; position: fixed; left: 0; right: 0; bottom: 0; z-index: 10; max-width: 760px; margin: 0 auto; max-height: 46vh; overflow-y: auto; box-sizing: border-box; background: #fff; border: 1px solid #d8d5cc; border-bottom: 0; border-radius: 14px 14px 0 0; box-shadow: 0 -4px 18px rgba(0, 0, 0, .12); padding: 10px 14px 16px; }
   body.modifica.con-foglio .foglio { display: block; }
@@ -127,6 +139,15 @@
 </head>
 <body>
 <div class="wrap" id="pagina">
+  <div class="banner" id="banner" hidden>
+    <p id="banner-testo"></p>
+    <div class="pulsanti">
+      <button type="button" class="btn verde piccolo" id="b-scarica-link">Scarica questa versione</button>
+      <button type="button" class="btn piccolo" id="b-torna">Torna a quella pubblicata</button>
+    </div>
+  </div>
+  <div class="banner errore" id="errore-link" role="alert" hidden></div>
+
   <div class="testa">
     <div>
       <h1>Olimpo · piantina della sala</h1>
@@ -134,14 +155,17 @@
     </div>
     <button type="button" class="btn primario solo-vista" id="b-modifica">Modifica</button>
   </div>
+  <div class="manda-vista solo-vista">
+    <a class="btn verde grande b-manda" href="#" target="_blank" rel="noopener noreferrer">Manda a Giacomo</a>
+  </div>
 
   <div class="barra solo-modifica editor">
     <button type="button" class="btn primario" id="b-fine">Fine</button>
     <button type="button" class="btn" id="b-annulla">Annulla</button>
     <button type="button" class="btn" id="b-ripeti">Ripeti</button>
-    <button type="button" class="btn verde" id="b-salva">Salva piantina</button>
+    <a class="btn verde grande b-manda" href="#" target="_blank" rel="noopener noreferrer">Manda a Giacomo</a>
   </div>
-  <p class="istruzioni solo-modifica">Trascina per spostare, tocca per modificare, poi Salva e mandami il file</p>
+  <p class="istruzioni solo-modifica"><span id="istruzioni-testo">Trascina i tavoli mobili per spostarli, tocca un tavolo per cambiare posti e note, poi tocca Manda a Giacomo.</span> <span class="badge" id="l-sblocca" hidden>sala sbloccata</span></p>
   <div class="avviso" id="avviso" role="status"></div>
 
   <div class="lavoro">
@@ -159,13 +183,13 @@
         <div class="pulsanti">
           <button type="button" class="btn" data-nuovo="quadrato">Quadrato</button>
           <button type="button" class="btn" data-nuovo="blocco">Quadrati uniti</button>
-          <button type="button" class="btn" data-nuovo="tondo">Tondo</button>
-          <button type="button" class="btn" data-nuovo="lungo">Lungo</button>
-          <button type="button" class="btn" data-nuovo="panca">Panca</button>
-          <button type="button" class="btn" data-nuovo="rettangolare">Rettangolare</button>
+          <button type="button" class="btn solo-sblocca" data-nuovo="tondo">Tondo</button>
+          <button type="button" class="btn solo-sblocca" data-nuovo="lungo">Lungo</button>
+          <button type="button" class="btn solo-sblocca" data-nuovo="panca">Panca</button>
+          <button type="button" class="btn solo-sblocca" data-nuovo="rettangolare">Rettangolare</button>
         </div>
-        <div class="sottotitolo">Elementi fissi</div>
-        <div class="pulsanti">
+        <div class="sottotitolo solo-sblocca">Elementi fissi</div>
+        <div class="pulsanti solo-sblocca">
           <button type="button" class="btn" data-fisso="muro">Muro</button>
           <button type="button" class="btn" data-fisso="bancone">Bancone</button>
           <button type="button" class="btn" data-fisso="pilastro">Pilastro</button>
@@ -184,11 +208,14 @@
           <label><input type="checkbox" id="o-quote">Mostra misure</label>
           <label><input type="checkbox" id="o-aggancio">Aggancia ogni 5 cm</label>
           <label><input type="checkbox" id="o-griglia">Griglia da 1 m</label>
-          <label>Lato del quadrato <input type="number" id="o-lato" min="20" max="200" step="1" inputmode="numeric"> cm</label>
+          <label class="solo-sblocca">Lato del quadrato <input type="number" id="o-lato" min="20" max="200" step="1" inputmode="numeric"> cm</label>
+        </div>
+        <div class="pulsanti">
+          <a class="btn verde grande b-manda" href="#" target="_blank" rel="noopener noreferrer">Manda a Giacomo</a>
         </div>
         <div class="pulsanti">
           <button type="button" class="btn" id="b-scheda">Scheda misure</button>
-          <button type="button" class="btn verde" id="b-salva2">Salva piantina</button>
+          <button type="button" class="btn" id="b-salva2">Scarica il file</button>
           <button type="button" class="btn" id="b-copia">Copia dati</button>
           <button type="button" class="btn" id="b-condividi">Condividi</button>
         </div>
@@ -242,57 +269,61 @@
   "turni": ["20:00", "21:30"],
   "posti_quadrato_separato": 4,
   "scala": {"lato_quadrato_cm": 80},
-  "sala": {"x": 40, "y": 40, "w": 400, "h": 625},
-  "ingresso": {"x": 236, "y": 34, "w": 46, "h": 10, "spazio_libero_cm": 90},
+  "sala": {"x": 46, "y": 59, "w": 564, "h": 749},
+  "ingresso": {"x": 153.8, "y": 90, "w": 100, "h": 8, "rot": -28.5, "spazio_libero_cm": 90},
   "muri": [
-    {"punti": [[74, 305], [240, 305], [240, 645]], "spessore_cm": 10},
-    {"punti": [[410, 340], [410, 660]], "spessore_cm": 10},
-    {"punti": [[40, 660], [410, 660]], "spessore_cm": 10}
+    {"punti": [[159.6, 118], [50, 180], [50, 804], [606, 804], [606, 256], [601.27, 245.52], [596.17, 235.22], [590.69, 225.11], [584.86, 215.21], [578.67, 205.52], [572.14, 196.06], [565.27, 186.84], [558.07, 177.88], [550.55, 169.18], [542.73, 160.76], [534.6, 152.63], [526.19, 144.79], [517.5, 137.26], [508.54, 130.06], [499.33, 123.18], [489.88, 116.63], [480.2, 110.44], [470.3, 104.59], [460.19, 99.11], [449.9, 93.99], [439.43, 89.25], [428.79, 84.89], [418, 80.92], [407.08, 77.34], [396.03, 74.16], [384.88, 71.37], [373.63, 68.99], [362.3, 67.02], [350.92, 65.46], [339.48, 64.31], [328, 63.57], [316.51, 63.25], [305.02, 63.34], [293.53, 63.85], [282.07, 64.77], [270.66, 66.1], [259.29, 67.85], [248, 70]], "spessore_cm": 20},
+    {"punti": [[246, 418], [246, 356], [458, 356], [458, 804]], "spessore_cm": 20}
   ],
   "ostacoli": [
-    {"nome": "bancone", "tipo": "bancone", "x": 142, "y": 395, "w": 18, "h": 245},
-    {"nome": "bancone", "tipo": "bancone", "x": 95, "y": 395, "w": 47, "h": 18},
-    {"nome": "bancone", "tipo": "bancone", "x": 42, "y": 170, "w": 16, "h": 205},
-    {"nome": "cucina", "tipo": "cucina", "x": 42, "y": 415, "w": 98, "h": 243}
+    {"nome": "cucina", "tipo": "cucina", "x": 50, "y": 480, "w": 224, "h": 208},
+    {"nome": "bancone", "tipo": "bancone", "x": 274, "y": 480, "w": 60, "h": 208},
+    {"nome": "bancone", "tipo": "bancone", "x": 186, "y": 480, "w": 88, "h": 52},
+    {"nome": "bancone", "tipo": "bancone", "x": 50, "y": 270, "w": 88, "h": 210},
+    {"nome": "bagni", "tipo": "bagni", "x": 50, "y": 688, "w": 284, "h": 116},
+    {"nome": "pilastro", "tipo": "pilastro", "forma": "quadrato", "x": 270, "y": 246, "w": 12, "h": 12},
+    {"nome": "elemento in angolo (da chiarire)", "tipo": "mobile", "x": 66, "y": 180, "w": 36, "h": 20}
   ],
   "porte": [
-    {"nome": "porta cucina", "x": 46, "y": 410, "w": 40, "h": 10, "spazio_libero_cm": 90}
+    {"nome": "porta cucina", "x": 142, "y": 475, "w": 36, "h": 10, "spazio_libero_cm": 90},
+    {"nome": "porta bagni", "x": 329, "y": 740, "w": 10, "h": 32, "spazio_libero_cm": 90}
   ],
   "finestre": [],
   "passaggi": [
-    {"nome": "passaggio", "x": 162, "y": 395, "w": 32, "h": 245}
+    {"nome": "passaggio", "x": 334, "y": 480, "w": 82, "h": 324},
+    {"nome": "apertura", "x": 138, "y": 348, "w": 108, "h": 16}
   ],
   "tavoli": [
-    {"id": "1",   "tipo": "panca",        "x": 82.3,  "y": 104.6, "posti": 4, "fisso": true, "note": "panca fissa", "confermato": true},
-    {"id": "2",   "tipo": "panca",        "x": 130.8, "y": 75.8,  "posti": 4, "fisso": true, "note": "panca fissa", "confermato": true},
-    {"id": "3",   "tipo": "quadrato",     "x": 125.3, "y": 148,   "rot": 45, "posti": 2, "fisso": false, "note": "tavolo da 2, messo di traverso", "confermato": true},
-    {"id": "4",   "tipo": "quadrato",     "x": 74.1,  "y": 186.7, "posti": 2, "fisso": false, "note": "tavolo da 2, appoggiato al bancone di sinistra", "confermato": true},
-    {"id": "5",   "tipo": "blocco",       "x": 202.2, "y": 135.5, "moduli": 3, "verso": "verticale", "posti": 8, "fisso": false, "note": "3 quadrati uniti, si possono separare", "separabile": true, "confermato": true},
-    {"id": "6",   "tipo": "tondo",        "x": 257.3, "y": 106.8, "r": 16, "posti": 3, "fisso": true, "note": "tavolo alto con 3 sgabelli", "confermato": true},
-    {"id": "7",   "tipo": "blocco",       "x": 267.6, "y": 180.7, "moduli": 2, "verso": "verticale", "rot": 18, "posti": 6, "fisso": false, "note": "2 quadrati uniti, di traverso, si possono separare", "separabile": true, "confermato": true},
-    {"id": "8",   "tipo": "blocco",       "x": 336.4, "y": 154,   "moduli": 3, "verso": "verticale", "rot": 19, "posti": 8, "fisso": false, "note": "3 quadrati uniti, di traverso, si possono separare", "separabile": true, "da_regola": true},
-    {"id": "9",   "tipo": "blocco",       "x": 401.7, "y": 145,   "moduli": 2, "verso": "verticale", "rot": -16, "posti": 6, "fisso": false, "note": "2 quadrati uniti, di traverso, si possono separare", "separabile": true, "da_regola": true},
-    {"id": "10",  "tipo": "tondo",        "x": 390.6, "y": 223.3, "r": 27, "posti": 10, "fisso": true, "note": "tondo grande", "confermato": true},
-    {"id": "11",  "tipo": "lungo",        "x": 191.5, "y": 278,   "w": 104, "h": 32, "posti": 20, "fisso": true, "note": "tavolo lungo da 5 m: un gruppo fino a 20 oppure due gruppi fino a 8", "confermato": true},
-    {"id": "12",  "tipo": "blocco",       "x": 394.9, "y": 296,   "moduli": 2, "verso": "verticale", "posti": 6, "fisso": false, "note": "2 quadrati uniti, si possono separare", "separabile": true, "da_regola": true},
-    {"id": "13A", "tipo": "rettangolare", "x": 99,    "y": 354,   "w": 44, "h": 36, "posti": 4, "fisso": true, "note": "tavolo fisso", "confermato": true},
-    {"id": "13B", "tipo": "rettangolare", "x": 145.5, "y": 354,   "w": 44, "h": 36, "posti": 4, "fisso": true, "note": "tavolo fisso", "confermato": true},
-    {"id": "14",  "tipo": "panca",        "x": 212,   "y": 361,   "posti": 4, "fisso": true, "note": "panca fissa", "confermato": true},
-    {"id": "15",  "tipo": "panca",        "x": 212,   "y": 407,   "posti": 4, "fisso": true, "note": "panca fissa", "confermato": true},
-    {"id": "16",  "tipo": "panca",        "x": 212,   "y": 453,   "posti": 4, "fisso": true, "note": "panca fissa", "confermato": true},
-    {"id": "17",  "tipo": "panca",        "x": 212,   "y": 520,   "posti": 4, "fisso": true, "note": "panca fissa", "confermato": true},
-    {"id": "18",  "tipo": "panca",        "x": 212,   "y": 575,   "posti": 4, "fisso": true, "note": "panca fissa", "confermato": true},
-    {"id": "19",  "tipo": "panca",        "x": 212,   "y": 625,   "posti": 4, "fisso": true, "note": "panca fissa", "confermato": true},
-    {"id": "20",  "tipo": "blocco",       "x": 310,   "y": 361,   "moduli": 2, "verso": "orizzontale", "posti": 6, "fisso": false, "note": "2 quadrati uniti, si possono separare", "separabile": true, "da_regola": true},
-    {"id": "21",  "tipo": "blocco",       "x": 310,   "y": 415,   "moduli": 2, "verso": "orizzontale", "posti": 6, "fisso": false, "note": "2 quadrati uniti, si possono separare", "separabile": true, "da_regola": true},
-    {"id": "22",  "tipo": "blocco",       "x": 310,   "y": 474,   "moduli": 2, "verso": "orizzontale", "posti": 6, "fisso": false, "note": "2 quadrati uniti, si possono separare", "separabile": true, "da_regola": true},
-    {"id": "23",  "tipo": "blocco",       "x": 310,   "y": 534,   "moduli": 2, "verso": "orizzontale", "posti": 6, "fisso": false, "note": "2 quadrati uniti, si possono separare", "separabile": true, "da_regola": true},
-    {"id": "24",  "tipo": "blocco",       "x": 310,   "y": 598,   "moduli": 2, "verso": "orizzontale", "posti": 6, "fisso": false, "note": "2 quadrati uniti, si possono separare", "separabile": true, "da_regola": true},
-    {"id": "25",  "tipo": "quadrato",     "x": 384,   "y": 367,   "posti": 2, "fisso": false, "note": "tavolo da 2, contro il muro a destra", "confermato": true},
-    {"id": "26",  "tipo": "quadrato",     "x": 384,   "y": 420,   "posti": 2, "fisso": false, "note": "tavolo da 2, contro il muro a destra", "confermato": true},
-    {"id": "27",  "tipo": "quadrato",     "x": 384,   "y": 477,   "posti": 2, "fisso": false, "note": "tavolo da 2, contro il muro a destra", "confermato": true},
-    {"id": "28",  "tipo": "quadrato",     "x": 384,   "y": 535,   "posti": 2, "fisso": false, "note": "tavolo da 2, contro il muro a destra", "confermato": true},
-    {"id": "29",  "tipo": "quadrato",     "x": 384,   "y": 593,   "posti": 2, "fisso": false, "note": "tavolo da 2, contro il muro a destra", "confermato": true}
+    {"id": "1",   "tipo": "panca",        "x": 136, "y": 168,   "rot": -30, "posti": 4, "fisso": true, "note": "panca fissa", "confermato": true},
+    {"id": "2",   "tipo": "panca",        "x": 194, "y": 198,   "rot": -30, "posti": 4, "fisso": true, "note": "panca fissa", "confermato": true},
+    {"id": "3",   "tipo": "quadrato",     "x": 180, "y": 244,   "rot": 45, "posti": 2, "fisso": false, "note": "tavolo da 2, messo di traverso", "confermato": true},
+    {"id": "4",   "tipo": "quadrato",     "x": 98,  "y": 252,   "posti": 2, "fisso": false, "note": "tavolo da 2, appoggiato al bancone di sinistra", "confermato": true},
+    {"id": "5",   "tipo": "blocco",       "x": 294, "y": 176,   "moduli": 3, "verso": "verticale", "posti": 8, "fisso": false, "note": "3 quadrati uniti, si possono separare", "separabile": true, "confermato": true},
+    {"id": "6",   "tipo": "tondo",        "x": 298, "y": 100,   "r": 16, "posti": 3, "fisso": true, "note": "tavolo alto con 3 sgabelli", "confermato": true},
+    {"id": "7",   "tipo": "blocco",       "x": 368, "y": 146,   "moduli": 2, "verso": "verticale", "rot": -77, "posti": 6, "fisso": false, "note": "2 quadrati uniti, di traverso, si possono separare", "separabile": true, "confermato": true},
+    {"id": "8",   "tipo": "blocco",       "x": 470, "y": 198,   "moduli": 3, "verso": "verticale", "rot": -49, "posti": 8, "fisso": false, "note": "3 quadrati uniti, di traverso, si possono separare", "separabile": true, "da_regola": true},
+    {"id": "9",   "tipo": "blocco",       "x": 520, "y": 298,   "moduli": 2, "verso": "verticale", "rot": -22, "posti": 6, "fisso": false, "note": "2 quadrati uniti, di traverso, si possono separare", "separabile": true, "da_regola": true},
+    {"id": "10",  "tipo": "tondo",        "x": 406, "y": 228,   "r": 27, "posti": 10, "fisso": true, "note": "tondo grande", "confermato": true},
+    {"id": "11",  "tipo": "lungo",        "x": 356, "y": 292,   "w": 192, "h": 32, "posti": 20, "fisso": true, "note": "tavolo lungo da 4,8 m: un gruppo fino a 20 oppure due gruppi fino a 8", "confermato": true},
+    {"id": "12",  "tipo": "blocco",       "x": 584, "y": 320,   "moduli": 2, "verso": "verticale", "posti": 6, "fisso": false, "note": "2 quadrati uniti, si possono separare", "separabile": true, "da_regola": true},
+    {"id": "13A", "tipo": "rettangolare", "x": 304, "y": 382,   "w": 44, "h": 36, "posti": 4, "fisso": true, "note": "tavolo fisso", "confermato": true},
+    {"id": "13B", "tipo": "rettangolare", "x": 366, "y": 382,   "w": 44, "h": 36, "posti": 4, "fisso": true, "note": "tavolo fisso", "confermato": true},
+    {"id": "14",  "tipo": "panca",        "x": 434, "y": 409.2, "posti": 4, "fisso": true, "note": "panca fissa", "confermato": true},
+    {"id": "15",  "tipo": "panca",        "x": 434, "y": 476,   "posti": 4, "fisso": true, "note": "panca fissa", "confermato": true},
+    {"id": "16",  "tipo": "panca",        "x": 434, "y": 542.8, "posti": 4, "fisso": true, "note": "panca fissa", "confermato": true},
+    {"id": "17",  "tipo": "panca",        "x": 434, "y": 609.2, "posti": 4, "fisso": true, "note": "panca fissa", "confermato": true},
+    {"id": "18",  "tipo": "panca",        "x": 434, "y": 676,   "posti": 4, "fisso": true, "note": "panca fissa", "confermato": true},
+    {"id": "19",  "tipo": "panca",        "x": 434, "y": 742.8, "posti": 4, "fisso": true, "note": "panca fissa", "confermato": true},
+    {"id": "20",  "tipo": "blocco",       "x": 510, "y": 404,   "moduli": 2, "verso": "orizzontale", "posti": 6, "fisso": false, "note": "2 quadrati uniti, si possono separare", "separabile": true, "da_regola": true},
+    {"id": "21",  "tipo": "blocco",       "x": 510, "y": 492,   "moduli": 2, "verso": "orizzontale", "posti": 6, "fisso": false, "note": "2 quadrati uniti, si possono separare", "separabile": true, "da_regola": true},
+    {"id": "22",  "tipo": "blocco",       "x": 510, "y": 580,   "moduli": 2, "verso": "orizzontale", "posti": 6, "fisso": false, "note": "2 quadrati uniti, si possono separare", "separabile": true, "da_regola": true},
+    {"id": "23",  "tipo": "blocco",       "x": 510, "y": 668,   "moduli": 2, "verso": "orizzontale", "posti": 6, "fisso": false, "note": "2 quadrati uniti, si possono separare", "separabile": true, "da_regola": true},
+    {"id": "24",  "tipo": "blocco",       "x": 510, "y": 756,   "moduli": 2, "verso": "orizzontale", "posti": 6, "fisso": false, "note": "2 quadrati uniti, si possono separare", "separabile": true, "da_regola": true},
+    {"id": "25",  "tipo": "quadrato",     "x": 584, "y": 404,   "posti": 2, "fisso": false, "note": "tavolo da 2, contro il muro a destra", "confermato": true},
+    {"id": "26",  "tipo": "quadrato",     "x": 584, "y": 492,   "posti": 2, "fisso": false, "note": "tavolo da 2, contro il muro a destra", "confermato": true},
+    {"id": "27",  "tipo": "quadrato",     "x": 584, "y": 580,   "posti": 2, "fisso": false, "note": "tavolo da 2, contro il muro a destra", "confermato": true},
+    {"id": "28",  "tipo": "quadrato",     "x": 584, "y": 668,   "posti": 2, "fisso": false, "note": "tavolo da 2, contro il muro a destra", "confermato": true},
+    {"id": "29",  "tipo": "quadrato",     "x": 584, "y": 756,   "posti": 2, "fisso": false, "note": "tavolo da 2, contro il muro a destra", "confermato": true}
   ],
   "unioni": [
     {"tavoli": ["20", "21"], "posti": null, "stato": "proposta"},
@@ -311,8 +342,15 @@
     "La linea a L è un muro o un separé?",
     "Cucina e porta della cucina: posizione indicativa, da correggere con Modifica.",
     "Secondo bancone sul bordo sinistro, dal tavolo 4 al 13A: posizione e misure indicative, da correggere con Modifica.",
-    "Misure vere: il disegno non è in scala (il lungo 11 è di 5 m ma è disegnato più corto). Quanto misura il lato di un quadrato? Ora 80 cm.",
-    "Misure della sala, dei muri (spessore ora 10 cm) e delle distanze: si prendono al locale con la Scheda misure (in Modifica)."
+    "Misure vere: il disegno ora è in scala (il lungo 11 è di 4,8 m), ma sono ancora stime. Quanto misura il lato di un quadrato? Ora 80 cm.",
+    "Misure della sala, dei muri (spessore ora 10 cm) e delle distanze: si prendono al locale con la Scheda misure (in Modifica).",
+    "Apertura nel muro interno, tra il bancone di sinistra (2,2 m) e il muro (4,9 m): larghezza ipotizzata dal disegno, da misurare.",
+    "Pezzo di muro a sinistra del 13A (a 4,9 m, lungo circa 1,5 m): è un muro vero o qualcos'altro? Da chiarire.",
+    "Elemento in angolo in alto a sinistra (circa 0,9 × 0,5 m): non si capisce che cos'è, posizione e misure da chiarire.",
+    "Porta della cucina: sul lato alto della cucina, a destra del bancone di sinistra, posizione ipotizzata dal disegno, da misurare.",
+    "Posizioni di 7, 8, 9, 10 e 12: non sono nel disegno, le ho inventate io (7, 8 e 9 lungo la curva, 10 tra la curva e il lungo, 12 in cima alla striscia): da correggere con Modifica.",
+    "Misura dei 10 m: con 6,8-7 m fino alle panche, panca di 0,8 m, muro di 0,2 m e striscia di 3,5 m, dal bancone di sinistra al muro di destra vengono circa 11,4-11,6 m e non 10: è la prima cosa da misurare.",
+    "Da dove parte la misura dei 9 m: dal muro storto fino alla cucina? Da chiarire."
   ],
   "storico": [
     "26/10/2026 · prima versione, dalla foto della piantina: tavoli numerati da 1 a 29, ingresso in alto.",
@@ -324,7 +362,9 @@
     "26/10/2026 · per 8, 9, 12 e 20-24 si usa la regola di 5 e 7: 3 quadrati uniti = 8 posti, 2 quadrati uniti = 6.",
     "27/10/2026 · proposte 9 unioni tra tavoli vicini (linee arancioni): il motore non le usa finché non sono confermate, con i posti del tavolo unito.",
     "27/10/2026 · tavoli fissi (tondi 6 e 10, lungo 11, panche, 13A e 13B) e mobili (quadrati e quadrati uniti); aggiunti la cucina con la sua porta e un secondo bancone a sinistra, con posizioni da correggere; il bancone a L ora è fatto di due rettangoli; la piantina si corregge con il pulsante Modifica.",
-    "27/10/2026 · la sala ha le sue misure (contorno modificabile); muri con spessore; misure in cm per ogni pezzo e scheda delle misure da stampare; nuovi elementi fissi (pilastri, porte, finestre, bagni, cassa, mobili, pedane, zone vietate, blocchi)."
+    "27/10/2026 · la sala ha le sue misure (contorno modificabile); muri con spessore; misure in cm per ogni pezzo e scheda delle misure da stampare; nuovi elementi fissi (pilastri, porte, finestre, bagni, cassa, mobili, pedane, zone vietate, blocchi).",
+    "27/10/2026 · forma nuova dal disegno di Giacomo: muro curvo in alto, striscia a destra larga 3,5 m, cucina e bagno in basso a sinistra, misure 10 / 6,8-7 / 10 / 14 / 4,8 m; il 9 letto dal muro storto alla cucina",
+    "27/10/2026 · corretti due testi: il lungo 11 è di 4,8 m (non 5 m) e il disegno ora è in scala."
   ]
 }
 </script>
@@ -343,7 +383,12 @@
   };
   var COMMENTO = '<' + '!-- DATI DELLA SALA: è l\'unica cosa da aggiornare, a mano o con il pulsante Modifica. Posizioni in unità del disegno: il quadrato è 32 unità, "scala" dice quanti cm vale il suo lato. --' + '>';
   var SALA0 = {x: 40, y: 40, w: 400, h: 625};
-  var S = normalizza(JSON.parse($('sala').textContent));
+  var PUBBLICA = 'https://atrebg.github.io/prenotazioni_olimpo/olimpo/piantina.html';      // dove sta la piantina, per il link da file
+  var LIMITE_WA = 30000;                                    // un messaggio più lungo non si manda: si passa dal file
+  // Sala bloccata: senza ?sblocca (in qualunque punto dell'indirizzo) si spostano solo i tavoli mobili
+  var SBLOCCATA = /[?&]sblocca(?:[=&#]|$)/.test(location.search);
+  var S0 = normalizza(JSON.parse($('sala').textContent));    // la versione pubblicata, quella nel file: non si tocca mai
+  var S = copia(S0);
   var svg = $('mappa');
 
   var STILE = {
@@ -391,7 +436,7 @@
   var SEGNI = [[-1, -1], [1, -1], [1, 1], [-1, 1]];           // angoli: alto-sx, alto-dx, basso-dx, basso-sx
   var LATO = 32, GAP = 2, SEDIE_CM = 50, PASSO_CM = 5;
 
-  var ed = {attivo: false, sel: null, vertice: null, aggancio: true, griglia: true, quote: true, sporco: false, cambiate: 0,
+  var ed = {attivo: false, sel: null, vertice: null, aggancio: true, griglia: true, quote: true, sporco: false, cambiate: 0, daLink: false,
     annulla: [], ripeti: [], avvisati: {}, controlli: [], curva: {muro: null, vert: null, seg: null, prof: '', inv: false}};
   var drag = null, tocco = null, timerAvviso = null;
 
@@ -424,7 +469,7 @@
   function u(c) { return c / cpu(); }                         // cm -> unità
   function cm(v) { return Math.round(v * cpu()); }
   function cm5(v) { return Math.round(v * cpu() / 5) * 5; }   // misure mostrate, arrotondate a 5 cm
-  function sala() { return S.sala; }
+  function sala() { var s = S.sala; return {x: cifra(s.x), y: cifra(s.y), w: cifra(s.w), h: cifra(s.h)}; }     // sola lettura, sempre numeri
   function px(n) { var m = svg.getScreenCTM(); return num(n / (m && m.a > 0 ? m.a : 1)); }   // n pixel dello schermo in unità
   function passo() { return u(PASSO_CM); }
   function agg(v, o) { if (!ed.aggancio) return num2(v); var p = passo(); return num2(o + Math.round((v - o) / p) * p); }
@@ -456,6 +501,18 @@
     return Array.isArray(l) && l[sel.i] != null ? l[sel.i] : null;
   }
   function isZona(k) { return k === 'ingresso' || ZONE.indexOf(k) >= 0; }
+  function cifra(v) { v = Number(v); return isFinite(v) ? v : 0; }     // un dato che finisce in un attributo è sempre un numero
+  function vuoto() { return Object.create(null); }                     // dizionario senza "__proto__" né "constructor"
+
+  // ---------------------------------------------------------------- sala bloccata
+  var TESTO_FISSO = 'Tavolo fisso: puoi cambiare posti e note, non la posizione.';
+  function bloccato(k, el) {           // in sala bloccata si spostano solo i tavoli mobili (con ?sblocca nessun pezzo è bloccato)
+    return !SBLOCCATA && (k !== 'tavoli' || !!(el && el.fisso));
+  }
+  function attrK(k, i, el) {           // gli attributi che rendono un pezzo toccabile o trascinabile; niente se la sala è bloccata
+    if (!SBLOCCATA && k !== 'tavoli') return '';
+    return ' data-k="' + k + '" data-i="' + cifra(i) + '"' + (bloccato(k, el) ? ' data-fermo="1"' : '');
+  }
   function dMuro(pts) {
     return pts.map(function (p, i) { return (i ? ' L' : 'M') + num2(p[0]) + ' ' + num2(p[1]); }).join('');
   }
@@ -661,11 +718,11 @@
   function svgMappa(opz) {
     var sl = sala(), mod = opz.modifica, s = '';
     s += '<rect x="' + sl.x + '" y="' + sl.y + '" width="' + sl.w + '" height="' + sl.h + '" rx="6" fill="none" stroke="#b4b2a9" stroke-dasharray="6 4"/>';
-    if (mod) s += '<rect data-k="sala" data-i="0" x="' + sl.x + '" y="' + sl.y + '" width="' + sl.w + '" height="' + sl.h + '" fill="none" stroke="transparent" stroke-width="' + px(14) + '"/>';
+    if (mod && SBLOCCATA) s += '<rect data-k="sala" data-i="0" x="' + sl.x + '" y="' + sl.y + '" width="' + sl.w + '" height="' + sl.h + '" fill="none" stroke="transparent" stroke-width="' + px(14) + '"/>';
     if (mod && ed.griglia) s += griglia();
     var e = S.ingresso;
-    if (e) s += '<g data-k="ingresso" data-i="0"><rect x="' + e.x + '" y="' + e.y + '" width="' + e.w + '" height="' + e.h + '" rx="2" fill="#ef9f27"' + rotAttr(geo('ingresso', e)) + '/>' +
-      '<text x="' + (e.x + e.w / 2) + '" y="' + (e.y - 6) + '" text-anchor="middle" font-size="12" fill="#854f0b">ingresso</text></g>';
+    if (e) s += '<g' + attrK('ingresso', 0, e) + '><rect x="' + cifra(e.x) + '" y="' + cifra(e.y) + '" width="' + cifra(e.w) + '" height="' + cifra(e.h) + '" rx="2" fill="#ef9f27"' + rotAttr(geo('ingresso', e)) + '/>' +
+      '<text x="' + num2(cifra(e.x) + cifra(e.w) / 2) + '" y="' + num2(cifra(e.y) - 6) + '" text-anchor="middle" font-size="12" fill="#854f0b">ingresso</text></g>';
     s += '<defs><pattern id="righe" width="6" height="6" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><line x1="0" y1="0" x2="0" y2="6" stroke="#b5d4f4" stroke-width="2"/></pattern>' +
       '<pattern id="vietato" width="8" height="8" patternUnits="userSpaceOnUse" patternTransform="rotate(-45)"><rect width="8" height="8" fill="#fbe9e7"/><line x1="0" y1="0" x2="0" y2="8" stroke="#e8a39b" stroke-width="3"/></pattern></defs>';
     if (mod) aperture().forEach(function (a) {
@@ -673,7 +730,7 @@
     });
     (S.passaggi || []).forEach(function (p, i) {
       var g = geo('passaggi', p), cx = p.x + p.w / 2, cy = p.y + p.h / 2, ang = (g.rot || 0) + (p.h > p.w ? -90 : 0);
-      s += '<g data-k="passaggi" data-i="' + i + '"><rect x="' + p.x + '" y="' + p.y + '" width="' + p.w + '" height="' + p.h + '" fill="url(#righe)" stroke="#85b7eb" stroke-width="0.8"' + rotAttr(g) + '/>' +
+      s += '<g' + attrK('passaggi', i, p) + '><rect x="' + cifra(p.x) + '" y="' + cifra(p.y) + '" width="' + cifra(p.w) + '" height="' + cifra(p.h) + '" fill="url(#righe)" stroke="#85b7eb" stroke-width="0.8"' + rotAttr(g) + '/>' +
         '<text x="' + cx + '" y="' + cy + '" text-anchor="middle" dominant-baseline="central" font-size="11" fill="#0c447c"' +
         (ang ? ' transform="rotate(' + ang + ' ' + cx + ' ' + cy + ')"' : '') + '>' + esc(p.nome) + '</text></g>';
     });
@@ -681,61 +738,63 @@
       var st = ZONA[o.tipo] || ZONA.blocco, g = geo('ostacoli', o), r = rotAttr(g);
       var gia = !g.rot && S.ostacoli.slice(0, i).some(function (p) { return p.nome === o.nome && !p.rot && toccano(p, o); });   // una L ha un'etichetta sola
       var forma = g.tondo ? '<ellipse cx="' + num2(g.cx) + '" cy="' + num2(g.cy) + '" rx="' + num2(o.w / 2) + '" ry="' + num2(o.h / 2) + '" fill="' + st.fill + '" stroke="' + st.stroke + '" stroke-width="1"' + r + '/>'
-        : '<rect x="' + o.x + '" y="' + o.y + '" width="' + o.w + '" height="' + o.h + '" fill="' + st.fill + '" stroke="' + st.stroke + '" stroke-width="1"' + r + '/>';
-      s += '<g data-k="ostacoli" data-i="' + i + '">' + forma + (gia ? '' : etichettaZona(o, o.nome != null ? o.nome : st.nome, st.testo, st.size, g.rot)) + '</g>';
+        : '<rect x="' + cifra(o.x) + '" y="' + cifra(o.y) + '" width="' + cifra(o.w) + '" height="' + cifra(o.h) + '" fill="' + st.fill + '" stroke="' + st.stroke + '" stroke-width="1"' + r + '/>';
+      s += '<g' + attrK('ostacoli', i, o) + '>' + forma + (gia ? '' : etichettaZona(o, o.nome != null ? o.nome : st.nome, st.testo, st.size, g.rot)) + '</g>';
     });
     (S.porte || []).forEach(function (p, i) {
       var g = geo('porte', p), B = scatola(poli('porte', p));
-      s += '<g data-k="porte" data-i="' + i + '"><rect x="' + p.x + '" y="' + p.y + '" width="' + p.w + '" height="' + p.h + '" rx="1" fill="#ffffff" stroke="#ba7517" stroke-width="1.5"' + rotAttr(g) + '/>' +
+      s += '<g' + attrK('porte', i, p) + '><rect x="' + cifra(p.x) + '" y="' + cifra(p.y) + '" width="' + cifra(p.w) + '" height="' + cifra(p.h) + '" rx="1" fill="#ffffff" stroke="#ba7517" stroke-width="1.5"' + rotAttr(g) + '/>' +
         '<text x="' + num2((B.minx + B.maxx) / 2) + '" y="' + num2(B.miny - 4) + '" text-anchor="middle" font-size="10" fill="#854f0b" stroke="#ffffff" stroke-width="3" paint-order="stroke" stroke-linejoin="round">' + esc(p.nome) + '</text></g>';
     });
     (S.finestre || []).forEach(function (f, i) {
       var g = geo('finestre', f), B = scatola(poli('finestre', f)), orizz = f.w >= f.h;
-      var linea = orizz ? '<line x1="' + f.x + '" y1="' + num2(g.cy) + '" x2="' + (f.x + f.w) + '" y2="' + num2(g.cy) + '" stroke="#5b9bd5" stroke-width="0.8"' + rotAttr(g) + '/>'
-        : '<line x1="' + num2(g.cx) + '" y1="' + f.y + '" x2="' + num2(g.cx) + '" y2="' + (f.y + f.h) + '" stroke="#5b9bd5" stroke-width="0.8"' + rotAttr(g) + '/>';
-      s += '<g data-k="finestre" data-i="' + i + '"><rect x="' + f.x + '" y="' + f.y + '" width="' + f.w + '" height="' + f.h + '" fill="#e3f2fc" stroke="#5b9bd5" stroke-width="1"' + rotAttr(g) + '/>' + linea +
+      var fx = cifra(f.x), fy = cifra(f.y), fw = cifra(f.w), fh = cifra(f.h);
+      var linea = orizz ? '<line x1="' + fx + '" y1="' + num2(g.cy) + '" x2="' + (fx + fw) + '" y2="' + num2(g.cy) + '" stroke="#5b9bd5" stroke-width="0.8"' + rotAttr(g) + '/>'
+        : '<line x1="' + num2(g.cx) + '" y1="' + fy + '" x2="' + num2(g.cx) + '" y2="' + (fy + fh) + '" stroke="#5b9bd5" stroke-width="0.8"' + rotAttr(g) + '/>';
+      s += '<g' + attrK('finestre', i, f) + '><rect x="' + fx + '" y="' + fy + '" width="' + fw + '" height="' + fh + '" fill="#e3f2fc" stroke="#5b9bd5" stroke-width="1"' + rotAttr(g) + '/>' + linea +
         '<text x="' + num2((B.minx + B.maxx) / 2) + '" y="' + num2(B.miny - 3) + '" text-anchor="middle" font-size="9" fill="#2f6da3" stroke="#ffffff" stroke-width="3" paint-order="stroke" stroke-linejoin="round">' + esc(f.nome) + '</text></g>';
     });
     (S.muri || []).forEach(function (m, i) {
       if (!muroValido(m)) return;
       var d = dMuro(m.punti), sp = num2(2 * metaMuro(m));
-      s += '<g data-k="muri" data-i="' + i + '"><path d="' + d + '" fill="none" stroke="#2c2c2a" stroke-width="' + sp + '"/>' +
-        (mod ? '<path d="' + d + '" fill="none" stroke="transparent" stroke-width="' + Math.max(sp, px(16)) + '"/>' : '') + '</g>';
+      s += '<g' + attrK('muri', i, m) + '><path d="' + d + '" fill="none" stroke="#2c2c2a" stroke-width="' + sp + '"/>' +
+        (mod && SBLOCCATA ? '<path d="' + d + '" fill="none" stroke="transparent" stroke-width="' + Math.max(sp, px(16)) + '"/>' : '') + '</g>';
     });
     S.tavoli.forEach(function (t, n) {
       var st = STILE[t.tipo] || STILE.quadrato, tratt = (t.confermato || t.da_regola) ? '' : ' stroke-dasharray="3 2"';
-      var rot = t.rot ? ' transform="rotate(' + t.rot + ' ' + t.x + ' ' + t.y + ')"' : '';
+      var X = cifra(t.x), Y = cifra(t.y), R = cifra(t.rot);
+      var rot = R ? ' transform="rotate(' + R + ' ' + X + ' ' + Y + ')"' : '';
       var g = '', id = esc(t.id);
       if (t.tipo === 'tondo') {
-        g += '<circle cx="' + t.x + '" cy="' + t.y + '" r="' + t.r + '" fill="' + st.fill + '" stroke="' + st.stroke + '" stroke-width="1"' + tratt + '/>';
+        g += '<circle cx="' + X + '" cy="' + Y + '" r="' + cifra(t.r) + '" fill="' + st.fill + '" stroke="' + st.stroke + '" stroke-width="1"' + tratt + '/>';
       } else if (t.tipo === 'blocco') {
-        var k = t.moduli, L = k * LATO + (k - 1) * GAP;
+        var k = cifra(t.moduli), L = k * LATO + (k - 1) * GAP;
         for (var i = 0; i < k; i++) {
           var off = -L / 2 + i * (LATO + GAP);
-          var x = t.verso === 'orizzontale' ? t.x + off : t.x - LATO / 2;
-          var y = t.verso === 'orizzontale' ? t.y - LATO / 2 : t.y + off;
+          var x = t.verso === 'orizzontale' ? X + off : X - LATO / 2;
+          var y = t.verso === 'orizzontale' ? Y - LATO / 2 : Y + off;
           g += rect(x, y, LATO, LATO, st, tratt + rot);
         }
       } else {
-        var w = t.w || LATO, h = t.h || LATO;
-        g += rect(t.x - w / 2, t.y - h / 2, w, h, st, tratt + rot);
+        var w = cifra(t.w) || LATO, h = cifra(t.h) || LATO;
+        g += rect(X - w / 2, Y - h / 2, w, h, st, tratt + rot);
       }
       var grande = (t.r && t.r >= 20) || (t.w && t.w >= 44);
       if (grande) {
-        g += '<text x="' + t.x + '" y="' + (t.y - 3) + '" text-anchor="middle" font-size="13" font-weight="600" fill="#2c2c2a" stroke="#ffffff" stroke-width="3.5" paint-order="stroke" stroke-linejoin="round">' + id + '</text>';
-        g += '<text x="' + t.x + '" y="' + (t.y + 11) + '" text-anchor="middle" font-size="10.5" fill="#444441">' + (t.posti != null ? esc(t.posti) : '?') + ' posti</text>';
+        g += '<text x="' + X + '" y="' + (Y - 3) + '" text-anchor="middle" font-size="13" font-weight="600" fill="#2c2c2a" stroke="#ffffff" stroke-width="3.5" paint-order="stroke" stroke-linejoin="round">' + id + '</text>';
+        g += '<text x="' + X + '" y="' + (Y + 11) + '" text-anchor="middle" font-size="10.5" fill="#444441">' + (t.posti != null ? esc(t.posti) : '?') + ' posti</text>';
       } else {
-        g += '<text x="' + t.x + '" y="' + t.y + '" text-anchor="middle" dominant-baseline="central" font-size="13" font-weight="600" fill="#2c2c2a" stroke="#ffffff" stroke-width="3.5" paint-order="stroke" stroke-linejoin="round">' + id + '</text>';
+        g += '<text x="' + X + '" y="' + Y + '" text-anchor="middle" dominant-baseline="central" font-size="13" font-weight="600" fill="#2c2c2a" stroke="#ffffff" stroke-width="3.5" paint-order="stroke" stroke-linejoin="round">' + id + '</text>';
       }
-      s += '<g data-k="tavoli" data-i="' + n + '">' + g + '</g>';
+      s += '<g' + attrK('tavoli', n, t) + '>' + g + '</g>';
     });
-    var PER_ID = {};
+    var PER_ID = vuoto();
     S.tavoli.forEach(function (t) { PER_ID[t.id] = t; });
     (S.unioni || []).forEach(function (un) {
-      var a = PER_ID[un.tavoli[0]], b = PER_ID[un.tavoli[1]];
+      var a = Array.isArray(un.tavoli) ? PER_ID[un.tavoli[0]] : null, b = Array.isArray(un.tavoli) ? PER_ID[un.tavoli[1]] : null;
       if (!a || !b) return;
-      var dx = b.x - a.x, dy = b.y - a.y, d = Math.sqrt(dx * dx + dy * dy) || 1, tagli = 14;
-      var x1 = a.x + dx / d * tagli, y1 = a.y + dy / d * tagli, x2 = b.x - dx / d * tagli, y2 = b.y - dy / d * tagli;
+      var dx = cifra(b.x) - cifra(a.x), dy = cifra(b.y) - cifra(a.y), d = Math.sqrt(dx * dx + dy * dy) || 1, tagli = 14;
+      var x1 = cifra(a.x) + dx / d * tagli, y1 = cifra(a.y) + dy / d * tagli, x2 = cifra(b.x) - dx / d * tagli, y2 = cifra(b.y) - dy / d * tagli;
       var colore = un.stato === 'confermata' ? '#3b6d11' : '#ef9f27';
       s += '<line x1="' + x1 + '" y1="' + y1 + '" x2="' + x2 + '" y2="' + y2 + '" stroke="' + colore + '" stroke-width="4" stroke-linecap="round"' +
         (un.stato === 'confermata' ? '' : ' stroke-dasharray="5 4"') + ' opacity="0.9" pointer-events="none"/>';
@@ -820,6 +879,7 @@
       (piu ? '<path d="M' + num2(x - r * 0.55) + ' ' + num2(y) + ' L' + num2(x + r * 0.55) + ' ' + num2(y) + ' M' + num2(x) + ' ' + num2(y - r * 0.55) + ' L' + num2(x) + ' ' + num2(y + r * 0.55) + '" stroke="#1f6feb" stroke-width="' + px(1.6) + '"/>' : '') + '</g>';
   }
   function ridimensionabile(k, el) {
+    if (bloccato(k, el)) return false;
     if (k === 'tavoli') return ['tondo', 'lungo', 'rettangolare', 'panca'].indexOf(el.tipo) >= 0;
     return k !== 'muri';
   }
@@ -908,15 +968,15 @@
     $('dasapere').innerHTML = (S.da_sapere || []).map(function (s) { return '<li>' + esc(s) + '</li>'; }).join('');
     $('storico').innerHTML = (S.storico || []).map(function (s) { return '<li>' + esc(s) + '</li>'; }).join('');
     $('unioni').innerHTML = (S.unioni || []).map(function (un) {
-      var posti = un.posti != null ? un.posti + ' posti' : 'posti ?';
+      var posti = un.posti != null ? esc(un.posti) + ' posti' : 'posti ?';
       var stato = un.stato === 'confermata' ? '<span class="ok">confermata</span>' : un.stato === 'no' ? '<span class="dc">non si può</span>' : '<span class="dc">proposta, da confermare</span>';
-      return '<li><strong>' + esc(un.tavoli.join(' + ')) + '</strong> · ' + posti + ' · ' + stato + '</li>';
+      return '<li><strong>' + esc((Array.isArray(un.tavoli) ? un.tavoli : []).join(' + ')) + '</strong> · ' + posti + ' · ' + stato + '</li>';
     }).join('');
   }
 
   // ---------------------------------------------------------------- controlli (avvisi, non blocchi)
   function controlli() {              // grave: sovrapposizioni e dati che il motore rifiuta; gli altri: poco spazio per le sedie
-    var out = [], avv = {}, soglia = SEDIE_CM / cpu(), visti = {}, sl = sala();
+    var out = [], avv = {}, soglia = SEDIE_CM / cpu(), visti = vuoto(), sl = sala();
     function nomeT(i) { var id = String(S.tavoli[i].id == null ? '' : S.tavoli[i].id).trim(); return id || '(senza numero)'; }
     function metti(testo, tavoli, lieve) {
       out.push({t: testo, i: tavoli[0], tavoli: tavoli, grave: !lieve});
@@ -1019,55 +1079,58 @@
     var r = $('foglio').querySelector('.rot b');
     if (r && v.rot !== undefined) r.textContent = v.rot + '°';
   }
-  function testaFoglio(titolo, fisso) {
+  function testaFoglio(titolo, fisso, fermo) {      // fermo: sala bloccata, il tavolo fisso non si sposta
     return '<div class="f-testa"><strong>' + titolo + '</strong>' + (fisso ? '<span class="badge">fisso</span>' : '') +
       '<button type="button" class="btn piccolo" data-az="chiudi">Chiudi</button></div><p class="misure" id="misure"></p>' +
-      (fisso ? '<p class="avviso-fisso">Tavolo fisso: spostalo solo per correggere il disegno.</p>' : '') +
+      (fisso ? '<p class="avviso-fisso">' + (fermo ? TESTO_FISSO : 'Tavolo fisso: spostalo solo per correggere il disegno.') + '</p>' : '') +
       '<ul class="avvisi-pezzo" id="avvisi-pezzo"></ul>';
   }
-  function spunta(campo, si, testo) {
-    return '<label class="spunta"><input type="checkbox" data-campo="' + campo + '"' + (si ? ' checked' : '') + '>' + testo + '</label>';
+  function spunta(campo, si, testo, spenta) {
+    return '<label class="spunta"><input type="checkbox" data-campo="' + campo + '"' + (si ? ' checked' : '') + (spenta ? ' disabled' : '') + '>' + testo + '</label>';
   }
   function inCm(campo, attivo, titolo) {
     return '<span class="unita"><input type="number" step="5" inputmode="numeric" data-campo="' + campo + '"' + (titolo ? ' title="' + esc(titolo) + '" aria-label="' + esc(titolo) + '"' : '') +
       (attivo === false ? ' disabled' : '') + '><i>cm</i></span>';
   }
   function campiMisure(k, el) {
+    var fermo = bloccato(k, el), d = fermo ? ' disabled' : '';       // tavolo fisso in sala bloccata: posizione, misure e rotazione si vedono ma non si cambiano
     var h = '<div class="largo sottotitolo">Misure in cm (dalla parete sinistra e da quella in alto della sala)</div>' +
-      '<label>Da sinistra' + inCm('cm-sx') + '</label><label>Dall\'alto' + inCm('cm-alto') + '</label>';
-    if (k === 'tavoli' && el.tipo === 'tondo') h += '<label>Diametro' + inCm('cm-diam') + '</label>';
+      '<label>Da sinistra' + inCm('cm-sx', !fermo) + '</label><label>Dall\'alto' + inCm('cm-alto', !fermo) + '</label>';
+    if (k === 'tavoli' && el.tipo === 'tondo') h += '<label>Diametro' + inCm('cm-diam', !fermo) + '</label>';
     else {
       var fisse = k === 'tavoli' && (el.tipo === 'quadrato' || el.tipo === 'blocco');
-      h += '<label>Larghezza' + inCm('cm-larg', !fisse) + '</label><label>Profondità' + inCm('cm-prof', !fisse) + '</label>';
+      h += '<label>Larghezza' + inCm('cm-larg', !fisse && !fermo) + '</label><label>Profondità' + inCm('cm-prof', !fisse && !fermo) + '</label>';
       if (fisse) h += '<p class="largo nota-campo">Larghezza e profondità vengono dal lato del quadrato (' + Math.round(lato()) + ' cm, nelle opzioni).</p>';
     }
     if (!(k === 'tavoli' && el.tipo === 'tondo')) {
-      h += '<div class="rot largo"><label>Rotazione<span class="unita"><input type="number" step="1" data-campo="rot"><i>°</i></span></label>' +
-        '<button type="button" class="btn piccolo" data-az="rot-15">−15°</button><button type="button" class="btn piccolo" data-az="rot+15">+15°</button>' +
-        '<button type="button" class="btn piccolo" data-az="rot+90">90°</button></div>';
+      h += '<div class="rot largo"><label>Rotazione<span class="unita"><input type="number" step="1" data-campo="rot"' + d + '><i>°</i></span></label>' +
+        '<button type="button" class="btn piccolo" data-az="rot-15"' + d + '>−15°</button><button type="button" class="btn piccolo" data-az="rot+15"' + d + '>+15°</button>' +
+        '<button type="button" class="btn piccolo" data-az="rot+90"' + d + '>90°</button></div>';
     }
     if (k === 'porte' || k === 'ingresso') h += '<label>Spazio libero davanti' + inCm('spazio') + '</label>';
     return h;
   }
   function foglioTavolo(t) {
-    var opz = TIPI.map(function (x) { return '<option value="' + x + '"' + (x === t.tipo ? ' selected' : '') + '>' + NOME_TIPO[x] + '</option>'; }).join('');
-    var h = testaFoglio('Tavolo ' + esc(t.id), t.fisso) + '<div class="dettagli"><div class="campi">' +
-      '<label>Numero<input type="text" data-campo="id" value="' + esc(t.id) + '"></label>' +
-      '<label>Tipo<select data-campo="tipo">' + opz + '</select></label>' +
+    var fermo = bloccato('tavoli', t), d = fermo ? ' disabled' : '';     // fisso in sala bloccata: restano liberi posti, conferma e note
+    var tipi = SBLOCCATA ? TIPI : TIPI.filter(function (x) { return x === 'quadrato' || x === 'blocco' || x === t.tipo; });   // bloccata: i tipi mobili
+    var opz = tipi.map(function (x) { return '<option value="' + x + '"' + (x === t.tipo ? ' selected' : '') + '>' + NOME_TIPO[x] + '</option>'; }).join('');
+    var h = testaFoglio('Tavolo ' + esc(t.id), t.fisso, fermo) + '<div class="dettagli"><div class="campi">' +
+      '<label>Numero<input type="text" data-campo="id" value="' + esc(t.id) + '"' + d + '></label>' +
+      '<label>Tipo<select data-campo="tipo"' + d + '>' + opz + '</select></label>' +
       '<label>Posti<span class="passo"><button type="button" class="btn" data-az="posti-1" aria-label="un posto in meno">−</button>' +
       '<input type="number" inputmode="numeric" min="1" step="1" data-campo="posti" value="' + (t.posti == null ? '' : esc(t.posti)) + '">' +
       '<button type="button" class="btn" data-az="posti+1" aria-label="un posto in più">+</button></span></label>';
     if (t.tipo === 'blocco') {
-      h += '<label>Quadrati uniti<span class="passo"><button type="button" class="btn" data-az="moduli-1" aria-label="un quadrato in meno">−</button>' +
-        '<b class="valore">' + esc(t.moduli) + '</b><button type="button" class="btn" data-az="moduli+1" aria-label="un quadrato in più">+</button></span></label>' +
-        '<label>Verso<select data-campo="verso"><option value="orizzontale"' + (t.verso === 'orizzontale' ? ' selected' : '') + '>orizzontale</option>' +
+      h += '<label>Quadrati uniti<span class="passo"><button type="button" class="btn" data-az="moduli-1" aria-label="un quadrato in meno"' + d + '>−</button>' +
+        '<b class="valore">' + esc(t.moduli) + '</b><button type="button" class="btn" data-az="moduli+1" aria-label="un quadrato in più"' + d + '>+</button></span></label>' +
+        '<label>Verso<select data-campo="verso"' + d + '><option value="orizzontale"' + (t.verso === 'orizzontale' ? ' selected' : '') + '>orizzontale</option>' +
         '<option value="verticale"' + (t.verso !== 'orizzontale' ? ' selected' : '') + '>verticale</option></select></label>' +
-        spunta('separabile', t.separabile, 'si può separare');
+        spunta('separabile', t.separabile, 'si può separare', fermo);
     }
-    h += campiMisure('tavoli', t) + spunta('fisso', t.fisso, 'fisso (non si sposta)') + spunta('confermato', t.confermato, 'posti confermati') +
+    h += campiMisure('tavoli', t) + spunta('fisso', t.fisso, 'fisso (non si sposta)', !SBLOCCATA) + spunta('confermato', t.confermato, 'posti confermati') +
       '<label class="largo">Note<input type="text" data-campo="note" value="' + esc(t.note || '') + '"></label></div>' +
-      '<div class="pulsanti"><button type="button" class="btn" data-az="duplica">Duplica</button>' +
-      '<button type="button" class="btn rosso" data-az="elimina">Elimina</button></div></div>';
+      (fermo ? '' : '<div class="pulsanti"><button type="button" class="btn" data-az="duplica">Duplica</button>' +
+      '<button type="button" class="btn rosso" data-az="elimina">Elimina</button></div>') + '</div>';
     return h;
   }
   function titoloZona(z, k) {
@@ -1125,6 +1188,7 @@
     return h;
   }
   function foglioSala(scelta) {
+    if (!SBLOCCATA) return '<div class="f-testa"><strong>Sala bloccata</strong></div><p class="misure">Si spostano solo i tavoli mobili (quadrati e quadrati uniti). Tocca un tavolo per cambiare posti e note.</p>';
     return (scelta ? testaFoglio('Sala', false) : '<div class="f-testa"><strong>Sala</strong></div><p class="misure">Nessun pezzo scelto: clicca un tavolo o un elemento sulla mappa.</p>') +
       '<div class="dettagli"><div class="campi"><label>Larghezza' + inCm('sala-larg') + '</label><label>Lunghezza' + inCm('sala-lung') + '</label>' +
       '<p class="tot largo">Il contorno tratteggiato è la sala misurata da parete a parete: non è un muro (i muri sono le linee nere). Si cambia anche cliccando il contorno e tirando i pallini agli angoli.</p></div></div>';
@@ -1156,6 +1220,8 @@
     disegnaControlli(c.lista);
     if (foglio === false) aggiornaMisure(); else disegnaFoglio();
     aggiornaBarra();
+    programmaManda();
+    aggiornaBanner();
     $('o-lato').value = Math.round(lato() * 10) / 10;
   }
   function ricorda(prima) {
@@ -1197,7 +1263,7 @@
   function esito(testo) { $('esito').textContent = testo; avviso(testo); }
 
   function nuovoId() {
-    var max = 0, usati = {};
+    var max = 0, usati = vuoto();
     S.tavoli.forEach(function (t) { usati[String(t.id)] = 1; var n = parseInt(t.id, 10); if (n > max) max = n; });
     var n = max + 1;
     while (usati[String(n)]) n++;
@@ -1280,7 +1346,7 @@
   }
   function elimina() {
     var sel = ed.sel;
-    if (!elemento(sel) || sel.k === 'ingresso' || sel.k === 'sala') return;
+    if (!elemento(sel) || sel.k === 'ingresso' || sel.k === 'sala' || bloccato(sel.k, elemento(sel))) return;
     cambia(function () {
       if (sel.k === 'tavoli') {
         var id = String(S.tavoli[sel.i].id);
@@ -1294,7 +1360,7 @@
   }
   function eliminaVertice(n) {
     var sel = ed.sel, m = elemento(sel);
-    if (!m || sel.k !== 'muri' || m.punti.length <= 2) return;
+    if (!m || sel.k !== 'muri' || m.punti.length <= 2 || bloccato('muri', m)) return;
     cambia(function () { m.punti.splice(n, 1); ed.vertice = null; return true; });
   }
   // Curva un tratto: un arco di cerchio tra i due estremi, a vertici fitti (resta una spezzata, nessun campo nuovo nei dati)
@@ -1356,7 +1422,7 @@
   }
   function duplica() {
     var sel = ed.sel, el = elemento(sel);
-    if (!el || sel.k === 'ingresso' || sel.k === 'sala' || sel.k === 'muri') return;
+    if (!el || sel.k === 'ingresso' || sel.k === 'sala' || sel.k === 'muri' || bloccato(sel.k, el)) return;
     cambia(function () {
       var c = copia(el), sl = sala();
       c.x = agg(el.x + 15, sl.x); c.y = agg(el.y + 15, sl.y);
@@ -1416,10 +1482,15 @@
     confermaCampo();
     var el = e.target.closest ? e.target.closest('[data-k]') : null;
     if (!el) { tocco = {id: e.pointerId, x: e.clientX, y: e.clientY}; return; }
+    if (el.hasAttribute('data-fermo')) {   // sala bloccata, tavolo fisso: lo si sceglie con un tocco (al rilascio), non si trascina e la pagina scorre
+      tocco = {id: e.pointerId, x: e.clientX, y: e.clientY, k: el.getAttribute('data-k'), i: Number(el.getAttribute('data-i')), detto: false};
+      return;
+    }
     e.preventDefault();
     var k = el.getAttribute('data-k'), h = null, i;
     if (k === 'maniglia') { h = el.getAttribute('data-h'); k = ed.sel.k; i = ed.sel.i; }
     else i = Number(el.getAttribute('data-i'));
+    if (bloccato(k, elemento({k: k, i: i}))) return;
     var nuova = !ed.sel || ed.sel.k !== k || ed.sel.i !== i;
     ed.sel = {k: k, i: i};
     if (nuova) ed.vertice = null;
@@ -1438,6 +1509,10 @@
     if (nuova || inserito || k === 'muri') { if (k !== 'muri') disegnaMappa(); disegnaFoglio(); }
   });
   svg.addEventListener('pointermove', function (e) {
+    if (tocco && tocco.k && e.pointerId === tocco.id && e.pointerType === 'mouse' && !tocco.detto && Math.hypot(e.clientX - tocco.x, e.clientY - tocco.y) >= 8) {
+      tocco.detto = true;                  // col mouse si prova a trascinare un tavolo fisso: si dice perché non si muove
+      if (S.tavoli[tocco.i]) avviso('Il tavolo ' + S.tavoli[tocco.i].id + ' è fisso: puoi cambiare posti e note, non la posizione.');
+    }
     if (!drag || e.pointerId !== drag.id) return;
     e.preventDefault();
     if (!drag.mosso) {
@@ -1450,10 +1525,22 @@
     disegnaMappa();
     aggiornaMisure();
   });
+  function inghiottiClic() {           // col dito il pannello si apre sotto il tocco: il clic che segue non deve premere un suo pulsante
+    function ferma(ev) { window.removeEventListener('click', ferma, true); ev.stopPropagation(); ev.preventDefault(); }
+    window.addEventListener('click', ferma, true);
+    setTimeout(function () { window.removeEventListener('click', ferma, true); }, 600);
+  }
   function fine(e) {
     if (tocco && e.pointerId === tocco.id) {
-      if (e.type === 'pointerup' && Math.hypot(e.clientX - tocco.x, e.clientY - tocco.y) < 6 && ed.sel) { ed.sel = null; ed.vertice = null; disegnaMappa(); disegnaFoglio(); }
+      var t0 = tocco;
       tocco = null;
+      if (e.type === 'pointerup' && Math.hypot(e.clientX - t0.x, e.clientY - t0.y) < 6) {
+        if (t0.k) {                                                        // tocco su un tavolo fisso: si apre il pannello
+          if (e.pointerType !== 'mouse') inghiottiClic();
+          ed.sel = {k: t0.k, i: t0.i}; ed.vertice = null; selValida(); tutto();
+        }
+        else if (ed.sel) { ed.sel = null; ed.vertice = null; disegnaMappa(); disegnaFoglio(); }
+      }
     }
     if (!drag || e.pointerId !== drag.id) return;
     var d = drag;
@@ -1465,14 +1552,20 @@
   svg.addEventListener('pointerup', fine);
   svg.addEventListener('pointercancel', fine);
   // su telefono: niente scorrimento della pagina se il dito parte da un pezzo
-  svg.addEventListener('touchstart', function (e) {
-    if (ed.attivo && e.target.closest && e.target.closest('[data-k]')) e.preventDefault();
+  svg.addEventListener('touchstart', function (e) {      // solo da un pezzo che si può trascinare: da un muro, un ostacolo o un tavolo fisso la pagina scorre
+    var p = ed.attivo && e.target.closest ? e.target.closest('[data-k]') : null;
+    if (p && !p.hasAttribute('data-fermo')) e.preventDefault();
   }, {passive: false});
   svg.addEventListener('touchmove', function (e) { if (drag) e.preventDefault(); }, {passive: false});
 
   // ---------------------------------------------------------------- pannello: campi e pulsanti
   function applica(sel, el, campo, v) {     // restituisce true se il pannello va ridisegnato
     var k = sel.k, sl = sala();
+    if (!SBLOCCATA) {                       // sala bloccata: solo i tavoli; un tavolo fisso cambia solo posti, conferma e note
+      if (k !== 'tavoli' || campo === 'fisso') return false;
+      if (el.fisso && campo !== 'posti' && campo !== 'note' && campo !== 'confermato') return false;
+      if (campo === 'tipo' && v !== el.tipo && v !== 'quadrato' && v !== 'blocco') return false;
+    }
     if (/^(cm-|sala-|spessore$|spazio$|rot$|v[xy]\d+$)/.test(campo)) {
       var n = Number(v);
       if (String(v).trim() === '' || !isFinite(n)) return false;       // non è un numero: i campi tornano come prima
@@ -1536,6 +1629,7 @@
     var sel = ed.sel, el = elemento(sel);
     if (az === 'chiudi') { ed.sel = null; ed.vertice = null; tutto(); return; }
     if (!el) return;
+    if (bloccato(sel.k, el) && !/^posti[+-]/.test(az)) return;      // tavolo fisso in sala bloccata: solo i posti
     if (az === 'elimina') { elimina(); return; }
     if (az === 'duplica') { duplica(); return; }
     if (az === 'curva') { curva(); return; }
@@ -1570,6 +1664,7 @@
     if (!b) return;
     confermaCampo();
     var tavolo = b.getAttribute('data-nuovo'), fisso = b.getAttribute('data-fisso'), c = centroVisibile();
+    if (!SBLOCCATA && (fisso || (tavolo !== 'quadrato' && tavolo !== 'blocco'))) return;      // sala bloccata: solo tavoli mobili
     cambia(function () {
       if (tavolo) { S.tavoli.push(nuovoTavolo(tavolo, c)); ed.sel = {k: 'tavoli', i: S.tavoli.length - 1}; }
       else ed.sel = nuovoFisso(fisso, c);
@@ -1592,7 +1687,7 @@
     document.body.classList.toggle('modifica', si);
     tutto();
     if (si) tutto();                 // la seconda volta con le misure dello schermo nuovo (mappa più grande da PC)
-    if (!si && ed.sporco) avviso('Ci sono modifiche non salvate: premi Modifica e poi Salva piantina.');
+    if (!si && ed.sporco) avviso('Ci sono modifiche non mandate: tocca Manda a Giacomo.');
   }
   $('b-modifica').addEventListener('click', function () { entra(true); });
   $('b-annulla').addEventListener('click', function () { confermaCampo(); annulla(); });
@@ -1601,6 +1696,7 @@
   $('o-griglia').addEventListener('change', function (e) { ed.griglia = e.target.checked; disegnaMappa(); });
   $('o-quote').addEventListener('change', function (e) { ed.quote = e.target.checked; disegnaMappa(); disegnaMappa(); });
   $('o-lato').addEventListener('change', function (e) {
+    if (!SBLOCCATA) { tutto(false); return; }          // il lato del quadrato è una misura della sala
     var v = Number(e.target.value);
     if (!(v >= 20 && v <= 200)) { avviso('Il lato del quadrato va da 20 a 200 cm.'); tutto(false); return; }
     cambia(function () { S.scala = S.scala || {}; S.scala.lato_quadrato_cm = Math.round(v * 10) / 10; return true; });
@@ -1619,6 +1715,7 @@
     var sel = ed.sel;
     if (/^Arrow(Left|Right|Up|Down)$/.test(e.key) && elemento(sel)) {
       e.preventDefault();
+      if (bloccato(sel.k, elemento(sel))) { avviso(TESTO_FISSO); return; }
       var d = u(e.shiftKey ? 50 : 5), dx = e.key === 'ArrowLeft' ? -d : e.key === 'ArrowRight' ? d : 0, dy = e.key === 'ArrowUp' ? -d : e.key === 'ArrowDown' ? d : 0;
       cambia(function () {
         var el = elemento(sel);
@@ -1630,6 +1727,7 @@
     }
     if ((e.key === 'Delete' || e.key === 'Backspace') && sel) {
       e.preventDefault();
+      if (bloccato(sel.k, elemento(sel))) { avviso('Si possono togliere solo i tavoli mobili.'); return; }
       if (sel.k === 'muri' && ed.vertice != null && elemento(sel).punti.length > 2) eliminaVertice(ed.vertice); else elimina();
     }
     if (e.key === 'Escape' && sel) { ed.sel = null; ed.vertice = null; tutto(); }
@@ -1794,7 +1892,7 @@
   }
   function preparaSalvataggio() {
     if (!ed.cambiate) return;
-    var riga = oggi() + ' · modificata nell\'editor';
+    var riga = oggi() + (ed.daLink ? ' · modificata dal telefono (versione mandata con WhatsApp)' : ' · modificata nell\'editor');
     S.aggiornata = oggi();
     if (!Array.isArray(S.storico)) S.storico = [];
     if (S.storico[S.storico.length - 1] !== riga) S.storico.push(riga);
@@ -1821,7 +1919,7 @@
       var ok = false;
       try { ok = document.execCommand('copy'); } catch (x) { ok = false; }
       t.remove();
-      esito(ok ? 'Dati copiati: incollali nel messaggio.' : 'Non riesco a copiare: usa Salva piantina.');
+      esito(ok ? 'Dati copiati: incollali nel messaggio.' : 'Non riesco a copiare: usa Scarica il file.');
     }
     if (navigator.clipboard && window.isSecureContext) navigator.clipboard.writeText(testo).then(function () { esito('Dati copiati: incollali nel messaggio.'); }, vecchioModo);
     else vecchioModo();
@@ -1832,11 +1930,313 @@
     try { file = new File([fileHtml()], 'piantina.html', {type: 'text/html'}); } catch (x) { file = null; }
     if (file && navigator.canShare && navigator.share && navigator.canShare({files: [file]})) {
       navigator.share({files: [file], title: 'Piantina Olimpo'}).then(function () { ed.sporco = false; esito('Piantina condivisa.'); }, function (err) {
-        if (!err || err.name !== 'AbortError') esito('Non sono riuscito a condividere: premi Salva piantina e manda il file da WhatsApp.');
+        if (!err || err.name !== 'AbortError') esito('Non sono riuscito a condividere: premi Scarica il file e manda il file da WhatsApp.');
       });
-    } else esito('Da qui il telefono non condivide il file: premi Salva piantina e mandalo da WhatsApp.');
+    } else esito('Da qui il telefono non condivide il file: premi Scarica il file e mandalo da WhatsApp.');
   }
-  [['b-salva', salva], ['b-salva2', salva], ['b-copia', copiaDati], ['b-condividi', condividi], ['b-fine', function () { entra(false); }]].forEach(function (b) {
+  // ---------------------------------------------------------------- "Manda a Giacomo": le modifiche a parole e il link con la versione nuova
+  function maiusc(s) { return s.charAt(0).toUpperCase() + s.slice(1); }
+  function nota(s) { s = String(s); return '«' + (s.length > 160 ? s.slice(0, 159) + '…' : s) + '»'; }
+  function ptxt(p) { return p == null || p === '' ? '?' : String(p); }
+  function canon(v) {                  // un dato in forma di testo, con le chiavi in ordine: due dati uguali danno lo stesso testo
+    if (Array.isArray(v)) return '[' + v.map(canon).join(',') + ']';
+    if (v && typeof v === 'object') return '{' + Object.keys(v).sort().filter(function (k) { return v[k] !== undefined; })
+      .map(function (k) { return JSON.stringify(k) + ':' + canon(v[k]); }).join(',') + '}';
+    return v === undefined ? 'null' : JSON.stringify(v);
+  }
+  function frasiTavolo(a, b) {         // cosa è cambiato in un tavolo: a com'era, b com'è
+    var f = [], dx = (cifra(b.x) - cifra(a.x)) * cpu(), dy = (cifra(b.y) - cifra(a.y)) * cpu();
+    if (ptxt(a.posti) !== ptxt(b.posti)) f.push('posti ' + ptxt(a.posti) + ' → ' + ptxt(b.posti));
+    if (!!a.confermato !== !!b.confermato) f.push(b.confermato ? 'confermato' : 'non più confermato');
+    var ax = Math.abs(dx) >= 5, ay = Math.abs(dy) >= 5;       // sotto i 5 cm non è uno spostamento (lo scatto a 5 cm sposta di poco l'altro asse)
+    if (!ax && !ay && Math.hypot(dx, dy) >= 5) { if (Math.abs(dx) >= Math.abs(dy)) ax = true; else ay = true; }
+    if (ax || ay) {
+      var sp = [];
+      if (ax) sp.push(Math.round(Math.abs(dx) / 5) * 5 + ' cm verso ' + (dx > 0 ? 'destra' : 'sinistra'));
+      if (ay) sp.push(Math.round(Math.abs(dy) / 5) * 5 + ' cm in ' + (dy > 0 ? 'giù' : 'su'));
+      f.push('spostato di ' + sp.join(' e '));
+    }
+    var dr = normRot(cifra(b.rot) - cifra(a.rot));
+    if (Math.abs(dr) >= 1) f.push('ruotato di ' + Math.round(Math.abs(dr)) + '°' + (dr > 0 ? ' in senso orario' : ' in senso antiorario'));
+    if ((a.note || '') !== (b.note || '')) f.push(b.note ? 'nota ' + nota(b.note) : 'nota tolta');
+    if (a.tipo !== b.tipo) f.push('ora è ' + (NOME_TIPO[b.tipo] || b.tipo));
+    else {
+      if (b.tipo === 'blocco' && cifra(a.moduli) !== cifra(b.moduli)) f.push('quadrati uniti ' + cifra(a.moduli) + ' → ' + cifra(b.moduli));
+      if (b.tipo === 'blocco' && (a.verso === 'orizzontale') !== (b.verso === 'orizzontale')) f.push('messo in ' + (b.verso === 'orizzontale' ? 'orizzontale' : 'verticale'));
+      if (Math.abs(cifra(a.w) - cifra(b.w)) > 0.5 || Math.abs(cifra(a.h) - cifra(b.h)) > 0.5 || Math.abs(cifra(a.r) - cifra(b.r)) > 0.5) f.push('misure cambiate');
+    }
+    if (!!a.separabile !== !!b.separabile) f.push(b.separabile ? 'si può separare' : 'non si separa più');
+    if (!!a.fisso !== !!b.fisso) f.push(b.fisso ? 'ora è fisso' : 'non è più fisso');
+    return f;
+  }
+  function diffe(base, cur) {          // le differenze tra la versione pubblicata e quella di adesso: una riga per tavolo, più il numero delle altre
+    var righe = [], altre = 0, vecchi = vuoto(), visti = vuoto(), nuovi = [], rinomi = vuoto();
+    base.tavoli.forEach(function (t) { if (!vecchi[String(t.id)]) vecchi[String(t.id)] = t; });
+    cur.tavoli.forEach(function (t) {
+      var id = String(t.id), a = vecchi[id], f;
+      if (a && !visti[id]) { visti[id] = 1; f = frasiTavolo(a, t); if (f.length) righe.push(maiusc(nomeTavolo(t)) + ': ' + f.join(', ')); }
+      else nuovi.push(t);
+    });
+    var tolti = base.tavoli.filter(function (t) { return !visti[String(t.id)]; });
+    nuovi = nuovi.filter(function (t) {      // un tavolo che ha solo cambiato numero: stesso tipo e stesso posto
+      var j = -1;
+      tolti.forEach(function (a, n) { if (j < 0 && a.tipo === t.tipo && Math.abs(cifra(a.x) - cifra(t.x)) < 0.05 && Math.abs(cifra(a.y) - cifra(t.y)) < 0.05) j = n; });
+      if (j < 0) return true;
+      var a = tolti.splice(j, 1)[0], f = frasiTavolo(a, t);
+      rinomi[String(a.id)] = String(t.id);
+      righe.push(maiusc(nomeTavolo(a)) + ': ora si chiama ' + t.id + (f.length ? ', ' + f.join(', ') : ''));
+      return false;
+    });
+    nuovi.forEach(function (t) {
+      righe.push((t.tipo === 'panca' ? 'Nuova ' : 'Nuovo ') + nomeTavolo(t) + ' (' + (NOME_TIPO[t.tipo] || t.tipo) + ', ' + ptxt(t.posti) + ' posti)');
+    });
+    tolti.forEach(function (t) { righe.push(maiusc(nomeTavolo(t)) + (t.tipo === 'panca' ? ' tolta' : ' tolto')); });
+    var chiavi = vuoto();
+    Object.keys(base).concat(Object.keys(cur)).forEach(function (k) { chiavi[k] = 1; });
+    Object.keys(chiavi).forEach(function (k) {
+      if (k === 'tavoli' || k === 'aggiornata' || k === 'storico') return;
+      var a = base[k], b = cur[k];
+      if (k === 'unioni') {            // le unioni di un tavolo tolto o nuovo seguono il tavolo: si contano solo le altre
+        var idB = vuoto(), idC = vuoto();
+        base.tavoli.forEach(function (t) { idB[rinomi[String(t.id)] || String(t.id)] = 1; });
+        cur.tavoli.forEach(function (t) { idC[String(t.id)] = 1; });
+        var tutti = function (un, ok) { return (un.tavoli || []).every(function (x) { return ok[String(x)]; }); };
+        a = (a || []).map(function (un) { return {tavoli: (un.tavoli || []).map(function (x) { return rinomi[String(x)] || x; }), posti: un.posti, stato: un.stato}; })
+          .filter(function (un) { return tutti(un, idC); });
+        b = (b || []).filter(function (un) { return tutti(un, idB); });
+      }
+      if (Array.isArray(a) || Array.isArray(b)) {
+        a = a || []; b = b || [];
+        for (var i = 0; i < Math.max(a.length, b.length); i++) if (canon(a[i]) !== canon(b[i])) altre++;
+      } else if (canon(a) !== canon(b)) altre++;
+    });
+    return {righe: righe, altre: altre, n: righe.length + altre};
+  }
+  function messaggio(d, link) {        // il testo per WhatsApp, in italiano semplice
+    var r = ['Piantina Olimpo: modifiche dal telefono (' + oggi() + ')', ''];
+    d.righe.forEach(function (x) { r.push('• ' + x); });
+    if (d.altre) r.push('• Altre modifiche alla sala: ' + d.altre);
+    r.push('', 'Apri la piantina con le modifiche:', link);
+    return r.join('\n');
+  }
+
+  // il link porta i dati: #v= JSON compresso (deflate-raw) e #j= JSON in chiaro, entrambi in base64url
+  function baseUrl() { return location.protocol === 'file:' ? PUBBLICA : location.origin + location.pathname; }     // senza ?sblocca
+  function urlWa(testo) { return 'https://wa.me/?text=' + encodeURIComponent(testo); }
+  function utf8(t) {
+    if (typeof TextEncoder === 'function') return new TextEncoder().encode(t);
+    var b = unescape(encodeURIComponent(t)), out = new Uint8Array(b.length);
+    for (var i = 0; i < b.length; i++) out[i] = b.charCodeAt(i);
+    return out;
+  }
+  function daUtf8(bytes) {
+    if (typeof TextDecoder === 'function') return new TextDecoder('utf-8', {fatal: true}).decode(bytes);
+    var s = '';
+    for (var i = 0; i < bytes.length; i++) s += String.fromCharCode(bytes[i]);
+    return decodeURIComponent(escape(s));
+  }
+  function base64url(bytes) {
+    var s = '';
+    for (var i = 0; i < bytes.length; i += 8192) s += String.fromCharCode.apply(null, bytes.subarray(i, i + 8192));
+    return btoa(s).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+  }
+  function daBase64url(t) {
+    t = t.replace(/-/g, '+').replace(/_/g, '/');
+    while (t.length % 4) t += '=';
+    var s = atob(t), out = new Uint8Array(s.length);
+    for (var i = 0; i < s.length; i++) out[i] = s.charCodeAt(i);
+    return out;
+  }
+  function leggiStream(readable, limite) {      // legge fino a `limite` byte: un link malevolo non deve riempire la memoria
+    var rd = readable.getReader(), parti = [], tot = 0;
+    function leggi() {
+      return rd.read().then(function (r) {
+        if (r.done) {
+          var out = new Uint8Array(tot), o = 0;
+          parti.forEach(function (p) { out.set(p, o); o += p.length; });
+          return out;
+        }
+        tot += r.value.length;
+        if (tot > limite) { rd.cancel(); throw new Error('dati troppo grandi'); }
+        parti.push(r.value);
+        return leggi();
+      });
+    }
+    return leggi();
+  }
+  function deflate(bytes, comprimi) {
+    var f = comprimi ? new CompressionStream('deflate-raw') : new DecompressionStream('deflate-raw'), w = f.writable.getWriter();
+    w.write(bytes).catch(function () { /* l'errore arriva da leggiStream */ });
+    w.close().catch(function () { /* idem */ });
+    return leggiStream(f.readable, 2000000);
+  }
+  function conCompressione() { return typeof CompressionStream === 'function' && typeof DecompressionStream === 'function' && typeof Response === 'function'; }
+  function frammentoDiretto(json) { return 'j=' + base64url(utf8(json)); }
+  function frammento(json) {           // la parte dopo il # (senza compressione se il browser non la sa fare)
+    if (!conCompressione()) return Promise.resolve(frammentoDiretto(json));
+    return deflate(utf8(json), true).then(function (z) { return 'v=' + base64url(z); }, function () { return frammentoDiretto(json); });
+  }
+
+  // il pulsante è un vero link: l'indirizzo di WhatsApp si prepara prima, così il tocco apre direttamente l'app (iOS blocca ciò che parte dopo un'attesa)
+  var manda = {diff: {righe: [], altre: 0, n: 0}, vuoto: true, pronto: true, troppo: false, href: '#', testo: '', gen: 0, timer: null};
+  function mostraManda() {
+    Array.prototype.forEach.call(document.querySelectorAll('.b-manda'), function (a) { a.setAttribute('href', manda.href); });
+  }
+  function impostaManda(fr) {
+    var t = messaggio(manda.diff, baseUrl() + '#' + fr);
+    manda.testo = t;
+    manda.troppo = t.length > LIMITE_WA;
+    manda.href = manda.troppo ? '#' : urlWa(t);
+    manda.pronto = true;
+    mostraManda();
+  }
+  function programmaManda() {          // dopo ogni cambiamento: le differenze subito, il link compresso poco dopo
+    var d = diffe(S0, S);
+    manda.diff = d; manda.gen++; manda.vuoto = !d.n; manda.pronto = manda.vuoto; manda.troppo = false; manda.href = '#'; manda.testo = '';
+    clearTimeout(manda.timer);
+    mostraManda();
+    if (manda.vuoto) return;
+    var gen = manda.gen, json = JSON.stringify(S);
+    manda.timer = setTimeout(function () {
+      frammento(json).then(function (fr) { if (gen === manda.gen) impostaManda(fr); });      // se nel frattempo è cambiato qualcosa, ci pensa il giro dopo
+    }, 100);
+  }
+  function puoCondividere() {
+    var file = null;
+    try { file = new File([fileHtml()], 'piantina.html', {type: 'text/html'}); } catch (x) { file = null; }
+    return !!(file && navigator.canShare && navigator.share && navigator.canShare({files: [file]}));
+  }
+  function mandaFile() {               // troppe modifiche per un messaggio: si passa dal file
+    if (puoCondividere()) { avviso('Le modifiche sono troppe per un messaggio: ti mando il file intero.'); condividi(); }
+    else { salva(); esito('Le modifiche sono troppe per un messaggio WhatsApp: ho scaricato il file piantina.html, mandamelo da WhatsApp.'); }
+  }
+  function cliccaManda(e) {
+    confermaCampo();                   // un campo ancora aperto: lo si conferma prima, così il messaggio è aggiornato
+    if (manda.vuoto) { e.preventDefault(); esito('Non hai cambiato niente: non c\'è nulla da mandare.'); return; }
+    if (!manda.pronto) impostaManda(frammentoDiretto(JSON.stringify(S)));      // tocco subito dopo una modifica: link senza compressione, ma sempre aggiornato
+    if (manda.troppo) { e.preventDefault(); mandaFile(); return; }
+    e.currentTarget.setAttribute('href', manda.href);
+    ed.sporco = false;                 // da qui in poi le modifiche si considerano mandate: restano a schermo, ma uscire non avvisa
+    avviso('Si apre WhatsApp: scegli tu a chi mandarlo.');
+  }
+  Array.prototype.forEach.call(document.querySelectorAll('.b-manda'), function (a) { a.addEventListener('click', cliccaManda); });
+
+  // ---------------------------------------------------------------- link ricevuto: i dati si controllano (la pagina è pubblica, il link lo può scrivere chiunque)
+  function errore(m) { throw new Error(m); }
+  function numero(v, nome) { if (typeof v !== 'number' || !isFinite(v)) errore('numero non valido: ' + nome); return v; }
+  function testoDi(v, max) { return String(v == null ? '' : v).slice(0, max || 2000); }
+  function oggettoDi(v, nome) { if (!v || typeof v !== 'object' || Array.isArray(v)) errore(nome + ' non valido'); return v; }
+  function listaDi(v, nome, max) { if (v == null) return []; if (!Array.isArray(v) || v.length > (max || 500)) errore(nome + ' non valida'); return v; }
+  function facolt(src, dst, chiavi, nome) { chiavi.forEach(function (k) { if (src[k] !== undefined) dst[k] = numero(src[k], nome + '.' + k); }); }
+  function tavoloPulito(t, n) {
+    oggettoDi(t, 'tavolo ' + n);
+    if (TIPI.indexOf(t.tipo) < 0) errore('tipo di tavolo non valido');
+    var o = {id: testoDi(t.id, 60), tipo: t.tipo, x: numero(t.x, 'x'), y: numero(t.y, 'y')};
+    facolt(t, o, ['r', 'w', 'h'], 'tavolo');
+    if (t.tipo === 'blocco') {
+      o.moduli = numero(t.moduli, 'moduli');
+      if (!(o.moduli >= 1 && o.moduli <= 12 && o.moduli === Math.floor(o.moduli))) errore('moduli non validi');
+      o.verso = t.verso === 'orizzontale' ? 'orizzontale' : 'verticale';
+    }
+    facolt(t, o, ['rot'], 'tavolo');
+    if (t.posti === null) o.posti = null; else if (t.posti !== undefined) o.posti = numero(t.posti, 'posti');
+    if (t.fisso !== undefined) o.fisso = !!t.fisso;
+    if (t.note !== undefined) o.note = testoDi(t.note, 500);
+    ['separabile', 'confermato', 'da_regola'].forEach(function (k) { if (t[k] !== undefined) o[k] = !!t[k]; });
+    return o;
+  }
+  function zonaPulita(z, nome, ostacolo) {
+    oggettoDi(z, nome);
+    var o = {};
+    if (z.nome !== undefined) o.nome = testoDi(z.nome, 200);
+    if (ostacolo && z.tipo !== undefined) o.tipo = Object.prototype.hasOwnProperty.call(ZONA, z.tipo) ? z.tipo : 'blocco';
+    if (z.forma !== undefined) o.forma = z.forma === 'tondo' ? 'tondo' : 'quadrato';
+    ['x', 'y', 'w', 'h'].forEach(function (k) { o[k] = numero(z[k], nome + '.' + k); });
+    facolt(z, o, ['rot', 'spazio_libero_cm'], nome);
+    return o;
+  }
+  function muroPulito(m, n) {
+    oggettoDi(m, 'muro ' + n);
+    var p = listaDi(m.punti, 'punti del muro', 3000);
+    if (p.length < 2) errore('muro troppo corto');
+    var o = {punti: p.map(function (q) { if (!Array.isArray(q) || q.length < 2) errore('punto non valido'); return [numero(q[0], 'punto'), numero(q[1], 'punto')]; })};
+    facolt(m, o, ['spessore_cm'], 'muro');
+    return o;
+  }
+  function unionePulita(un, n) {
+    oggettoDi(un, 'unione ' + n);
+    var t = listaDi(un.tavoli, 'unione', 12);
+    if (t.length < 2) errore('unione non valida');
+    return {tavoli: t.map(function (x) { return testoDi(x, 60); }), posti: un.posti == null ? null : numero(un.posti, 'unione.posti'),
+      stato: ['proposta', 'confermata', 'no'].indexOf(un.stato) >= 0 ? un.stato : 'proposta'};
+  }
+  function pulisci(d) {                // dati nuovi da un link: solo i campi noti, numeri veri, testi come testi; altrimenti errore
+    oggettoDi(d, 'dati');
+    if (!Array.isArray(d.tavoli) || d.tavoli.length > 300) errore('i tavoli mancano o sono troppi');
+    var o = {};
+    if (d.nome !== undefined) o.nome = testoDi(d.nome, 100);
+    if (d.aggiornata !== undefined) o.aggiornata = testoDi(d.aggiornata, 40);
+    if (d.turni !== undefined) o.turni = listaDi(d.turni, 'turni', 6).map(function (t) { return testoDi(t, 10); });
+    if (d.posti_quadrato_separato !== undefined) o.posti_quadrato_separato = numero(d.posti_quadrato_separato, 'posti_quadrato_separato');
+    if (d.scala !== undefined) {
+      o.scala = {lato_quadrato_cm: numero(oggettoDi(d.scala, 'scala').lato_quadrato_cm, 'scala')};
+      if (!(o.scala.lato_quadrato_cm > 0)) errore('scala non valida');
+    }
+    if (d.sala !== undefined) {
+      o.sala = {};
+      ['x', 'y', 'w', 'h'].forEach(function (k) { o.sala[k] = numero(oggettoDi(d.sala, 'sala')[k], 'sala.' + k); });
+      if (!(o.sala.w > 0 && o.sala.h > 0)) errore('sala non valida');
+    }
+    if (d.ingresso !== undefined) o.ingresso = zonaPulita(d.ingresso, 'ingresso', false);
+    if (d.muri !== undefined) o.muri = listaDi(d.muri, 'muri', 100).map(muroPulito);
+    ZONE.forEach(function (k) {
+      if (d[k] !== undefined) o[k] = listaDi(d[k], k).map(function (z, n) { return zonaPulita(z, k + ' ' + n, k === 'ostacoli'); });
+    });
+    o.tavoli = d.tavoli.map(tavoloPulito);
+    if (d.unioni !== undefined) o.unioni = listaDi(d.unioni, 'unioni').map(unionePulita);
+    ['da_sapere', 'storico'].forEach(function (k) { if (d[k] !== undefined) o[k] = listaDi(d[k], k).map(function (t) { return testoDi(t, 3000); }); });
+    return o;
+  }
+  function decodifica(tipo, dati) {    // 'v' compresso, 'j' in chiaro → una promessa con i dati letti
+    if (!/^[A-Za-z0-9_-]+$/.test(dati) || dati.length > 60000) return Promise.reject(new Error('link rovinato'));
+    var bytes;
+    try { bytes = daBase64url(dati); } catch (x) { return Promise.reject(x); }
+    var letti = tipo === 'j' ? Promise.resolve(bytes) : conCompressione() ? deflate(bytes, false) : Promise.reject(new Error('compressione non disponibile'));
+    return letti.then(function (b) { return JSON.parse(daUtf8(b)); });
+  }
+  function frase(n) { return n === 0 ? 'nessuna differenza' : n === 1 ? '1 differenza' : n + ' differenze'; }
+  function aggiornaBanner() {
+    $('banner').hidden = !ed.daLink;
+    if (ed.daLink) $('banner-testo').textContent = 'Stai guardando la versione mandata con WhatsApp: ' + frase(manda.diff.n) + ' rispetto a quella pubblicata';
+  }
+  function caricaDaLink(aperta) {      // aperta: la pagina era già aperta (è cambiato solo l'indirizzo): si può tornare indietro con Annulla
+    var m = /^#([vj])=([\s\S]*)$/.exec(location.hash);
+    if (!m) return;
+    $('errore-link').hidden = true;
+    decodifica(m[1], m[2]).then(function (grezzo) {
+      var nuova = normalizza(pulisci(grezzo));
+      if (aperta) ricorda(JSON.stringify(S)); else { ed.annulla = []; ed.ripeti = []; }
+      S = nuova;
+      ed.daLink = true; ed.sporco = false; ed.cambiate = 1; ed.sel = null; ed.vertice = null;      // cambiate: il file scaricato avrà la sua riga nello storico
+      tutto();
+    }).then(null, function () {
+      var e = $('errore-link');
+      e.textContent = 'Il link con le modifiche non si legge (è rovinato o tagliato): ti mostro la piantina pubblicata.';
+      e.hidden = false;
+    });
+  }
+  function tornaPubblicata() {
+    ricorda(JSON.stringify(S));        // si può tornare alla versione del link con Annulla
+    S = copia(S0);
+    ed.daLink = false; ed.sporco = false; ed.cambiate = 0; ed.sel = null; ed.vertice = null;
+    try { history.replaceState(null, '', location.pathname + location.search); } catch (x) { location.hash = ''; }
+    selValida(); tutto();
+    avviso('Ora vedi la piantina pubblicata.');
+  }
+  $('b-torna').addEventListener('click', tornaPubblicata);
+  window.addEventListener('hashchange', function () { caricaDaLink(true); });
+
+  [['b-salva2', salva], ['b-scarica-link', salva], ['b-copia', copiaDati], ['b-condividi', condividi], ['b-fine', function () { entra(false); }]].forEach(function (b) {
     $(b[0]).addEventListener('click', function () { confermaCampo(); b[1](); });
   });
   window.addEventListener('beforeunload', function (e) {
@@ -1850,9 +2250,16 @@
   $('o-aggancio').checked = ed.aggancio;
   $('o-griglia').checked = ed.griglia;
   $('o-quote').checked = ed.quote;
+  document.body.classList.toggle('sbloccata', SBLOCCATA);
+  if (SBLOCCATA) {
+    $('l-sblocca').hidden = false;
+    $('istruzioni-testo').textContent = 'Trascina per spostare, tocca per modificare, poi tocca Manda a Giacomo.';
+  }
   tutto();
-  // per le prove automatiche: i dati in memoria, il file che "Salva piantina" scaricherebbe, la scheda delle misure
-  window.piantina = {dati: function () { return S; }, file: fileHtml, json: function () { return formatta(S); }, voci: vociScheda};
+  caricaDaLink(false);                 // se l'indirizzo porta una versione mandata con WhatsApp, la si legge e la si mostra
+  // per le prove automatiche: i dati in memoria, il file che "Scarica il file" scaricherebbe, la scheda delle misure, le differenze e il messaggio
+  window.piantina = {dati: function () { return S; }, file: fileHtml, json: function () { return formatta(S); }, voci: vociScheda,
+    pubblicata: function () { return S0; }, differenze: function () { return diffe(S0, S); }, manda: function () { return manda; }};
 })();
 </script>
 </body>
