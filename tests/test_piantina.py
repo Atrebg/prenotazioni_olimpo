@@ -71,7 +71,7 @@ def test_lettura_del_blocco_dalla_piantina(tmp_path):
     sala = carica_sala(PIANTINA)
     assert sala["turni"] == TURNI and sala["piantina"] == dati
     p = Piantina(dati)
-    assert p.posti_per_turno() == 151 and p.capacita() == [2, 3, 4, 6, 8, 10, 20]
+    assert p.posti_per_turno() == 141 and p.capacita() == [2, 3, 4, 6, 8, 10, 20]
     # attributi in un altro ordine, testo intorno: si trova lo stesso; senza blocco: errore chiaro
     altro = tmp_path / "altra.html"
     altro.write_text('<html><body><p>x</p><script id="sala" type="application/json">'
@@ -225,7 +225,7 @@ def test_muro_curvo_dal_comando_curva_dell_editor(tmp_path, verificatore):
     assert letti == dati and len(punti) == punti_prima + 30 and punti[1] == a and punti[2 + 30] == b   # i 30 vertici stanno tra a e b
     assert letti["tavoli"] == leggi_blocco_sala(PIANTINA)["tavoli"]
     sala = carica_sala(curva)
-    assert sala["piantina"] == letti and Piantina(letti).posti_per_turno() == 151
+    assert sala["piantina"] == letti and Piantina(letti).posti_per_turno() == 141
     pren = in_arrivo(("A", 6, "20:00"), ("B", 2, "21:30"))
     sol = ordine(sala, pren)
     assert sol["accettazione"]["accettate"] == 2

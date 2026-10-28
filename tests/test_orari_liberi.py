@@ -1,10 +1,21 @@
 from ristorante.orari_liberi import durata, risolvi, verifica, valuta_con_uscita_anticipata
-from ristorante.piantina import Piantina
+from ristorante.piantina import Piantina, leggi_blocco_sala
+from pathlib import Path
 from confronto_orari_liberi import confronta
 
 
 def p(id, coperti, ora):
     return {"id": id, "coperti": coperti, "orario": ora}
+
+
+def test_coperti_tavoli_della_striscia_destra():
+    dati = leggi_blocco_sala(Path(__file__).resolve().parents[1] / "olimpo/piantina.html")
+    pia = Piantina(dati)
+    for numero in range(20, 25):
+        tavolo = pia.per_id[str(numero)]
+        assert tavolo["moduli"] == 2 and tavolo["posti"] == 4
+        assert next(u for u in pia.unita_del(tavolo) if u.intero).posti == 4
+    assert all(pia.per_id[str(numero)]["posti"] == 2 for numero in range(25, 30))
 
 
 def test_durate_e_riutilizzo_senza_riapparecchiatura():
