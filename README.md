@@ -1,637 +1,120 @@
-# Ristorante · tavoli e prenotazioni (prototipo CP-SAT)
+# Olimpo · assistente di sala (versione solo agente)
 
-Motore che organizza la sala di un ristorante per una serata decidendo **insieme**:
+Gestionale delle prenotazioni del ristorante Olimpo fatto **solo di istruzioni per Claude Code**: aprendo Claude
+Code in questa cartella, la sessione diventa l'assistente di sala. Legge il messaggio del proprietario (formato
+compatto o testo libero), decide chi entra, in quale turno (20:00 o 21:30) e a quale tavolo, e scrive lo stato della
+serata in un file JSON. Non c'è codice: solo file markdown (`CLAUDE.md`, skill, agenti), la piantina e i dati.
 
-1. dove mettere i tavoli (posizione 2D, moduli quadrati accostati in fila, orientamento, tavoli tondi);
-2. a quale tavolo e a che ora sistemare ogni prenotazione.
+È una variante del repository con il motore CP-SAT in Python (remote `motore`), da cui viene la piantina.
 
-Solver: OR-Tools CP-SAT 9.15. Uscite: `soluzione.json`, `serata.html` (mappa SVG, timeline, registro;
-file unico senza CDN), verifica indipendente.
+## Che cosa cambia rispetto al motore
 
-Due scelte in configurazione (`dati/sala_esempio.json`, sovrascrivibili da riga di comando):
-
-| chiave | valori | significato |
+| | motore (Python, CP-SAT) | questa versione |
 |---|---|---|
-| `accettazione` | `ordine_di_arrivo` (default) · `tutte_insieme` | "i primi che prenotano restano dentro" · ottimizzazione unica (modalità originale) |
-| `disposizione` | `fissa` (default) · `variabile` · `libera` | tavoli fermi tutta la sera · la piantina può cambiare durante il servizio · solo sala vera e solo da riga di comando: i quadrati mobili si spostano, ruotano, uniscono e dividono ([disposizione libera](#disposizione-libera-dei-tavoli-mobili---disposizione-libera)) |
-| `turni` | assente (default) · elenco di turni | orari liberi · ogni prenotazione occupa il tavolo per tutto il suo turno ([modalità a turni](#modalità-a-turni)) |
+| installazione | Python, venv, OR-Tools, un processo acceso per la chat | solo Claude Code |
+| chi decide | il solver, su tutte le disposizioni possibili | il modello, seguendo le procedure delle skill |
+| "turno pieno" | dimostrato dal solver | dimostrato solo se lo dicono i conteggi per soglia; altrimenti "non trovo posto (non dimostrato)" |
+| ripetibilità | stesso ingresso, stesso risultato | i risultati possono cambiare tra un'esecuzione e l'altra |
+| costo | CPU locale | token: ogni messaggio rilegge regole, skill e piantina; una prova da 67 prenotazioni è lunga |
+| testo libero | con una chiave API a parte | letto direttamente dal modello |
+| regole | nel codice e nei pesi | in italiano, in `agente/regole.md` e nelle skill |
 
-**La sala vera dell'Olimpo si usa con `--sala olimpo/piantina.html`**: il motore legge direttamente il blocco
-`<script type="application/json" id="sala">` della piantina, che è l'unica fonte e che il proprietario aggiorna
-([sala vera](#sala-vera-dellolimpo-piantina-data)). `dati/sala_turni.json` resta come sala di prova a turni con la
-geometria della sala di esempio (un test controlla che il resto resti uguale).
+## Come si usa
 
-## Installazione
+Aprire Claude Code nella cartella del repository e scrivere come al telefono:
 
-Serve Python 3.12 (provato con 3.12). Dalla cartella del progetto:
-
-```powershell
-# Windows
-python -m venv .venv
-.venv\Scripts\python.exe -m pip install -r requirements.txt
+```
+Rossi 4 sab 20:30
+Rossi 4 sab 2t compleanno
+mi ha chiamato Bianchi: venerdì in 6 verso le nove e mezza, uno è in carrozzina
+sì
+Rossi diventano 6
+annulla Rossi sab
+c'è posto per 8 sabato alle 21?
+riepilogo sab
+rigioca dati/olimpo_sabato.json
 ```
 
-```bash
-# Linux / macOS
-python3 -m venv .venv
-.venv/bin/python -m pip install -r requirements.txt
+Un messaggio solo, senza sessione aperta (le scritture dei file vanno permesse, Bash resta escluso):
+
+```
+claude -p "Rossi 4 sab 20:30" --permission-mode acceptEdits
+claude -c -p "sì" --permission-mode acceptEdits
 ```
 
-Negli esempi qui sotto si usa `.venv\Scripts\python.exe` (Windows); su Linux e macOS è `.venv/bin/python`.
+`-c` continua l'ultima conversazione; anche senza, una risposta breve ("sì", "primo") si ritrova, perché proposte e
+domande in sospeso sono scritte nel file della serata come prenotazioni `in_attesa`. Da un'altra sessione si usa l'agente `sala-olimpo`; per un secondo parere su una
+serata l'agente `controllo-sala` (sola lettura).
 
-**Chiave `ANTHROPIC_API_KEY` (opzionale).** Serve solo alla chat per leggere i messaggi scritti liberamente
-("domani sera in 4 verso le 8, Bianchi"). Senza chiave tutto il resto funziona e la chat capisce il formato compatto
-(`Rossi 4 sab 20:30`). Si imposta come variabile d'ambiente, mai nel codice né in un file del repository.
+## Dove sta cosa
 
-## Comandi principali
+- `CLAUDE.md`: ruolo dell'assistente, quale skill per quale messaggio, divieti, formato delle risposte.
+- `agente/regole.md`: regole dure, regole di buonsenso in ordine di priorità, zone della sala (IPOTESI da confermare).
+- `.claude/skills/`: `sala` (catalogo dei tavoli dalla piantina, conteggi), `stato-serata` (formato del file),
+  `assegna-tavoli` (la procedura centrale), `prenotazione`, `disponibilita`, `riepilogo`, `controllo-serata`,
+  `rigioca`, `mossa-tavoli`.
+- `.claude/agents/`: `sala-olimpo` (l'assistente come sub-agent), `controllo-sala` (verificatore indipendente).
+- `olimpo/piantina.html`: la sala vera, fonte unica (blocco JSON `id="sala"`); si cambia solo con l'editor.
+- `dati/olimpo_sabato.json`, `dati/olimpo_venerdi.json`: serate di prova.
+- `serate/AAAA-MM-GG.json`: lo stato reale, una serata per file. **Fuori dal git**: contiene nomi e note dei clienti
+  e il repository di origine è pubblico; in più cambia a ogni messaggio. Va copiato a parte (backup) da chi lo usa.
+- `prove/<etichetta>/`: prove e demo (rigioca, casi manuali). Fuori dal git: si rifanno quando servono.
 
-| comando | cosa fa | esempio |
-|---|---|---|
-| `esegui.py` | organizza una serata: risolve, scrive `soluzione.json` e `serata.html`, verifica | `.venv\Scripts\python.exe esegui.py --prenotazioni dati\sabato_pieno.json --out out` |
-| `chat.py` | chat con il proprietario: nuova prenotazione, modifica, annulla, disponibilità, riepilogo | `.venv\Scripts\python.exe chat.py --messaggio "Rossi 4 sab 20:30" --cartella dati\serate` |
-| `chat.py --piantina` | disposizione dei tavoli di una serata già in chat, con verifica | `.venv\Scripts\python.exe chat.py --piantina 2026-10-31 --cartella dati\serate` |
-| `prova.py` | "c'è posto?" al telefono, senza scrivere file | `.venv\Scripts\python.exe prova.py --stato out\soluzione.json --coperti 2 --orario 21:00` |
-| `confronto.py` | confronta disposizione fissa e variabile, o politiche di proposta | `.venv\Scripts\python.exe confronto.py --modi fissa variabile` |
-| sala vera | tutti i comandi con `--sala olimpo/piantina.html` | `.venv\Scripts\python.exe esegui.py --sala olimpo\piantina.html --prenotazioni dati\olimpo_sabato.json --out out\olimpo_sabato` |
-| sala vera, tavoli mobili liberi | il motore dispone i quadrati, con sedie, muri e corridoi; confronto con i tavoli fermi | `.venv\Scripts\python.exe esegui.py --sala olimpo\piantina.html --prenotazioni dati\olimpo_sabato.json --disposizione libera --confronto out\olimpo_sabato_fissa\soluzione.json --out out\olimpo_sabato_libera` |
-| `confronto.py` sala vera | sabato con politica "sempre" e "mai" | `.venv\Scripts\python.exe confronto.py --sala olimpo\piantina.html --prenotazioni dati\olimpo_sabato.json --combinazioni fissa:sempre fissa:mai --out out\confronto_olimpo` |
-| `confronto.py` a turni | le tre combinazioni a turni su sabato_pieno | `.venv\Scripts\python.exe confronto.py --sala dati\sala_turni.json --combinazioni fissa:mai fissa:sempre variabile:sempre --out out\confronto_turni` |
-| `verifica.py` | verifica indipendente di una soluzione | `.venv\Scripts\python.exe verifica.py --sala dati\sala_esempio.json --prenotazioni dati\sabato_pieno.json --soluzione out\soluzione.json` |
-| `valuta_lettura.py` | misura la precisione della lettura via Claude sui messaggi di `valutazione/` (serve la chiave) | `.venv\Scripts\python.exe valuta_lettura.py` |
-| `pytest` | test | `.venv\Scripts\python.exe -m pytest -q` |
+## Aggiornare la piantina
 
-## Agente
+La piantina si modifica con l'editor nel repository del motore. Quando lì è salvata su `main`, dalla cartella di
+questo repository:
 
-In `agente/` c'è `sala-olimpo`, un agente di Claude Code che gestisce prenotazioni e sala dai messaggi del
-proprietario. Le regole (dure e di buonsenso) stanno in [`agente/regole.md`](agente/regole.md); la definizione
-dell'agente è in [`.claude/agents/sala-olimpo.md`](.claude/agents/sala-olimpo.md) e traduce le richieste nei comandi del
-motore, senza mai decidere lui "entra / non entra". Vedi [`agente/README.md`](agente/README.md).
-
-## Come si lancia
-
-Comando unico (risolve → scrive JSON e HTML → esegue la verifica; exit code 0 solo se la verifica è PASS):
-
-```powershell
-.venv\Scripts\python.exe esegui.py
+```
+git fetch motore
+git checkout motore/main -- olimpo/piantina.html
 ```
 
-Di default: `dati\sabato_pieno.json` (30 prenotazioni), accettazione in ordine di arrivo, disposizione "fissa", proposta dell'orario più vicino accettata "sempre" (tutto dalla config).
-Opzioni: `--sala`, `--prenotazioni`, `--out`, `--accettazione`, `--disposizione`, `--tempo` (tutte_insieme),
-`--tempo-decisione`, `--tempo-spareggio`, `--tempo-piantina` (ordine_di_arrivo), `--log`.
+(da un'altra cartella: `git -C C:\repos\olimpo-agente fetch motore` e
+`git -C C:\repos\olimpo-agente checkout motore/main -- olimpo/piantina.html`). Alla sessione successiva l'assistente
+vede che la data o lo storico sono cambiati, ricalcola i tavoli con le regole della skill `sala` e lo dice.
 
-- Modalità originale: `esegui.py --accettazione tutte_insieme --prenotazioni dati\sabato.json`
-- Senza proposte di orario: `esegui.py --proposta mai` (altre politiche: `sempre`, `entro_60_min`)
-- **Confronto per il proprietario** (fissa contro variabile, ordine di arrivo, sabato_pieno):
-  `confronto.py` → `out\confronto\{fissa,variabile}\` più `out\confronto\confronto.json` e una tabella a video.
-  `confronto.py --da-json` rigenera mappe, verifiche e tabella senza risolvere di nuovo.
-- Solo la verifica: `python verifica.py --sala ... --prenotazioni ... --soluzione ...`
-- Test: `.venv\Scripts\python.exe -m pytest -q` (circa un minuto; il primo `import ortools` può richiedere una decina
-  di secondi).
+## Riferimento atteso dei test
 
-## Chat con il proprietario (`chat.py`)
+Motore CP-SAT sulla piantina del 29/10/2026, politica "il cliente accetta sempre la proposta dell'altro turno":
 
-Simula da riga di comando la chat 1:1 che domani passerà da WhatsApp. Il processo resta vivo, così OR-Tools si carica
-una volta sola (circa 3-25 s all'avvio su questa macchina).
-
-```powershell
-.venv\Scripts\python.exe chat.py                                   # chat interattiva, "esci" per uscire
-.venv\Scripts\python.exe chat.py --messaggio "Rossi 4 sab 20:30"   # un colpo solo
-.venv\Scripts\python.exe chat.py --ora 2026-10-27T10:00            # orologio finto
-.venv\Scripts\python.exe chat.py --piantina 2026-10-31             # disposizione dei tavoli della serata + verifica
-.venv\Scripts\python.exe chat.py --senza-tabella                   # senza tabella delle disponibilità (verifica diretta)
-.venv\Scripts\python.exe chat.py --sala dati\sala_turni.json      # ristorante a turni (Rossi 4 sab 1t)
-.venv\Scripts\python.exe misura_chat.py [--attendi-tabella]        # tempi di risposta sul copione di 10 messaggi
-```
-
-- **Ingresso per il webhook:** `ristorante.conversazione.gestisci_messaggio(testo, ricevuto_il, mittente, cartella_stato) -> str`.
-- **Formato compatto, letto senza LLM:** `Rossi 4 sab 20:30 [note]`, `Rossi 4 31/10 20:30 seggiolone`, `annulla Rossi sab`,
-  `riepilogo sab`. Le risposte brevi a una domanda ("x 4", "alle 21", "Bianchi", "stasera") e le conferme di una
-  proposta ("21", "la seconda", "ok 20:15", "no grazie") si leggono anch'esse senza LLM.
-- **Tutto il resto va a Claude** con l'SDK ufficiale `anthropic` e l'output strutturato (`messages.parse` con uno
-  schema Pydantic). Il modello di default è `claude-haiku-5-5` con effort `low`: il proprietario ha chiesto la cosa
-  più economica. Si configura in `dati/sala_esempio.json` → `chat` (`modello`, `effort`, `max_tokens`, `timeout_s`).
-  Un rifiuto del modello (`stop_reason: refusal`), una risposta troncata e gli errori dell'API (dal più specifico al
-  più generico) non bloccano la chat: si risponde indicando il formato compatto.
-- **Chiave:** `ANTHROPIC_API_KEY` del processo, altrimenti le variabili utente di Windows (HKCU\Environment), lette
-  dentro il processo. Non viene stampata né scritta. Senza chiave la lettura via LLM è disattivata e la chat lo dice.
-  Dietro un proxy con certificati propri, a un errore TLS si passa allo store certificati di Windows (`truststore`), mai senza verifica.
-- **Cosa fa:** nuova (registra solo se entra all'orario esatto, altrimenti propone e aspetta la conferma), conferma
-  (ricontrolla, poi registra e congela; se lo stato è cambiato ripropone), modifica (ricontrolla escludendo la
-  prenotazione stessa; la vecchia resta valida finché non c'è la conferma), annulla, disponibilità, riepilogo.
-  Le proposte sono prima gli spostamenti ammessi che entrano, poi il più vicino prima e il più vicino dopo, entro
-  `chat.proposta_max_min` (60) minuti; scadono dopo 15 minuti. Controlli del codice: data non passata ed entro 90
-  giorni, giorno della settimana coerente con la data, "alle 8" = 20:00, orari arrotondati al quarto d'ora (lo dice),
-  "sabato" scritto di sabato → "stasera o sabato prossimo?". Se mancano campi, chiede solo quelli.
-- **Stato:** `dati/serate/AAAA-MM-GG.json` (accettate con orario congelato e `prenotata_il` = ora del messaggio, rifiuti,
-  annullate, proposte in sospeso, storico dei messaggi con i tempi) più `_mittenti.json` (bozze e scelte in corso).
-  Scrittura atomica: file temporaneo nella stessa cartella, fsync, `os.replace` (con qualche ritento se un antivirus
-  tiene aperto il file).
-- **Valutazione della lettura:** `valuta_lettura.py` passa i 45 messaggi di `valutazione/messaggi.jsonl` a Claude, applica
-  gli stessi controlli della chat e stampa la precisione per campo e gli errori. Senza chiave esce dicendolo.
-- **Nome già presente:** "Rossi 4 sab 21:00" con un Rossi già registrato → "C'è già Rossi alle 20:30 per 4 persone
-  (sab 31/10): è un'altra prenotazione o la sposto alle 21:00?". "altra/nuova" prosegue come nuova, "sposta/sì/la
-  stessa" come modifica di quella esistente.
-
-### Tabella delle disponibilità (`ristorante/disponibilita.py`)
-
-Serve a rispondere in meno di un secondo anche a sala quasi piena. In modalità interattiva `chat.py` la calcola in
-background per ogni serata con stato (da oggi in poi) e la ricalcola da capo dopo ogni modifica.
-
-- **Cella** = (classe di coperti, orario d'inizio): una prenotazione in più di quella classe a quell'orario entra
-  insieme a tutte le accettate, con gli orari congelati? `entra` / `non entra` (dimostrato) / `da verificare`.
-  Le **classi** si ricavano dalla sala: coperti con la stessa durata e le stesse forme di tavolo ammesse, quindi
-  identici per il modello. Nella sala di esempio: 1-2, 3-4, 5-6, 7-8, 9-10, 11-12 (`classi_coperti`, con test).
-- **Come si chiude una cella:** conteggio dei moduli; limite geometrico (quanti tavoli entrano insieme nella sala con
-  almeno n tavoli da 5, 7, 9, 11 posti: bound dimostrato da CP-SAT, calcolato una volta per sala, circa 60 s, e
-  salvato in `dati/cache/_geometria_<hash>.json`); dominanza tra classi nei due versi (se a un orario non entra una
-  classe, non entrano le più grandi; se entra, entrano le più piccole); altrimenti CP-SAT con l'hint dell'ultimo
-  piano registrato (`AAAA-MM-GG.piano.json`).
-- **Mai una tabella vecchia:** ogni modifica aumenta `versione` nello stato e nel file `AAAA-MM-GG.versione`; una
-  tabella vale solo per la sua versione e i processi interrompono da soli i calcoli di una versione superata.
-  La tabella completa si scrive anche in `AAAA-MM-GG.tabella.json` (solo per ispezione).
-- **Processi:** `chat.processi` (6) × `chat.worker_per_processo` (2) worker CP-SAT, `chat.tempo_cella_s` (20) per
-  cella. Scelti misurando 6×2, 4×3, 3×4, 2×6, 12×1 (vedi sotto).
-- **Tabella non pronta:** l'orario chiesto e tutti i candidati si verificano in parallelo, con precedenza sul calcolo
-  di background; ci si ferma appena la risposta è decisa. Dopo `chat.attesa_max_s` (5) si risponde con ciò che è
-  dimostrato, senza mai dire "pieno" per un orario non dimostrato ("alle 20:30 sto ancora verificando; di sicuro
-  posso alle 21:30. Quale?"); la verifica continua e il messaggio successivo comincia con "Aggiornamento: …".
-- **Registrazione:** anche se la cella dice `entra`, si registra solo dopo un solve che restituisce il piano: tavoli e
-  altre prenotazioni fissati come nel piano della cella, CP-SAT sistema la nuova controllando tutti i vincoli
-  (centesimi di secondo); se non basta, ricerca libera partendo da quel piano.
-- Le proposte vengono dalla stessa riga della tabella: stessa regola di prima (spostamenti ammessi che entrano, poi
-  il più vicino prima e dopo entro 60 minuti, con tutti i più vicini dimostrati impossibili).
-
-## Modalità a turni
-
-Si attiva con `turni` nella sala (`dati/sala_turni.json`); senza `turni` tutto resta come prima.
-
-```json
-"turni": [{"nome": "primo", "inizio": "20:00", "fine": "21:30"}, {"nome": "secondo", "inizio": "21:30", "fine": "24:00"}],
-"turno_a_parita": "prima",
-"turni_vicino_min": 45
-```
-
-- **Regole.** Ogni prenotazione occupa il tavolo per tutto il suo turno: durate e riapparecchiatura non contano (il primo
-  turno lascia il tavolo alle 21:30, il secondo arriva alle 21:30). Niente spostamenti di −15/+30. Un orario chiesto
-  va nel turno più vicino, a parità quello prima (`turno_a_parita`: `prima` o `dopo`); un turno si può chiedere
-  anche direttamente (`"turno": "secondo"` nelle prenotazioni, "1t", "2t", "primo turno" in chat). Il picco della
-  cucina è disattivato. Restano le regole di sempre: chi prenota prima resta dentro, il turno promesso si congela, se
-  il turno chiesto è pieno si propone l'altro e si registra solo dopo il sì (la politica del cliente misura la
-  distanza tra l'orario chiesto e l'inizio del turno proposto).
-- **Modello** (`ristorante/modello_turni.py`). Senza il tempo continuo ogni turno è un problema di sola sistemazione:
-  su ogni tavolo al più una prenotazione per turno. "fissa" = stessi tavoli e stessi accostamenti in tutti i turni
-  (un solo NoOverlap2D); "variabile" = una disposizione per turno, con un tavolo che è "lo stesso" del turno prima se
-  ha forma e posizione uguali, altrimenti è montato a servizio iniziato e paga il riallestimento. Il conteggio dei
-  moduli si fa per turno (in "fissa" sui tavoli che servono tutti i turni: il j-esimo tavolo più grande deve bastare
-  alla j-esima prenotazione più grande di ogni turno). La tabella delle disponibilità è classe di coperti × turno.
-- **Chat.** "✓ Rossi · 4 persone · sab 31/10 · primo turno (20:00)"; turno pieno: "…: il primo turno è pieno. Posso
-  nel secondo, alle 21:30. Va bene?" (sì, ok, va bene, 2t, il secondo); entrambi pieni: "il primo turno è pieno, e
-  anche il secondo"; un orario a più di `turni_vicino_min` minuti da ogni turno (19:00, 23:00) non si registra: "alle
-  19:00 non c'è un turno. Il più vicino è il primo, alle 20:00. Va bene?". Il riepilogo è diviso per turno con i
-  coperti. Una modifica che porterebbe nel turno dove la prenotazione è già non viene proposta.
-- **Mappa.** In "fissa" una sola piantina con le prenotazioni di ogni turno su ogni tavolo; in "variabile" un cursore
-  per turno e l'elenco dei cambi sala tra un turno e l'altro. La timeline mostra i coperti per turno al posto del
-  carico della cucina.
-- **Verificatore.** Turni della sala = turni dichiarati (consecutivi, dentro il servizio); ogni prenotazione nel turno
-  chiesto (o nell'altro se accettata su proposta), con l'orario e la fine del turno; al più una prenotazione per turno
-  su ogni tavolo; turno finale = turno promesso; in "fissa" ogni tavolo c'è in tutti i turni (nessun accostamento
-  cambia); proposte = inizi di altri turni.
-- Tutti i comandi accettano la sala a turni: `esegui.py --sala dati\sala_turni.json`, `chat.py --sala
-  dati\sala_turni.json`, `prova.py --sala dati\sala_turni.json ...`, `misura_chat.py --turni`.
-
-### Confronto a turni (sabato_pieno, ordine di arrivo, esecuzione del 26/10/2026)
-
-Stesse 30 prenotazioni (106 coperti), orari messi nel turno più vicino: 15 nel primo turno (52 coperti), 15 nel
-secondo (54). Riferimento: senza turni 22/30 (75 coperti), con proposte 26/30 (85); Sonnet da solo 26/30 (86).
-
-| | fissa, "mai" | fissa, "sempre" | variabile, "sempre" |
-|---|---|---|---|
-| accettate (su proposta) / rifiutate | 26 (0) / 4 | 26 (2) / 4 | 27 (2) / 3 |
-| coperti accettati | 86 | 88 | 90 |
-| primo turno: prenotazioni / coperti | 13 / 38 | 13 / 40 | 14 / 42 |
-| secondo turno: prenotazioni / coperti | 13 / 48 | 13 / 48 | 13 / 48 |
-| tavoli · accostati · riallestimenti | 13 · 1 da 4 moduli · 0 | 13 · 1 da 4 moduli · 0 | 15 · 1 da 4 moduli (solo nel secondo) · 1 |
-| decisioni impossibili dimostrate · UNKNOWN | 4 · 0 | 4 · 0 | 3 · 0 |
-| piantina | OPTIMAL | OPTIMAL | OPTIMAL |
-| tempo totale | 8,1 s | 9,0 s | 74,5 s |
-| verifica indipendente | PASS (22/22) | PASS (22/22) | PASS (22/22) |
-
-- Rifiutate: fissa "mai" Giordano ×4 e Caruso ×2 (secondo turno pieno), Ferrari ×8 e Marino ×6 (primo turno pieno);
-  fissa "sempre" Ricci ×2, Esposito ×2, Ferrari ×8, Marino ×6 (tutti i turni pieni; Giordano e Caruso passano al
-  primo turno su proposta); variabile "sempre" Esposito ×2, Ferrari ×8, Marino ×6.
-- In "variabile" alle 21:30 si smontano due tavoli da un modulo e si uniscono 4 moduli per Rizzo ×10: è l'unico
-  riallestimento, e vale il ventisettesimo cliente.
-
-## Sala vera dell'Olimpo (piantina data)
-
-`--sala olimpo/piantina.html` (esegui, chat, prova, confronto, verifica, misura_chat `--olimpo`): il motore estrae il
-blocco `id="sala"` della piantina (`ristorante/piantina.py`) e non ne fa copie. Turni dalla chiave `turni`: il primo
-dalle 20:00 alle 21:30, il secondo dalle 21:30 alla chiusura (24:00, la piantina non la dice). Le impostazioni del
-motore (pesi, tempi, politica "sempre", 3 processi × 4 worker per la tabella) sono in `piantina.IMPOSTAZIONI`.
-
-- **I tavoli non si spostano e non si inventano posizioni**: niente geometria 2D (`ristorante/modello_piantina.py`).
-  Per ogni turno si decide solo chi siede dove.
-- **Tavoli semplici** (panche, rettangolari, tondi, quadrati): una prenotazione per turno, coperti ≤ posti.
-- **Tavolo lungo (11)**: per turno un gruppo fino a 20 oppure due gruppi fino a 8 ciascuno; i posti vuoti sono i suoi
-  posti meno tutti i seduti (un gruppo da 8 da solo lascia 12 posti vuoti, quindi va a un blocco da 8 se è libero).
-- **Blocchi separabili** (5, 8 da 3 quadrati; 7, 9, 12, 20-24 da 2): in ogni turno una partizione in pezzi contigui;
-  intero = i posti del blocco, un pezzo da j ≥ 2 quadrati 2j + 2 posti, un quadrato da solo `posti_quadrato_separato`
-  (4). Eccezione (Giacomo, 29/10): un blocco senza sedie in testa, cioè con posti = 2k (i 20-24, 4 posti, attaccati al
-  muro di sinistra per lasciare un corridoio di 100 cm fino a 25-29), dà 2j posti a un pezzo di j quadrati diviso sul
-  posto: 2 + 2, mai più di 4. Un quadrato portato via in uno spazio aperto conta le sedie che ci stanno davvero. Un
-  blocco da 3 diventa 3, 2+1 o 1+1+1; ogni pezzo ospita al più una prenotazione e, se il blocco è diviso,
-  ogni pezzo è occupato (un pezzo vuoto si riunirebbe al vicino). La partizione può cambiare tra i turni.
-- **Obiettivo**: più prenotazioni possibile in ordine di arrivo (chi prenota prima resta dentro, turno promesso
-  congelato, orario nel turno più vicino, se il turno è pieno si propone l'altro), poi meno posti vuoti per tavolo
-  (`posto_vuoto` 10 per posto: una coppia non va al tondo da 10 o al lungo se c'è altro), poi poche divisioni dei blocchi
-  (`divisione_blocco` 4 per pezzo in più), poi pochi cambi di partizione tra i turni (`riallestimento` 2, lieve).
-  Tra tavoli semplici identici le simmetrie si rompono ordinando le prenotazioni.
-- **Conteggio** che chiude subito i "turno pieno" ovvi: per ogni soglia c, le prenotazioni del turno da almeno c coperti
-  non possono superare le unità da almeno c posti che possono esserci insieme (tavoli, gruppi del lungo, pezzi dei
-  blocchi). **Tabella delle disponibilità**: classe di coperti × turno, con le classi delle capacità reali
-  (1-2, 3, 4, 5-6, 7-8, 9-10, 11-20).
-- **Mappa** (`ristorante/mappa_piantina.py`): una vista per turno con le posizioni della piantina, chi siede a ogni
-  tavolo, i blocchi divisi come quadrati separati con chi ci siede, il lungo con uno o due gruppi; sotto, l'elenco per
-  tavolo con i due turni affiancati (leggibile su telefono) e il registro.
-- **Chat** (`chat.py --sala olimpo/piantina.html`): come a turni; la conferma non cita il tavolo (può ancora
-  cambiare), il riepilogo sì ("Rossi 4 · tavolo 21, quadrato 1"), dalla disposizione migliore trovata in 1,5 s.
-- **Verificatore**: legge da sé il blocco della piantina e controlla turni, tavoli, partizioni contigue e posti dei
-  pezzi, lungo (un gruppo fino a 20 o due fino a 8, il secondo solo con il primo), mai due prenotazioni sullo stesso
-  quadrato o tavolo nello stesso turno, turno finale = turno promesso, registro ordinato, ogni prenotazione una volta.
-
-### Editor della piantina
-
-Da telefono e da PC si apre da https://atrebg.github.io/prenotazioni_olimpo/olimpo/piantina.html (GitHub Pages, ramo
-`main`; `.nojekyll` lascia i file come sono). Il link del file su github.com mostra solo il codice, e le anteprime dei
-file sul telefono (WhatsApp, File) possono non eseguirla: va aperta nel browser.
-
-`olimpo/piantina.html` si apre nel browser (anche da file, senza server) ed è anche l'editor della sala: **Modifica**
-per spostare i tavoli col mouse, **Scarica il file** per scaricare lo stesso file con i dati aggiornati e una riga nello
-storico, da rimettere al posto di quello in `olimpo/`.
-
-- Sala bloccata: si muovono solo i tavoli mobili (`?sblocca` nell'indirizzo sblocca tutto). **Manda a Giacomo** apre WhatsApp con le modifiche e il link.
-- **Modifica in locale** (`piantina_locale.cmd`, oppure `.venv\Scripts\python.exe piantina_locale.py [--file F] [--porta N] [--no-browser]`):
-  apre la piantina da un server solo su 127.0.0.1 (porta 8770 o la prima libera), sbloccata, e **Salva** (o Ctrl+S)
-  riscrive `olimpo/piantina.html` al suo posto. Online non cambia niente finché non si pubblica. Il server accetta i
-  salvataggi solo dalla sua pagina, rifiuta file senza i dati della sala e non serve altri file della cartella.
-- Pannello a lato (da 900 px), Annulla/Ripeti, tastiera: Canc, Ctrl+Z/Y, frecce di 5 cm (Maiusc 50 cm), Esc.
-- Misure in centimetri per ogni pezzo (da sinistra, dall'alto, larghezza, profondità, rotazione) e per la sala;
-  "Mostra misure" disegna le quote, griglia di 1 m, scatto di 5 cm.
-- **Scheda misure** da stampare: ogni misura da prendere nel locale, con la stima attuale e la colonna "misurato".
-- **Aggiungi**: tavoli (quadrato, blocco, lungo, rettangolare, panca, tondo) ed elementi fissi (muro a spezzata con
-  spessore, bancone, pilastro, colonna tonda, porta con 90 cm liberi, finestra, bagni, cassa, mobile, pedana, zona
-  vietata, blocco fisso, passaggio).
-- **Curva** (pannello del muro): un tratto diventa un arco di tot cm di profondità; nei dati resta una spezzata di punti.
-- Avvisi per pezzi sovrapposti e per poco spazio per le sedie. Copia dati e Condividi per mandare la piantina.
-
-Il motore legge i campi nuovi senza cambiare comportamento: i tavoli restano fermi dove sono nel disegno. I file
-scaricati dall'editor durante le prove sono in `tests/` e i test controllano che il motore li legga.
-
-### Risultati sulla sala vera (esecuzione del 26/10/2026)
-
-Sabato di prova `dati/olimpo_sabato.json`: 67 prenotazioni, 260 coperti, orari chiesti dalle 19:30 alle 22:00 (41 nel
-primo turno, 152 coperti; 26 nel secondo, 108), un gruppo da 18 alle 20:00 e uno da 14 alle 20:15: solo il lungo può
-prenderli. 141 posti per turno con i blocchi interi (151 prima del 29/10, quando i 20-24 avevano 6 posti), 43
-prenotazioni al massimo per turno con tutti i blocchi divisi.
-
-| | politica "sempre" | politica "mai" |
-|---|---|---|
-| accettate (su proposta) / rifiutate | 66 (5) / 1 | 64 (0) / 3 |
-| coperti accettati | 250 | 230 |
-| primo turno: prenotazioni / coperti / tavoli usati | 38 / 134 / 30 su 30 | 39 / 132 / 30 su 30 |
-| secondo turno: prenotazioni / coperti / tavoli usati | 28 / 116 / 26 | 25 / 98 / 23 |
-| posti vuoti primo · secondo | 33 · 17 | 37 · 13 |
-| blocchi divisi, primo turno | 5 e 8 in 1+1+1; 20, 21, 22, 23 in 1+1 | 5 e 8 in 1+1+1; 12, 21, 22, 23, 24 in 1+1 |
-| blocchi divisi, secondo turno | 20, 23 in 1+1 | 24 in 1+1 |
-| lungo primo · secondo | Ricci ×18 · Ferrara ×14 | Ricci ×18 · Ferri ×8 + Pellegrini ×8 |
-| decisioni: dimostrate impossibili · UNKNOWN | 1 · 0 | 3 · 0 |
-| piantina · tempo totale | OPTIMAL · 15,6 s | OPTIMAL · 15,9 s |
-| verifica indipendente | PASS (14/14) | PASS (14/14) |
-
-- "Sempre": Ferrara ×14 passa al secondo turno (il lungo del primo è di Ricci ×18), Lombardi ×8 al primo, Sanna ×2,
-  Bruno ×6 e Sala ×4 al secondo; rifiutata solo Marini ×10 alle 21:45 (tondo da 10 e lungo occupati in tutti e due i turni).
-- "Mai": rifiutate Ferrara ×14, Marini ×10 e Bruno ×6 (turno pieno).
-- Venerdì `dati/olimpo_venerdi.json` (35 prenotazioni, 121 coperti): tutte dentro. Primo turno 20 prenotazioni e 79
-  coperti, 10 tavoli liberi (58 posti) e 2 posti vuoti ai tavoli usati; secondo turno 15 prenotazioni e 42 coperti,
-  15 tavoli liberi (104 posti) e 5 posti vuoti.
-
-Tempi della chat (`misura_chat.py --olimpo`): stato = le 59 accettate del sabato entro venerdì a mezzanotte (primo turno
-pieno); 10 messaggi: annullamento di Ricci ×18, Marini ×10 che prima non entrava (proposta del primo turno), la
-conferma, due posti liberi nel primo turno, tre richieste nel primo turno pieno con proposta del secondo, un posto
-libero nel secondo, il riepilogo con i tavoli. Risposte identiche nei tre casi.
-
-| | senza tabella | tabella pronta | tabella non pronta (raffica) |
-|---|---|---|---|
-| mediana | 1,31 s | 0,35 s | 1,84 s |
-| massimo | 2,12 s (riepilogo) | 2,19 s (riepilogo; le altre risposte ≤ 0,96 s) | 2,53 s |
-
-Ricalcolo della tabella dopo una modifica: mediana 4,3 s, massimo 4,5 s. Con 2 worker per processo CP-SAT non
-dimostrava "turno pieno" nemmeno in 30 s (UNKNOWN), con 4 in mezzo secondo: per questo 3 processi × 4 worker.
-
-### Disposizione libera dei tavoli mobili (`--disposizione libera`)
-
-`esegui.py --sala olimpo/piantina.html --disposizione libera [--confronto <soluzione a tavoli fermi>] [--corridoio 60]`:
-i 29 quadrati mobili della piantina (i singoli 3, 4, 25-29 e quelli dentro i blocchi 5, 7, 8, 9, 12, 20-24) si spostano,
-si ruotano (0° o 90°), si uniscono in file fino a 4 e si dividono per turno; panche, tondi, lungo, 13A e 13B restano dove
-sono, con i loro posti e la zona delle loro sedie. Il modo a tavoli fermi resta il default e non cambia.
-File: `ristorante/sala_libera.py` (geometria in cm), `ristorante/modello_libero.py` (modelli), `ristorante/mappa_libera.py`
-(mappa), `verifica_libera` in `verifica.py` (verifica), `tests/test_libera.py`.
-
-- **Regole** (tarate sul disegno, 28/10): 1 sedia per ogni lato da 80 cm con 50 cm liberi davanti (SEDIE_CM
-  dell'editor; contro un muro o un ostacolo un lato non ha sedie); tavolo e sedie dentro la faccia interna dei muri
-  (curva compresa), ad almeno 2,5 cm da muri, ostacoli, porte e passaggi con lo spazio davanti, ingresso; fuori dalla
-  zona sedie dei fissi (50 cm, che non passa dall'altra parte di un muro); **40 cm fra le zone (tavolo + sedie) di due
-  tavoli diversi**, come fra le spalliere delle righe della striscia; **ogni tavolo dà su un corridoio di 60 cm da almeno
-  un lato** (zona d'accesso libera da tavoli e sedie); **strade di servizio riservate**, calcolate con i tavoli del
-  disegno al loro posto: ingresso → porta della cucina (dalla strettoia), ingresso → porta dei bagni, ingresso → tavolo
-  più lontano (in fondo alla striscia, nel corridoio fra 20-24 e 25-29); ogni tavolo e ogni porta si raggiungono
-  dall'ingresso con un corridoio di 60 cm. Nella piantina la **strettoia verso la cucina** (fra il bancone di sinistra e
-  il muro a L, dall'apertura alla cucina) è un passaggio, e l'apertura ha 90 cm liberi davanti, come le porte.
-- **I 29 quadrati restano sempre tutti in sala** (regola di Giacomo, 28/10): si spostano, si ruotano, si uniscono o si
-  dividono, mai spariscono. Il disegno così com'è (posizioni, rotazioni, posti decisi da Giacomo) è ammesso per
-  definizione; le regole qui sopra valgono per i pezzi che si spostano o cambiano forma, e fra quelli e il resto.
-- **Come lavora** (`ristorante/libera_varianti.py`, quello che usa `esegui.py`): si parte dal disegno, e finché basta
-  la serata è esattamente il modo a tavoli fermi. Se una richiesta verrebbe rifiutata in tutti i turni, il motore
-  propone le mosse. Prima gli attacchi a un pezzo fermo: uno o due quadrati staccati da pezzi separabili (o singoli
-  presi) e attaccati in testa o in coda a un pezzo che resta con la sua rotazione, anche spostato fino a 1 m o ruotato
-  di 15 gradi; il pezzo allungato tiene i posti della regola (4 quadrati = 10) se le sedie ci stanno, e dagli altri
-  tavoli sta a 140 cm fra i corpi o, dove il disegno aveva già meno spazio, non più vicino di prima. Poi un tavolo
-  nuovo da k quadrati (2 = 6, 3 = 8, 4 = 10 posti, contate le sedie che ci stanno) in ogni
-  posizione dove rispetta le regole rispetto a muri, cose vietate e fissi; smonta i pezzi che gli danno fastidio, se i
-  quadrati non bastano ne stacca uno da un altro pezzo (che resta dov'è, più corto), e con quelli che avanzano fa
-  tavoli nuovi dove ci stanno. Niente strade riservate: conta che nessun tavolo o porta raggiungibile col disegno
-  diventi irraggiungibile. Si provano le mosse migliori (meno pezzi toccati, meno posti persi) col solver, con tutte le
-  accettate. Le accettate restano nel loro turno ma il tavolo può cambiare fino alla cena: il registro e la mappa
-  dicono chi l'ha cambiato; nella piantina finale ogni cambio rispetto alla conferma costa 100 (più di 10 posti
-  vuoti), lo stesso tavolo su altri quadrati 10, e la penalità resta fuori dall'obiettivo dichiarato. Se le mosse fanno perdere qualcosa dopo, si tiene il solo disegno. In `serata.html` la
-  sezione «Da preparare in sala» ha una riga per mossa, e i tavoli nuovi sono disegnati con le loro sedie.
-- **Verifica indipendente** (`verifica_libera`, 18 controlli): geometria esatta in cm (poligono della sala con l'arco,
-  rettangoli ruotati, cerchi), inventario, muri, cose vietate, sedie libere, corridoi e raggiungibilità (flood fill su una
-  griglia di 5 cm: un punto è di corridoio se dista almeno 30 cm da tutto), posti dei pezzi, turni, registro, componenti.
-- **Misure di default** (anche nella mappa, sezione "Misure"): panche 1, 2, 14-19 senza misure = 80 × 80 cm (default
-  dell'editor); quadrati 80 cm (`scala.lato_quadrato_cm`, da confermare); sedie 50 cm (editor); corridoio 60 cm, zona sedie
-  dei fissi su tutti i lati, file senza spazio tra i quadrati, griglia 10 cm, rotazioni 0°/90°, file fino a 4 (scelte del
-  motore); dalla piantina: muri 20 cm, porte e ingresso con 90 cm davanti, tondi 80 e 135 cm, lungo 480 × 80, 13A/13B
-  110 × 90.
-
-Risultati del 29/10/2026 (piantina del 29/10: 20-24 da 4 posti attaccati al muro di sinistra, corridoio di 100 cm fino
-a 25-29; politica "sempre"; 1 esecuzione per serata):
-
-| | sabato libera | sabato fissa | venerdì libera | venerdì fissa |
+| serata | accettate | su proposta | coperti | rifiutate |
 |---|---|---|---|---|
-| prenotazioni (nell'altro turno) | 66/67 (5) | 66/67 (5) | 35/35 (0) | 35/35 (0) |
-| coperti | 250/260 | 250/260 | 121/121 | 121/121 |
-| quadrati in sala | 29 | 29 | 29 | 29 |
-| posti nella striscia destra (20-29) | 30 | 30 | 30 | 30 |
-| mosse | nessuna | — | nessuna | — |
-| cambi di tavolo dopo la conferma | 36 | — | 5 | — |
-| tempo del comando | 3 min 2 s | 33 s | 22 s | 14 s |
-| verifica indipendente | PASS 16/16 | PASS 14/14 | PASS 16/16 | PASS 14/14 |
+| sabato `dati/olimpo_sabato.json` | 63 su 67 | 6 | 242 su 260 | Marini ×10, Palumbo ×2, Sala ×4, Rossetti ×2 |
+| venerdì `dati/olimpo_venerdi.json` | 35 su 35 | – | 121 su 121 | nessuna |
 
-Il sabato resta 66/67 anche coi 20-24 da 4: nel primo turno i dieci quadrati della striscia sinistra vanno a coppie da
-2 (2 posti per quadrato), mai un gruppo da 4 su un quadrato solo. Risultati del 28/10 (20-24 da 6 posti): stessi
-numeri, 40 posti nella striscia.
+Per l'assistente si guarda: `controllo-serata` (e `controllo-sala`) in PASS, nessuna confermata tolta, ogni rifiuto
+con il suo motivo "dimostrato" o "non dimostrato". Qualche rifiuto in più del motore è atteso (vedi limiti).
 
-- Mosse del motore (28/10, sera): una fila da 4 quadrati trova 1736 posizioni nella sala senza tavoli mobili (216
-  con le vecchie strade riservate), 0 col disegno al suo posto. Le mosse valide per un tavolo da 10 sono 4, tutte nella
-  striscia destra (smonta 3 file e 2 singoli, componi un 4 in verticale da 10 posti, i quadrati avanzati come due
-  tavoli da 2): costano 8 posti. Sabato il secondo turno è pieno e il solver dimostra che con nessuna delle 4 Marini ×10
-  entra: la libera resta 66/67 come la fissa.
-- Quadrati accostati (IPOTESI del 28/10, notte): i quadrati "uniti" di Giacomo sono tavoli accostati, un pezzo da k
-  quadrati è lungo k·80 cm in tutta la geometria (motore, verificatore, confronti "non peggio del disegno"); i 2 u fra
-  i quadrati restano solo nel disegno della mappa.
-- Attacchi e combinazioni per un tavolo da 10 (prima un pezzo da 10, poi altri pezzi da 8 o da 6 nella stessa
-  disposizione; i pezzi allungati con un lato d'accesso da 60 cm oltre le sedie, dove il disegno non l'aveva basta non
-  peggiorare): con le misure di oggi nessun attacco regge, tutti per i 140 cm o il "non peggio del disegno". I più
-  vicini, per poco più di 1 cm: 8 + 1 col quadrato del 9 (1,1-1,2 cm verso il 9), 7 + 2 coi quadrati dell'8 (1,0 cm
-  verso l'8), 24 + 2 nella striscia (1,2 cm verso il 23): da rifare con le misure vere del locale. Resta solo il
-  tavolo nuovo da 4 in verticale nella striscia, che costa 8 posti: col sabato pieno il solver dimostra che Marini non
-  entra. Le righe da 3 quadrati della striscia (21+26, 22+27, 23+28, 24+29) con 8 sedie ci stanno spostate di 15 cm;
-  la 20+25 no (21 cm verso il 12).
-- Stabilità alla conferma: chi arriva va al tavolo più piccolo che basta (a parità un pezzo del disegno) e chi è già
-  confermato resta dov'è se può (100 per un tavolo diverso, 10 per altri quadrati dello stesso blocco), 1,5 s per
-  conferma partendo dal piano trovato.
-- Col disegno il personale largo 60 cm non arriva alla parte destra della sala (10, 8, 9, 12, la striscia): ci arriva
-  solo uno largo 40 cm. I passaggi sono fra il 5 e il 7 (56 cm fra i corpi) e fra il 5 e il pilastro (50 cm), senza
-  contare le sedie dei tavoli mobili: le misure da prendere al locale.
+### Prove del 29/10/2026 (Sonnet, solo Read/Grep/Glob/Edit/Write)
 
-## Il modello in parole
+Ogni rigioca è stata ricontrollata fuori dal repository con un CP-SAT esatto, che rifà nell'ordine d'arrivo ogni
+proposta e ogni rifiuto sullo stato scritto dall'assistente e cerca i "pieno" falsi.
 
-Griglia: spazio in celle da 10 cm, tempo in passi da 15 minuti dalle 19:00.
+| prova | accettate (su proposta) | coperti | posti vuoti 1° · 2° turno | pieni falsi | durata · token |
+|---|---|---|---|---|---|
+| venerdì | 35/35 (0) | 121/121 | 2 · 5, come il motore | 0 | 4 min · ~145 mila |
+| sabato, skill della prima versione | 63/67 (6) | 238/260 | 31 · 21 | **7** (5 mandati nel secondo turno e 2 rifiutati che entravano nel primo) | 10 min · ~205 mila |
+| sabato, skill attuali | 63/67 (6) | 242/260 | 30 · 18, come il motore | 0 | 10 min · ~233 mila |
 
-- **Slot tavolo**, tutti opzionali. Uno slot a moduli sceglie una forma (k = 1..5 moduli in fila, orizzontale
-  o verticale; k = 1 è un quadrato) e la posizione dell'ingombro (tavolo + 50 cm per lato per le sedie), che deve
-  stare nella sala. Capienza 2k + 2; tondo Ø120, capienza 6. Ogni slot presente ospita almeno una prenotazione.
-- **Prenotazioni.** Booleana "seduta su questo slot", capienza ≥ coperti, orario tra gli spostamenti ammessi
-  (−15, 0, +15, +30 min) con il pasto entro le 24:00; per ogni slot un `NoOverlap` sugli intervalli
-  [inizio, inizio + durata + 15 min di riapparecchiatura).
-- **Disposizione fissa.** Ogni tavolo esiste per tutta la serata: un solo `NoOverlap2D` sugli ingombri con
-  ostacoli e corsie come rettangoli fissi; moduli totali ≤ 14, tondi ≤ 2.
-- **Disposizione variabile.** Ogni slot ha un intervallo di esistenza [a, b) su passi da 15 min; una prenotazione
-  (con riapparecchiatura) deve stare dentro l'esistenza del suo tavolo. Due slot possono usare lo stesso spazio
-  solo se non esistono nello stesso momento (disgiunzione a coppie: separati in x, in y o nel tempo); ostacoli e
-  corsie esistono sempre (un `NoOverlap2D` per slot). In ogni istante moduli in uso ≤ 14 e tondi ≤ 2
-  (`Cumulative`). Peso `riallestimento` per ogni slot montato dopo l'apertura. "fissa" equivale ad a = apertura,
-  b = chiusura.
-- **Quanti slot in variabile.** `slot_variabile`: 28 a moduli (2 × 14) e 4 tondi (2 × 2), e mai più delle
-  prenotazioni nel modello. Ogni slot ospita almeno una prenotazione, quindi più slot delle prenotazioni non
-  servono mai: con ≤ 28 prenotazioni sui moduli il limite non toglie nessuna soluzione. Oltre, il doppio
-  dell'inventario permette a ogni modulo di far parte di due tavoli diversi nella serata (una per ondata);
-  alzarlo è lecito ma aumenta le coppie da separare (con 32 slot sono 496).
-- **Obiettivo** (minimo; pesi in `pesi`):
-
-| voce | chiave | default | significato |
-|---|---|---|---|
-| prenotazione non sistemata | `non_sistemata` | 10000 | per prenotazione, non per coperto |
-| posto vuoto | `posto_vuoto` | 10 | per ogni posto del tavolo non usato da quella prenotazione |
-| spostamento | `spostamento_per_quarto` | 30 | per ogni quarto d'ora di spostamento |
-| accostamento | `accostamento_per_modulo` | 5 | per ogni modulo oltre il primo in un blocco |
-| picco cucina | `picco_cucina_per_coperto` | 20 | per ogni coperto oltre `picco_cucina_soglia_coperti` (30) che inizia nello stesso quarto d'ora |
-| riallestimento | `riallestimento` | 20 | per ogni tavolo montato a servizio iniziato (solo variabile) |
-
-- **Simmetrie.** k non crescente tra gli slot a moduli (quindi presenza non crescente), a parità di k x non
-  decrescente; tondi presenti per primi e ordinati per x; slot assenti con posizione (ed esistenza) fissata.
-
-### Accettazione in ordine di arrivo
-
-Le prenotazioni si rigiocano in ordine di `prenotata_il`. Per la prenotazione i:
-
-1. se i coperti superano la capienza massima possibile, o nessun orario ammesso sta nel servizio, è rifiutata senza solver;
-2. altrimenti si cerca un piano con tutte le accettate prima (obbligatorie, **orario congelato**, tavolo libero) più
-   i, provando un livello di spostamento alla volta (0, poi ±15, poi +30) come problema di sola ammissibilità; i
-   120 s della decisione (`tempo_decisione_s`) si dividono tra i livelli ancora da provare;
-3. al primo livello ammissibile i è accettata: se il livello ha due direzioni (−15/+15) decide il resto
-   dell'obiettivo (`tempo_spareggio_s`, 20 s). L'orario diventa quello promesso al cliente;
-4. se tutti i livelli sono INFEASIBLE il rifiuto è dimostrato: "sala piena nella fascia richiesta, con le
-   prenotazioni già accettate"; se almeno un livello resta senza risposta (UNKNOWN) e nessuno è ammissibile: "spazio
-   non trovato entro il tempo limite", contato a parte. Se un livello basso è UNKNOWN e uno più alto ammissibile,
-   la prenotazione entra ma il registro segna "spostamento minimo non dimostrato".
-
-**Proposta dell'orario più vicino** (`cliente_accetta_proposta` ≠ `mai`). Se la prenotazione non entra in nessuno
-spostamento ammesso, il motore cerca sulla griglia da 15 min, dentro il servizio e fino a `proposta_max_distanza_min`
-(120) dall'orario chiesto, l'orario ammissibile più vicino **prima** e il più vicino **dopo**, ciascuno dimostrato
-ammissibile con le accettate (sola ammissibilità, `tempo_proposta_s` = 60 s per orario). Gli orari sicuramente
-impossibili si scartano prima col conteggio dei moduli: è una condizione sufficiente, implementata nel modello
-separatamente dal verificatore. Proposta principale = la più vicina (a parità `proposta_a_parita`, default "prima").
-Politica simulata del cliente: `sempre` (default della demo), `mai` (comportamento precedente, nessuna ricerca),
-`entro_N_min`. Se il cliente accetta, l'orario proposto diventa quello promesso e si congela; esito nel registro
-"accettata su proposta". Altrimenti la prenotazione è rifiutata con "proposta non accettata dal cliente", "nessun orario
-libero entro N min" oppure, se una prova resta senza risposta, "spazio non trovato entro il tempo limite" (contato a parte).
-
-**Al telefono** (`prova.py`, non scrive file): `prova.py --stato out\soluzione.json --coperti 2 --orario 21:00`
-risponde per esempio "Alle 21:00 sono pieno. Posso alle 19:30 oppure alle 22:15.".
-
-Ogni piano ammissibile è passato come hint al passo successivo. Alla fine la **piantina delle 18** (`tempo_piantina_s`,
-300 s) ottimizza la disposizione con tutti gli orari congelati, con l'ultimo piano di accettazione come hint completo:
-se il solver non restituisse nulla si usa quel piano, che è già ammissibile (il campo `solver.origine` lo dice).
-
-## Assunzioni e scelte oltre la specifica
-
-- **Ostacoli e corsie sovrapposti** (il pilastro sta dentro la corsia centrale): si usa la loro unione scomposta in
-  rettangoli disgiunti, perché `NoOverlap2D` vieta anche la sovrapposizione tra rettangoli fissi.
-- **Arrotondamenti conservativi** sulla griglia; per ogni forma x e y limitati alle posizioni libere nella sala vuota.
-- **Vincoli ridondanti** (non cambiano le soluzioni, servono a dimostrare i rifiuti): in ogni passo, per ogni soglia
-  di coperti, i tavoli abbastanza capienti sono almeno quante le prenotazioni attive; in "variabile" anche un
-  `NoOverlap2D` per ogni passo sui tavoli che devono esistere e un limite sui moduli in uso. Su una decisione di
-  prova (Greco, sabato_pieno, variabile) la dimostrazione del livello 0 è passata da 52 s a 4 s.
-- **Fine dell'esistenza** di un tavolo che resta fino alla chiusura: 24:15 (24:00 più la riapparecchiatura dell'ultimo
-  pasto), così "fissa" coincide con la modalità originale.
-- **Esistenza leggibile** (solo variabile, dopo il solver): un tavolo montato a servizio iniziato si monta all'inizio
-  della sua prima prenotazione; un tavolo resta fino alla chiusura se nessun altro tavolo né l'inventario ne hanno
-  bisogno, altrimenti si smonta dopo la riapparecchiatura dell'ultima prenotazione. Costo invariato, la verifica lo ricontrolla.
-- Montare o smontare un tavolo è istantaneo sulla griglia dei 15 minuti.
-- **Tondo**: ingombro quadrato 120 + 2×50 cm. **Picco cucina**: coperti per orario di inizio assegnato.
-
-## Verifica indipendente (`verifica.py`)
-
-Non importa il pacchetto `ristorante`: rilegge i tre JSON e ricontrolla in cm e in minuti struttura, presenza di
-ogni prenotazione una sola volta (seduta oppure rifiutata con motivo), forme e capienze, esistenza dei tavoli (griglia,
-servizio, "fissa" = tutta la sera), moduli e tondi in uso in ogni istante, ingombri dentro la sala e disgiunti da
-ostacoli e corsie, ingombri disgiunti tra loro nello spazio-tempo, capienza, orari, sovrapposizioni sullo stesso
-tavolo con riapparecchiatura, prenotazioni dentro l'esistenza del tavolo, motivi, componenti dell'obiettivo
-ricalcolate; con l'accettazione in ordine di arrivo anche registro ordinato per `prenotata_il`, orari finali uguali
-a quelli promessi, coerenza tra registro, sedute e rifiuti; con le proposte anche distanza entro il massimo e fuori
-dagli spostamenti ammessi, proposta principale uguale alla più vicina tra quelle registrate, esiti coerenti con la
-politica dichiarata (per esempio nessuna accettazione oltre N minuti con `entro_N_min`).
-
-**In generale non può dimostrare che un rifiuto fosse inevitabile**, né che la piantina sia ottima: controlla
-ammissibilità e coerenza. Riporta però (INFO) i rifiuti che il solo conteggio dei moduli dimostra inevitabili in
-qualunque disposizione: per ogni orario ammesso c'è un istante in cui accettate più rifiutata chiedono più moduli
-dell'inventario, anche usando al meglio i tondi. È una condizione sufficiente: ignora la geometria, quindi un
-rifiuto dovuto allo spazio (vedi test della sala da due moduli) non risulta dimostrato.
-
-## Risultato del confronto (sabato_pieno, ordine di arrivo, esecuzione del 26/10/2026)
-
-| | fissa | variabile |
-|---|---|---|
-| accettate / rifiutate | 22 / 8 | 22 / 8 |
-| coperti accettati / rifiutati | 75 / 31 | 75 / 31 |
-| tavoli · riallestimenti | 13 · 0 | 13 · 0 |
-| piantina finale | OPTIMAL, obiettivo 80375 (375 senza i rifiuti) | OPTIMAL, obiettivo 80375 (375) |
-| decisioni ammissibili / impossibili dimostrate / UNKNOWN | 22 / 8 / 0 | 22 / 8 / 0 |
-| tempo decisioni · piantina | 14 s · 0,8 s | 456 s · 23 s |
-
-Rifiutate in entrambe: Lombardi ×2, Giordano ×4, Mancini ×2, Caruso ×2, Gallo ×5, Ricci ×2, Ferrari ×8, Marino ×6.
-Cambiare la piantina durante la serata **non fa entrare nessuno in più**: tra le 21:15 e le 22:00 le 13
-prenotazioni accettate usano tutti i 14 moduli e i 2 tondi (Rizzo ×10 da solo ne prende 4), e ogni rifiutata, a
-qualunque orario ammesso, chiederebbe almeno 15 moduli in quell'intervallo. Il limite è l'inventario, non lo spazio.
-Per confronto, l'ottimizzazione unica (`tutte_insieme`, 30 s, FEASIBLE con gap 1,3%) siede 28 prenotazioni su 30
-(88 coperti) lasciando fuori Rizzo ×10 e Ferrari ×8. Il gruppo da 10 accettato per primo non spiega da solo la
-differenza: spostando la sua prenotazione in fondo, in ordine di arrivo con "fissa" entrano 24 prenotazioni ma 71
-coperti (Rizzo resta fuori). Il resto della differenza dipende, con ogni probabilità, dal decidere una prenotazione
-alla volta con l'orario congelato (ipotesi, non misurata separatamente).
-
-## Risultato con le proposte (sabato_pieno, fissa, esecuzione del 26/10/2026)
-
-`confronto.py --modi fissa --politiche mai sempre entro_60_min --out out\confronto_proposte`
-
-| | mai | sempre | entro_60_min |
-|---|---|---|---|
-| accettate (su proposta) / rifiutate | 22 (0) / 8 | 26 (6) / 4 | 26 (4) / 4 |
-| coperti accettati / rifiutati | 75 / 31 | 85 / 21 | 83 / 23 |
-| proposte non accettate dal cliente | 0 | 0 | 1 (Giordano, proposta a +75′) |
-| decisioni: ammissibili / con proposta / impossibili / UNKNOWN | 22 / 0 / 8 / 0 | 20 / 6 / 4 / 0 | 22 / 5 / 3 / 0 |
-| piantina finale | OPTIMAL | OPTIMAL | OPTIMAL |
-| tempo totale | 23 s | 39 s | 53 s |
-
-Riferimento, con tutte le prenotazioni note in anticipo (`tutte_insieme`): 28 su 30, 88 coperti.
-Con "sempre" restano fuori Gallo ×5, Esposito ×2, Ferrari ×8 e Marino ×6 ("nessun orario libero entro 120 min").
-
-## Tempi della chat (`misura_chat.py`, 26/10/2026, Core Ultra 7 165U)
-
-Copione fisso: stato = 22 accettate di sabato_pieno; 10 messaggi compatti (annullamento di Rizzo, poi Gallo ×5 che
-prima non entrava, posti liberi, quattro richieste in fascia piena con proposta, una conferma, un "pieno").
-Le risposte sono identiche prima e dopo, messaggio per messaggio.
-
-| | prima (verifica diretta) | dopo, tabella pronta | dopo, tabella non pronta (raffica) |
-|---|---|---|---|
-| mediana | 12,98 s | 0,20 s | 0,81-1,66 s (due lanci) |
-| massimo | 24,91 s | 0,53 s | 3,85-4,12 s |
-
-- Ricalcolo della tabella dopo una modifica: mediana 2,1 s, massimo 11,1 s (dopo "Gallo 5 sab 20:00", la serata più
-  tirata); prima tabella delle 22 accettate importate, senza piano salvato: 23,5 s; avvio dei processi 9-18 s.
-- Combinazioni processi × worker, stessa serata tirata: tabella in 8,2 s (6×2), 10,4 s (3×4), 10,3 s (2×6),
-  20,4 s (4×3), 5,9 s (12×1); in raffica 6×2 e 3×4 rispondono sempre in modo definitivo entro 4,1 s, 12×1 avvia in
-  22-27 s e dà due risposte parziali (4,5-4,7 s). Scelto 6×2. Senza la dominanza "se entra la più grande entrano
-  le più piccole" la stessa tabella richiedeva 32 s (6×2).
-
-Modalità a turni (`misura_chat.py --turni`, sala a turni, 6×2): stato = le 21 accettate entro venerdì 16:00 nel
-replay a turni (fissa, "mai"; primo turno 8, secondo 13 e pieno); 10 messaggi: annullamento di Rizzo, Giordano ×4 che
-prima non entrava, Caruso ×2 nel posto liberato, quattro richieste nel secondo turno pieno con proposta del primo, una
-conferma, un posto libero nel primo turno, un orario lontano dai turni (19:00). Risposte identiche nei tre casi.
-
-| | senza tabella (verifica diretta) | tabella pronta | tabella non pronta (raffica) |
-|---|---|---|---|
-| mediana | 4,33 s | 0,13 s | 0,26 s |
-| massimo | 13,32 s | 0,28 s | 2,62 s |
-
-Ricalcolo della tabella dopo una modifica: mediana 0,9 s, massimo 1,1 s; prima tabella 1,6 s.
-
-## Dati di esempio
-
-- `dati/sala_esempio.json`: sala 1200×800, ostacoli, corsie, inventario, durate, pesi, modalità, tempi del solver.
-- `dati/sala_turni.json`: la stessa sala con i turni del ristorante Olimpo (primo alle 20:00, secondo alle 21:30).
-- `dati/sabato_pieno.json` (demo principale): 30 prenotazioni, 106 coperti, ricevute dal 25 al 31 ottobre;
-  Rizzo ×10 prenota per primo, Ferrari ×8 tra gli ultimi.
-- `dati/sabato.json`: 24 prenotazioni, 93 coperti, tarato perché con l'ottimizzazione unica si siedano tutti.
+Sull'ultima prova del sabato l'esito è identico a quello del motore: stessi 4 rifiutati e stessi numeri per turno.
+È una prova sola, quindi non è detto che ogni esecuzione dia lo stesso risultato: l'assistente ha ammesso di aver
+usato, per alcuni rifiuti, un ragionamento di capacità invece di provare tutte le catene. Messaggi veri con
+`claude -p`, una sessione nuova per messaggio: da 43 a 77 secondi l'uno (il motore risponde in meno di un secondo);
+conferme, proposte, "sì" a una proposta, risposta "primo" alla domanda delle 20:45, doppio nome, disponibilità e
+riepilogo corretti.
 
 ## Limiti noti
 
-- Non modelliamo il disturbo agli ospiti seduti quando si spostano o si uniscono tavoli vicini, né il tempo di
-  montaggio: in "variabile" un cambio sala accanto a un tavolo occupato è ammesso se gli ingombri non si toccano.
-- Il peso "non sistemata" (modalità tutte_insieme) è per prenotazione: rinunciare a un gruppo da 10 costa quanto
-  rinunciare a una coppia.
-- In ordine di arrivo una prenotazione rifiutata resta rifiutata anche se più tardi si libererebbe spazio (non c'è
-  lista d'attesa) e l'orario promesso non si rinegozia.
-- Le proposte sono "le più vicine" rispetto al modello (solver INFEASIBLE o conteggio dei moduli sugli orari più vicini):
-  il verificatore controlla che siano ammesse e coerenti, ma non può dimostrare che fossero le più vicine possibili.
-- La politica del cliente è una simulazione (sempre, mai, entro N minuti); un cliente reale può scegliere la proposta
-  secondaria o un altro orario. Accettare proposte lontane occupa orari che più tardi servirebbero ad altri.
-- `prova.py` decide senza hint (lo stato non conserva il piano del solver) e reimporta OR-Tools a ogni chiamata
-  (circa 10 s su questa macchina).
-- Con molti thread i risultati possono cambiare da un lancio all'altro anche con lo stesso seed; i tempi limite rendono
-  possibile un UNKNOWN su macchine più lente.
-- Quando il limite è lo spazio e non l'inventario, dimostrare un rifiuto diventa difficile. Prova del 26/10 con 20 moduli
-  invece di 14 (stessa sala, sabato_pieno): fissa 22 accettate, 1 rifiuto dimostrato e 7 UNKNOWN; variabile 22 accettate
-  (71 coperti), 8 UNKNOWN, e Mariani ×6 resta fuori per tempo scaduto, mentre con "fissa" entra. Il modello variabile
-  è più grande e in 120 s trova meno. Per rispondere davvero servono tempi di decisione più lunghi.
-- Il tondo occupa un ingombro quadrato (stima prudente).
-- Tabella delle disponibilità: le modifiche (e le conferme di una modifica) non usano la tabella, perché le celle
-  contano anche la prenotazione da spostare: si verificano sempre in parallelo al momento. Il limite geometrico è
-  legato alle chiavi geometriche della sala (dimensioni, griglia, ostacoli, corsie, inventario, margine sedie): se
-  cambia altro che incide sulla disposizione va cancellato il file in `dati/cache`. Una verifica rimasta a metà
-  occupa un processo fino a `tempo_verifica_s`. I processi di calcolo occupano circa 100 MB l'uno.
-- Sala vera: tavoli diversi non si uniscono tra loro (non è stato chiesto), si dividono solo i blocchi separabili, in
-  pezzi contigui. Il buonsenso "gruppi da 8 in su lontani dai tavoli da 2" non è nel modello (le coordinate del disegno
-  non sono in scala). La chiusura (24:00), i posti del lungo con due gruppi (8) e le impostazioni del motore non sono
-  nella piantina: stanno in `ristorante/piantina.py`. Il riepilogo in chat mostra la disposizione migliore trovata in
-  1,5 s, che può cambiare con la piantina della serata.
-- Turni: la tabella delle disponibilità e la chat usano la disposizione `chat.disposizione` della sala (fissa); con
-  più di due turni il codice funziona (proposte prima e dopo, riallestimento tra turni consecutivi) ma è provato solo
-  con due. In "variabile" la rottura delle simmetrie vale solo nel primo turno: una decisione può richiedere decine di
-  secondi (fino a 26 s su sabato_pieno, per Ricci ×2); in chat la tabella e il limite geometrico della sala chiudono di
-  solito subito i "turno pieno" (misurato solo in "fissa"). Un orario esattamente a metà tra due turni va nel turno prima: se il cliente intendeva
-  l'altro, va chiesto ("20:45" → primo turno).
-- Chat: il cambio di data in una modifica non è gestito
-  (si annulla e si riprenota). La lettura via LLM non è stata provata contro l'API su questo PC (nessuna chiave): i test
-  usano un client finto. "Sabato prossimo" detto in settimana vale come il primo sabato che viene (convenzione).
+- **"Pieno" dimostrato solo dai conteggi per soglia** (condizioni necessarie): un turno davvero pieno ma non coperto
+  dai conteggi risulta "non trovo posto (non dimostrato)".
+- **Procedura a passi** (miglior incastro, divisione di chi siede largo, catene fino a 3 spostamenti, riassegnazione
+  del turno): può rifiutare un gruppo che il motore, cercando tra tutte le disposizioni, farebbe entrare.
+- **Costo semplificato**: la scelta del tavolo pesa 10 per posto vuoto e 4 per taglio nuovo di un blocco; il peso
+  lieve del motore per i blocchi divisi in modo diverso tra il primo e il secondo turno non c'è.
+- **Errori di conto possibili**: per questo ogni scrittura finisce con `controllo-serata`, e c'è `controllo-sala`.
+- **Una sessione alla volta** sullo stesso file di serata: non ci sono blocchi contro le scritture contemporanee.
+- **L'ora non è nota**: per la serata di oggi l'assistente non sposta chi è già confermato senza chiedere.
+- **IPOTESI da confermare**: le zone della sala (spareggi e accessibilità), le posizioni di 7-12, le sedie in testa
+  nelle mosse di tavoli; sul secondo gruppo del lungo i posti vuoti sono contati come 8 meno i coperti.
+- I giorni della settimana si contano da un giorno noto (sabato 31/10/2026).

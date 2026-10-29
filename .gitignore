@@ -1,14 +1,8 @@
-# Ambiente Python
-.venv/
-venv/
-__pycache__/
-*.py[cod]
-.pytest_cache/
+# Stato reale delle serate: contiene nomi e note dei clienti, resta solo su questo computer
+serate/
 
-# Risultati generati e dati locali
-out/
-dati/cache/
-dati/serate/
+# Prove e demo (rigioca, casi manuali): si rifanno quando servono
+prove/
 
 # Temporanei
 *.tmp
@@ -19,6 +13,9 @@ dati/serate/
 *.swp
 *.swo
 *~
+
+# Impostazioni locali di Claude Code
+.claude/settings.local.json
 
 # Sistema operativo
 .DS_Store
