@@ -19,12 +19,16 @@ e le zone di `agente/regole.md`. Questa procedura **non scrive niente**: dà un 
 > divisioni e le unioni (fino a 36, 29 da 3 posti in su, 28 da 4 in su…): una sala "piena" con le divisioni di adesso
 > può avere posto con altre divisioni. Prima di dire "non trovo posto" i passi 2 e 3 si fanno davvero, senza
 > scorciatoie.
+>
+> **Non riusare mai l'esito di un'altra prenotazione o di un messaggio precedente**, nemmeno se lo stato sembra
+> uguale o il gruppo è della stessa taglia ("prima non entrava una coppia, quindi non entra neanche questa"): rifai
+> tutti i passi sullo stato letto **adesso** dal file.
 
 ## Passo 0. Com'è il turno
 
-1. Elenca le prenotazioni `confermata` con `turno` = T (se è una modifica, togli la prenotazione stessa), con la loro
-   unità e i pezzi che usa (colonna "usa" del catalogo). Aggiungi le unità delle mosse `confermata` valide in T.
-   Le `in_attesa` (proposte e domande) non occupano niente.
+1. Rileggi il file della serata e elenca le prenotazioni `confermata` con `turno` = T (se è una modifica, togli la
+   prenotazione stessa), con la loro unità e i pezzi che usa (colonna "usa" del catalogo). Aggiungi le unità delle
+   mosse `confermata` valide in T. Le `in_attesa` (proposte e domande) non occupano niente.
 2. Un'unità è **libera** in T se nessuna confermata di T usa uno dei suoi pezzi. "11-2" è libera solo se "11-1" è
    occupata.
 3. **Limiti di taglia**: da 21 in su non entra mai (PIENO, dimostrato); da 11 a 20 solo "11"; 9 o 10 solo "10" o
@@ -76,7 +80,9 @@ diventano liberi. Un'unità è libera se nessun'altra prenotazione usa i suoi pe
 nel ritocco (al nuovo gruppo o a un altro spostato). Quindi i pezzi lasciati da chi si sposta contano come liberi,
 tranne quelli già dati: se Gentile lascia 5ab e il nuovo gruppo prende 5a, 5b è libero per un altro.
 
-### 2a. Dividi chi siede largo (1 cambio, stesso tavolo)
+### 2a. Schemi fissi: dividi chi siede largo, scambio lungo–tondo
+
+Si provano tutti, prima della catena generica. Le divisioni costano 1 cambio (stesso tavolo).
 
 | unità occupata | se l'occupante ha | l'occupante va su | si libera |
 |---|---|---|---|
@@ -90,8 +96,19 @@ tranne quelli già dati: se Gentile lascia 5ab e il nuovo gruppo prende 5a, 5b �
 | 20+25 (… 24+29) | fino a 2 | 25 | 20 (4) |
 | 11 | fino a 8 | 11-1 | 11-2 (8) |
 
-Candidate: le righe in cui la parte che si libera ha posti ≥ c. Scegli con il costo e gli spareggi del passo 1
-calcolati sulla parte che si libera. Il cambio si registra come `cambio tavolo` con motivo "stesso tavolo, diviso per
+**Scambio lungo–tondo (2 cambi).** Si applica solo quando **tutte e due** le condizioni sono vere: "11" è occupato
+da **un** gruppo da 9 o 10, e "10" è occupato da un gruppo **fino a 8**. Allora il gruppo da 9-10 va al "10", quello
+fino a 8 va su "11-1", e **"11-2" resta libero (8 posti)** per il nuovo gruppo, se ne ha fino a 8.
+Non si applica (nessuno scambio utile) se:
+- "11" ha un gruppo da 11 in su (può stare solo lì) oppure fino a 8 (allora vale la riga "11" della tabella);
+- "10" ha un gruppo da 9-10 (tutti e due i gruppi grandi hanno bisogno del loro tavolo);
+- "10" è libero (il passo 1 l'avrebbe già usato);
+- il lungo è già diviso in "11-1" e "11-2" con due gruppi fino a 8: spostare il gruppo del "10" sul lungo non libera
+  niente.
+
+Candidate: gli schemi in cui la parte che si libera ha posti ≥ c (e rispetta i limiti di taglia). Tra le candidate,
+prima quelle con meno cambi, poi il costo e gli spareggi del passo 1 calcolati sulla parte che si libera. Ogni cambio
+si registra come `cambio tavolo`, con motivo "stesso tavolo, diviso per far posto a …" o "scambio lungo–tondo per
 far posto a …".
 
 ### 2b. Catena di spostamenti (fino a 3 spostamenti)
@@ -148,10 +165,19 @@ Con le confermate di T più il nuovo gruppo, rifai i conteggi della skill `sala`
 
 ## Cosa scrivere quando non entra
 
-Nel registro, nella riga `proposta` o `rifiutata`, il campo `provati` dice in breve che cosa hai provato per ogni
-turno non dimostrato, per esempio: `"provati": "primo: 2a nessuno schema; catene con chi può stringersi (Mazza ×5 su
-7, Gentile ×5 su 5ab), da 1 a 3 spostamenti, nessuna; passo 3 giri 1 e 2 falliti"`. Il formato del `motivo` è nella
-skill `stato-serata`.
+Nel registro, nella riga `proposta` o `rifiutata`, il campo `provati` dice **in modo specifico** che cosa hai
+provato per ogni turno non dimostrato. Deve contenere, per quel turno:
+1. **2a**: ogni schema della tabella che hai guardato, con il motivo per cui non va, e lo **scambio lungo–tondo**
+   (applicabile o no, e perché);
+2. **catene**: per le catene da 1, da 2 e da 3 spostamenti, la prima e l'ultima U provata e quante U, più "chi può
+   stringersi" se la sala è piena;
+3. **passo 3**: esito del giro 1 e del giro 2, con chi è rimasto senza posto.
+
+Esempio: `"provati": "primo: 2a 7 (Mazza ×5 > 4) no, 5ab/8ab non occupati, 13A+13B e unioni non usate, 11 (Ricci ×18)
+no, scambio lungo–tondo no (11 da 11 in su); stringersi: Mazza ×5 (7), Ricci ×18 (11, no); catene da 1: U da 3 a
+24+29, 31 U, nessuna; da 2: U da 3 a 24+29, 31 U, nessuna; da 3: U da 3 a 24+29, 31 U, nessuna; passo 3: giro 1 fuori
+Sala ×4, giro 2 fuori Rossetti ×2"`. Un `provati` vuoto o generico ("nessuna catena", "provato tutto") **non basta**:
+il controllo C15 lo segna FAIL. Il formato del `motivo` è nella skill `stato-serata`.
 
 ## Esempi svolti sulla sala vera (catalogo del 29/10/2026)
 
@@ -179,14 +205,31 @@ libera per Verdi: 13A+13B (1 posto vuoto) → **Verdi ×7 da 10 a 13A+13B, Costa
 confermate e nessun pezzo libero: 5 diviso in 5ab (Gentile ×5) e 5c (Valentini ×3), 8 in 8a, 8b, 8c, 7 intero (Mazza
 ×5), 10 di Esposito ×3, 11 di Ricci ×18, tutti gli altri tavoli occupati.
 - Passo 0: 34 prenotazioni ≤ 35 (lungo a un gruppo solo), 18 da 3 in su ≤ 28, 119 coperti ≤ 151: niente è dimostrato.
-- Passo 1: nessuna unità libera. Passo 2a: 7 e 5ab hanno occupanti da 5 (più di 4), 11 da 18: nessuno schema.
+- Passo 1: nessuna unità libera. Passo 2a: 7 e 5ab hanno occupanti da 5 (più di 4), 11 da 18; scambio lungo–tondo
+  no (l'11 ha un gruppo da 11 in su): nessuno schema.
 - Passo 2b, sala piena. Chi può stringersi: Mazza ×5 (7 → 9, 12, 10), Gentile ×5 (5ab → 9, 12, 10); Ricci ×18 no.
 - Catene da uno: con U = 5a o 5b avanza l'altro quadrato (4 posti), troppo poco per Gentile ×5; con U = 7a o 7b
   avanza un quadrato da 4, troppo poco per Mazza ×5. Nessuna.
 - Catene da due, U in ordine di costo per 3 persone: 6 (0), poi le unità da 4 senza tagli nuovi (10). Il loro
   occupante P siede su un pezzo solo, quindi perché avanzi qualcosa dovrebbe andare su un pezzo di 7, di 5ab o del
-  lungo, e chi lo occupava (Mazza, Gentile, Ricci) non entra in ciò che avanza: nessuna. Poi U = **5a** (4 posti, 1 taglio nuovo: 14). P = Gentile ×5, V in ordine: 9 (Morelli
-  ×5, che non entra in 5b), 12 (Marino ×5, idem), 7 (Mazza ×5, idem), unioni e 13A+13B (due occupanti: catene da
-  tre), 10 (Esposito ×3): Esposito entra in **5b**, avanzato da Gentile. **Riesce.**
+  lungo, e chi lo occupava (Mazza, Gentile, Ricci) non entra in ciò che avanza: nessuna. Poi U = **5a** (4 posti,
+  1 taglio nuovo: 14). P = Gentile ×5, V in ordine: 9 (Morelli ×5, che non entra in 5b), 12 (Marino ×5, idem), 7
+  (Mazza ×5, idem), unioni e 13A+13B (due occupanti: catene da tre), 10 (Esposito ×3): Esposito entra in **5b**,
+  avanzato da Gentile. **Riesce.**
 - Esito: **Bianco ×3 su 5a; Gentile ×5 da 5ab a 10; Esposito ×3 da 10 a 5b** (2 cambi). Il blocco 5 diventa 5a + 5b +
   5c. È la disposizione trovata da un controllo esatto (CP-SAT), con 5a e 5b scambiati.
+
+**F. Lo scambio lungo–tondo (sabato pieno, dopo "annulla Ricci sab" e "Ferretti 10 sab 20:00"; poi Bassi ×2).**
+Primo turno: 34 confermate e nessun pezzo libero; Ferretti ×10 è sull'"11" (era libero dopo l'annullamento di
+Ricci), Gentile ×5 sul "10", 5 diviso in 5a, 5b, 5c, 8 in 8a, 8b, 8c, 7 intero (Mazza ×5). Arriva "Bassi 2 sab 19:00":
+le 19:00 sono fuori dai turni, quindi si prova il più vicino, il primo, per proporlo.
+- Passo 0: 35 prenotazioni ≤ 36 (un solo gruppo da 9 in su e nessuno da 11: il lungo non è obbligato a un gruppo
+  solo), 113 coperti ≤ 151: niente è dimostrato.
+- Passo 1: nessuna unità libera.
+- Passo 2a: 7 (Mazza ×5, più di 4) no; 11 con un gruppo da 10 (più di 8) no per la riga "11"; **scambio lungo–tondo**:
+  "11" ha un gruppo da 10 e "10" un gruppo da 5 → si applica. Ferretti ×10 dall'"11" al "10", Gentile ×5 dal "10" a
+  "11-1", **"11-2" libero** (8 posti) → Bassi ×2 su 11-2 (6 posti vuoti).
+- Esito: c'è posto nel primo turno (2 cambi), quindi si propone il primo turno ("Alle 19:00 non c'è un turno. Il
+  più vicino è il primo, alle 20:00. Va bene?"). Al "sì" si rifà la procedura sullo stato del file e si scrivono i due
+  `cambio tavolo` e `accettata su proposta`. Senza questo schema la sessione aveva detto "né il primo né il secondo
+  hanno posto": un falso pieno.

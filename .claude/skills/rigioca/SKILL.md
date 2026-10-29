@@ -22,19 +22,27 @@ scelte le fa la politica del cliente. **Non tocca mai `serate/`**: scrive solo i
 
 ## Procedura
 
-> **Una prenotazione alla volta: decidi E scrivi, poi passa alla successiva.** Non analizzare più prenotazioni
-> insieme né in anticipo, non decidere a gruppi per scrivere dopo. Ogni decisione si prende sul file com'è in quel
-> momento.
+> **Una prenotazione alla volta: decidi E scrivi, poi passa alla successiva.** È **vietato pianificare in anticipo**
+> più prenotazioni: niente analisi a gruppi, niente elenco delle prossime decisioni, niente "le prime 50 vanno
+> qui". Guardi solo la prenotazione k e il file com'è dopo la k − 1.
+>
+> **Prima di decidere la prenotazione k rileggi dal file le confermate del turno T**, con un Grep mirato sul file
+> della prova: pattern `"turno": "primo", "stato": "confermata"` (o `"secondo"`), modalità `content`. Decidi su
+> quelle righe, non a memoria. Se poi provi l'altro turno, rileggi anche le sue.
+>
+> **Non riusare l'esito di una prenotazione precedente**, anche della stessa taglia: ogni decisione rifà
+> `assegna-tavoli` sullo stato appena riletto.
 >
 > **"Le unità di adesso sono tutte occupate" non dimostra niente**: prima di mandare qualcuno all'altro turno o di
-> rifiutarlo, la skill `assegna-tavoli` va eseguita per intero, passo 2 (divisioni e catene fino a 3 spostamenti) e
-> passo 3 compresi, e nel registro va scritto in `provati` che cosa hai provato.
+> rifiutarlo, la skill `assegna-tavoli` va eseguita per intero (passo 2a con lo scambio lungo–tondo, catene fino a 3
+> spostamenti, passo 3), e nel registro va scritto un `provati` specifico (controllo C15).
 
 1. Leggi la sala (skill `sala`) e il file. Ordina le prenotazioni per `prenotata_il`; a parità, l'ordine del file.
 2. Crea con Write `prove/<etichetta>/AAAA-MM-GG.json` con lo scheletro della skill `stato-serata`.
 3. Per ogni prenotazione, nell'ordine (k = 1, 2, …):
    1. `n` = k, `id`, `nome`, `coperti`, `orario`, `note` ("" se manca), `ricevuta_il` = `prenotata_il`.
-   2. Turno chiesto T dalle regole dell'orario (skill `prenotazione`, punto 3), oppure dal campo `turno`.
+   2. Turno chiesto T dalle regole dell'orario (skill `prenotazione`, punto 3), oppure dal campo `turno`. Rileggi con
+      Grep le confermate di T (riquadro sopra).
    3. **Orario dentro i turni**: `assegna-tavoli` per c = coperti in T, passi 0-4 completi.
       - ENTRA → `confermata`; registro: eventuali `cambio tavolo`, poi `confermata`.
       - Non entra, politica `mai` → `rifiutata` con il motivo di T (dimostrato o no); registro `rifiutata`.
@@ -84,7 +92,7 @@ File dati/olimpo_sabato.json · serata 2026-10-31 · politica sempre · piantina
 ## Da preparare in sala
 (come nel riepilogo: blocchi divisi, unioni, lungo, cambi alle 21:30)
 ## Controllo
-Controllo 2026-10-31: PASS (14 controlli, 0 avvisi)
+Controllo 2026-10-31: PASS (15 controlli, 0 avvisi)
 ## Confronto con il riferimento
 ```
 

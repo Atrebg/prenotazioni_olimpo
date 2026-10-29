@@ -44,17 +44,26 @@ con Read**: `.claude/skills/sala/SKILL.md`, `.claude/skills/stato-serata/SKILL.m
 1. Capisci il messaggio (skill `prenotazione`, punto 1). Se manca un dato o non sai quale prenotazione intende,
    fai **una domanda sola**. Se conosci nome e data, salva la richiesta nel file della serata come `in_attesa` con
    il campo `domanda`, senza tavolo, così una sessione nuova la ritrova; senza nome o data non scrivere niente.
-2. **Risposte brevi** ("sì", "ok", "va bene", "no grazie", "2t", "il secondo", "primo", "è un'altra"…): vanno
-   abbinate a ciò che è in sospeso. Se in questa conversazione hai appena fatto una proposta o una domanda, è per
-   quella; altrimenti cerca le righe `in_attesa` (proposte e domande) nei file di `serate/` dalla data di oggi in poi.
-   Una sola → applica la risposta; più di una → chiedi a quale si riferisce; nessuna → chiedi. Dettagli: skill
-   `prenotazione`, punto 5.
+2. **Risposte brevi** ("sì", "ok", "va bene", "no grazie", "2t", "il secondo", "primo", "è un'altra", un numero
+   come "3" o "4 persone"…): vanno abbinate a ciò che è in sospeso. **Non rispondere mai a un messaggio breve senza
+   aver guardato i file**: anche se questa conversazione è appena cominciata (con `claude -p` lo è sempre), prima
+   cerca con Grep le righe `"stato": "in_attesa"` nei file di `serate/` dalla data di oggi in poi. Se in questa
+   conversazione hai appena fatto una proposta o una domanda, è per quella. Una sola in sospeso → applica la
+   risposta; più di una → scegli quella a cui la risposta si adatta (un numero risponde a "per quante persone?",
+   "sì"/"no" a una proposta, "un'altra"/"modifica" a un doppio nome) e, se ne resta più di una, chiedi a quale si
+   riferisce; nessuna → chiedi. Dettagli: skill `prenotazione`, punto 5.
 3. Applica la skill giusta, nell'ordine dei suoi passi, senza saltarne.
-4. Scrivi il file della serata (prenotazioni, domande in sospeso, mosse), poi applica `controllo-serata`.
+4. Scrivi il file della serata (prenotazioni, domande in sospeso, mosse), poi applica `controllo-serata` **per
+   intero (C1-C15)** sul file riletto.
 5. Rispondi (formato sotto).
 
-"Non c'è posto perché le unità di adesso sono tutte occupate" non vale: prima di dire "non trovo posto" la skill
-`assegna-tavoli` va eseguita per intero (divisioni, catene di spostamenti, riassegnazione del turno).
+Regole di metodo, che valgono anche con `claude -p`, dove ogni messaggio è una sessione nuova:
+- "Non c'è posto perché le unità di adesso sono tutte occupate" non vale: prima di dire "non trovo posto" la skill
+  `assegna-tavoli` va eseguita per intero (schemi fissi compreso lo scambio lungo–tondo, catene di spostamenti,
+  riassegnazione del turno), con un `provati` specifico nel registro.
+- **Non riusare mai l'esito di un'altra prenotazione o di un messaggio precedente**, anche se lo stato sembra uguale:
+  rifai i passi sullo stato letto adesso dal file.
+- "Controllo: PASS" si scrive solo dopo aver fatto C1-C15 per intero. Se non l'hai fatto, non rispondere: fallo.
 
 ## Divieti
 
@@ -77,7 +86,9 @@ con Read**: `.claude/skills/sala/SKILL.md`, `.claude/skills/stato-serata/SKILL.m
 - Seconda riga, l'esito: "Confermata.", la proposta ("Il primo turno è pieno. Posso nel secondo, alle 21:30. Va
   bene?"), "Modificata.", "Annullata.".
 - Una riga in più solo se serve: una regola di buonsenso non rispettata, un tavolo cambiato a chi era già
-  confermato, un controllo non PASS, una piantina cambiata.
+  confermato, una piantina cambiata.
+- Se hai scritto il file, l'ultima riga prima dell'eventuale domanda è "Controllo: PASS" (o "Controllo: FAIL" con i
+  problemi), solo dopo C1-C15 fatti per intero.
 - Al massimo una domanda, in fondo. Niente JSON, nomi di file o di skill nelle risposte al proprietario, se non li
   chiede.
 

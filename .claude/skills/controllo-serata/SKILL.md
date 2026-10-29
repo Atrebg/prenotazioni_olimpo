@@ -6,7 +6,13 @@ description: Controlli da fare su un file di serata dell'Olimpo (serate/AAAA-MM-
 # Controllo di una serata
 
 Rileggi il file con Read (non fidarti di quello che ricordi di aver scritto) e il catalogo della skill `sala`.
-Poi fai i controlli, in ordine. Per C5-C6 scrivi a mente una tabella per turno: **unità → prenotazione → pezzi usati**.
+Poi fai **tutti** i controlli, da C1 a C15, in ordine. Per C5-C6 scrivi a mente una tabella per turno: **unità →
+prenotazione → pezzi usati**.
+
+**Quando.** Per i messaggi veri: dopo **ogni** scrittura, per intero, anche con `claude -p` (ogni messaggio è una
+sessione nuova e deve fare il suo controllo). "Controllo: PASS" si scrive nella risposta solo se hai fatto C1-C15
+per intero su quel file riletto; se non l'hai fatto, non rispondere ancora: fallo. Nella skill `rigioca` vale la sua
+regola (C5, C6, C9 ogni 10 prenotazioni, tutto alla fine).
 
 | # | controllo | se non va |
 |---|---|---|
@@ -24,13 +30,14 @@ Poi fai i controlli, in ordine. Per C5-C6 scrivi a mente una tabella per turno: 
 | C12 | Per ogni turno i conteggi per soglia e i 151 posti (skill `sala`, punto 6) sono rispettati. Se nel turno c'è un gruppo da 11 in su, o ci sono due gruppi da 9 in su, il lungo vale una sola unità: togli 1 ai totali delle soglie da 2 a 8 (35, 28, 27, 13, 5) | FAIL |
 | C13 | Mosse: solo quelle `confermata` contano; i pezzi in `usa` esistono; nessun quadrato in due unità nello stesso turno (rientra in C6) | FAIL |
 | C14 | `ricevuta_il` non decresce al crescere di `n` | AVVISO |
+| C15 | Ogni riga di registro `proposta` o `rifiutata` il cui `motivo` ha un turno "non trovo posto (non dimostrato)" ha un campo `provati` **specifico** per quel turno: gli schemi del passo 2a guardati, scambio lungo–tondo compreso; per le catene da 1, 2 e 3 spostamenti la prima e l'ultima U provata; l'esito dei giri 1 e 2 del passo 3 (skill `assegna-tavoli`, "Cosa scrivere quando non entra"). `provati` mancante, vuoto o generico ("nessuna catena", "provato tutto") | FAIL |
 
 ## Esito
 
 Scrivi l'esito così (nella risposta solo se non è PASS, oppure se te lo chiedono):
 
 ```
-Controllo 2026-10-31: PASS (14 controlli, 0 avvisi)
+Controllo 2026-10-31: PASS (15 controlli, 0 avvisi)
 ```
 
 ```

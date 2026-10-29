@@ -15,7 +15,7 @@ serata in un file JSON. Non c'è codice: solo file markdown (`CLAUDE.md`, skill,
 | chi decide | il solver, su tutte le disposizioni possibili | il modello, seguendo le procedure delle skill |
 | "turno pieno" | dimostrato dal solver | dimostrato solo se lo dicono i conteggi per soglia; altrimenti "non trovo posto (non dimostrato)" |
 | ripetibilità | stesso ingresso, stesso risultato | i risultati possono cambiare tra un'esecuzione e l'altra |
-| costo | CPU locale | token: ogni messaggio rilegge regole, skill e piantina; una prova da 67 prenotazioni è lunga |
+| costo | CPU locale | token: misurati con `claude -p` e Sonnet 5.5, 0,13-0,84 $ a messaggio e 4,70 $ per rigiocare il sabato di prova (vedi sotto) |
 | testo libero | con una chiave API a parte | letto direttamente dal modello |
 | regole | nel codice e nei pesi | in italiano, in `agente/regole.md` e nelle skill |
 
@@ -139,12 +139,36 @@ Rifiutati identici al motore in tutte le serate.
 In sintesi: quando la procedura è eseguita per intero il risultato coincide con quello del motore. Il punto debole
 sono i messaggi singoli a sala piena, dove il modello accorcia le catene e i controlli.
 
+### Dopo le correzioni per la sala piena (29/10/2026, sera)
+
+Le correzioni:
+- lo scambio lungo–tondo tra gli schemi fissi del passo 2a;
+- un `provati` specifico, con il nuovo controllo C15;
+- nessun riuso degli esiti di altre prenotazioni;
+- il controllo della serata sempre per intero;
+- una disponibilità senza "ultimo posto" non contato;
+- una ricerca obbligatoria delle richieste in sospeso anche per le risposte di una parola o un numero.
+
+Prove con `claude -p --output-format json`, che riporta il costo calcolato da Claude Code:
+
+| prova | esito | costo · tempo |
+|---|---|---|
+| rigioca del sabato | 63/67, 242 coperti, stessi rifiutati del motore, 0 pieni falsi al CP-SAT, controllo C1-C15 PASS | 4,70 $ · 22 min · 221 passaggi (15,5 milioni di token letti dalla cache, 0,4 scritti, 0,15 di output) |
+| conversazione a sala piena, 8 messaggi | annullamento, Ferretti ×10 sul lungo, Bassi ×2 delle 19:00 ora proposto nel primo turno (prima era un pieno falso), "no grazie" → rifiutata, domanda dei coperti a Moretto, disponibilità con lo scambio lungo–tondo descritto giusto | 0,13-0,50 $ a messaggio · 22-84 s |
+| la stessa conversazione: "3" come risposta a "per quante persone?" | prima della correzione la sessione ha risposto senza guardare i file; dopo, 3 prove su 3 giuste (Moretto ×3: secondo turno pieno, proposto il primo, come dice il CP-SAT) | 0,72-0,84 $ · ~1 min |
+
+Una serata piena costa all'incirca quanto i messaggi che arrivano: con circa 0,45 $ a messaggio, una sessione nuova per
+messaggio e un'ottantina di messaggi per un sabato da 67 prenotazioni, fanno circa 35 $ a serata. È una stima: il
+numero di messaggi a serata non è misurato. La rigioca invece costa meno per prenotazione (4,70 $ per 67), perché la
+sessione è una sola.
+
 ## Limiti noti
 
 - **"Pieno" dimostrato solo dai conteggi per soglia** (condizioni necessarie): un turno davvero pieno ma non coperto
   dai conteggi risulta "non trovo posto (non dimostrato)".
-- **Procedura a passi** (miglior incastro, divisione di chi siede largo, catene fino a 3 spostamenti, riassegnazione
-  del turno): può rifiutare un gruppo che il motore, cercando tra tutte le disposizioni, farebbe entrare.
+- **Procedura a passi** (miglior incastro, divisione di chi siede largo e scambio lungo–tondo, catene fino a 3
+  spostamenti, riassegnazione del turno): può rifiutare un gruppo che il motore, cercando tra tutte le disposizioni,
+  farebbe entrare. Ogni "non trovo posto" porta nel registro l'elenco specifico di ciò che è stato provato.
 - **Costo semplificato**: la scelta del tavolo pesa 10 per posto vuoto e 4 per taglio nuovo di un blocco; il peso
   lieve del motore per i blocchi divisi in modo diverso tra il primo e il secondo turno non c'è.
 - **Errori di conto possibili**: per questo ogni scrittura finisce con `controllo-serata`, e c'è `controllo-sala`.

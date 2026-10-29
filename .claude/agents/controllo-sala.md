@@ -51,6 +51,7 @@ una `domanda`; non occupa tavoli.
 | V8 | ogni prenotazione ha almeno una riga nel registro e la prima riga di ogni `n` compare in ordine di `n` |
 | V9 | ogni parte di un motivo (di un rifiuto o di una proposta) che dice "pieno (dimostrato: …)": ricontrolla tu che, nel turno detto, le prenotazioni confermate in quel turno dalle righe di registro che vengono prima di quella riga, più quella prenotazione, superino davvero un limite: per una soglia s, più prenotazioni da almeno s coperti delle unità da almeno s posti che possono stare insieme (calcolalo tu, per famiglie di pezzi che si escludono), oppure più di 151 posti. Se nel frattempo c'è stato un annullamento in quel turno, segnalalo come avviso |
 | V10 | 29 quadrati mobili nella piantina; nessun quadrato in due unità nello stesso turno |
+| V11 | ogni riga di registro `proposta` o `rifiutata` con un turno "non trovo posto (non dimostrato)" nel motivo ha un `provati` specifico per quel turno: schemi fissi guardati (divisioni e scambio lungo–tondo, cioè "11" con un gruppo da 9-10 e "10" con uno fino a 8), prima e ultima unità provata per le catene da 1, 2 e 3 spostamenti, esito dei due giri di riassegnazione. Mancante, vuoto o generico ("nessuna catena") = FAIL. Se dalla sala ricavata da te vedi uno schema che entrava (per esempio lo scambio lungo–tondo applicabile e "11-2" sufficiente), segnalalo come FAIL |
 
 ## 4. Esito
 
@@ -62,4 +63,4 @@ Avvisi:
 - …
 ```
 
-PASS solo se nessun controllo V1-V10 fallisce. Per ogni FAIL indica prenotazione (`n`, nome), turno e unità.
+PASS solo se nessun controllo V1-V11 fallisce. Per ogni FAIL indica prenotazione (`n`, nome), turno e unità.

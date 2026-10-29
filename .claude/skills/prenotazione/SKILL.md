@@ -6,7 +6,13 @@ description: Gestisce i messaggi del proprietario dell'Olimpo che cambiano le pr
 # Prenotazioni: nuova, risposte, modifica, annullamento
 
 Servono: catalogo (skill `sala`), formato del file (skill `stato-serata`), procedura dei tavoli (skill
-`assegna-tavoli`), regole (`agente/regole.md`). Alla fine di ogni scrittura: skill `controllo-serata`.
+`assegna-tavoli`), regole (`agente/regole.md`).
+
+Due regole che valgono per ogni messaggio, anche con `claude -p` (ogni messaggio è una sessione nuova):
+- **Non riusare mai l'esito di un'altra prenotazione o di un messaggio precedente** ("anche prima una coppia non
+  entrava"): ogni richiesta si decide rifacendo `assegna-tavoli` per intero sullo stato letto adesso dal file.
+- **Dopo ogni scrittura, `controllo-serata` per intero (C1-C15)** sul file riletto. Nella risposta scrivi "Controllo:
+  PASS" solo se l'hai fatto davvero; se non l'hai fatto, non rispondere: fallo prima.
 
 ## 1. Capire il messaggio
 
@@ -74,7 +80,7 @@ domanda sola, su quello che manca.
        proposta della mossa (vedi quella skill). Altrimenti scrivi la prenotazione `rifiutata` con il motivo dei due
        turni (formato in `stato-serata`); registro `rifiutata` con `provati`. Risposta: "Il primo turno è pieno, e
        anche il secondo." (con "non trovo posto" al posto di "pieno" per un turno non dimostrato).
-5. Skill `controllo-serata`, poi rispondi.
+5. Skill `controllo-serata` per intero (C1-C15), poi rispondi.
 
 ## 5. Risposte brevi: proposte e domande in sospeso
 
@@ -142,5 +148,9 @@ domanda sola, su quello che manca.
 - **Mai il numero del tavolo** nella conferma: può ancora cambiare. Se hai spostato qualcuno: "Ho cambiato tavolo a 1
   prenotazione già confermata dello stesso turno (lo vedi nel riepilogo)."
 - In una riga, solo se serve: la regola di buonsenso non rispettata ("Seggiolone: era libero solo un tavolo vicino al
-  percorso dei camerieri.") o un esito del controllo non PASS.
+  percorso dei camerieri.").
+- Se hai scritto il file: una riga "Controllo: PASS" (o "Controllo: FAIL" con i problemi), solo dopo aver fatto
+  C1-C15 per intero.
+- Se un turno è "non trovo posto", non scrivere frasi come "non ho rifatto le catene" o "ho riusato il risultato di
+  prima": vuol dire che la procedura non è finita. Finiscila, poi rispondi.
 - Al massimo una domanda, in fondo.
