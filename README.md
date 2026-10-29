@@ -104,6 +104,41 @@ usato, per alcuni rifiuti, un ragionamento di capacità invece di provare tutte 
 conferme, proposte, "sì" a una proposta, risposta "primo" alla domanda delle 20:45, doppio nome, disponibilità e
 riepilogo corretti.
 
+### Validazione del 29/10/2026 (skill attuali)
+
+Serate nuove generate apposta (`prove/dati-test/`, fuori dal git), riferimento del motore sulla stessa piantina,
+controllo CP-SAT esterno su ogni proposta e ogni rifiuto:
+
+| serata | assistente | motore | pieni falsi |
+|---|---|---|---|
+| sabato `olimpo_sabato.json`, 3 esecuzioni | 63/67 (6 su proposta), 242 coperti, tutte e 3 | 63/67 (6), 242 | 0 |
+| coppie (84 prenotazioni da 2-4) | 72/84 (9), 208 coperti | 72/84 (9), 208 | 0 |
+| gruppi medi (46, soprattutto da 5-8) | 41/46 (2), 222 coperti | 41/46 (2), 222 | 0 |
+| casi limite (64: fuori turno, 20:45, `turno`, 22 persone) | 61/64 (8), 255 coperti | 61/64 (4), 255 | 0 |
+
+Nei casi limite le 4 proposte in più sono gli orari fuori turno (18:30, 19:00, 22:45, 23:00). L'assistente li
+registra solo dopo il sì al turno più vicino, come dicono le regole; la rigioca del motore li accetta direttamente.
+Rifiutati identici al motore in tutte le serate.
+
+- **Verificatore** `controllo-sala`, su un file con 7 errori inseriti e uno pulito, senza sapere quale: ha trovato
+  tutti e 7 gli errori, comprese le sovrapposizioni che creavano, e ha dato PASS al file pulito.
+- **Conversazione** con `claude -p` su un sabato già pieno (18 messaggi, da 47 a 175 secondi l'uno). Corretti:
+  - rifiuto vero, annullamento, modifica che non entra (resta la vecchia);
+  - domande sul doppio nome e sui coperti mancanti;
+  - con più domande in sospeso chiede a quale si risponde, e "sì" o "no grazie" senza niente in sospeso.
+
+  **Errori**:
+  - **2 "pieno" falsi**. Bassi ×2 entrava nel primo turno con una catena di 2 spostamenti: Ferretti ×10 dal lungo
+    al 10, Gentile ×5 dal 10 a "11-1", Bassi a "11-2". Moretto ×3 ha riusato quell'esito sbagliato;
+  - in 3 messaggi il controllo della serata non è stato fatto per intero;
+  - una disponibilità ha detto "ultimo posto" quando ne restavano altri.
+- **Deviazioni nelle rigioche**: in 4 esecuzioni su 5 l'assistente ha deciso a mente le prime ~50 prenotazioni
+  prima di scriverle, e ha riletto il file meno spesso di quanto chiede la skill. Il risultato non è cambiato.
+- **Costo**: da 180 a 280 mila token per una rigioca, da 7 a 17 minuti.
+
+In sintesi: quando la procedura è eseguita per intero il risultato coincide con quello del motore. Il punto debole
+sono i messaggi singoli a sala piena, dove il modello accorcia le catene e i controlli.
+
 ## Limiti noti
 
 - **"Pieno" dimostrato solo dai conteggi per soglia** (condizioni necessarie): un turno davvero pieno ma non coperto
