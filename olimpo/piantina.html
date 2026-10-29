@@ -45,7 +45,9 @@
   .banner.errore { background: #fdecec; border-color: #e0b4b4; color: #7a1f1f; }
   .barra { position: sticky; top: 0; z-index: 5; display: flex; gap: 6px; padding: 8px 0; background: #faf9f6; }
   .barra .btn { flex: 1 1 auto; padding: 0 8px; }
-  .barra .b-manda { flex: 2 1 auto; }
+  .barra .b-manda, .barra .b-salva { flex: 2 1 auto; }
+  body:not(.locale) .solo-locale { display: none !important; }     /* "locale": la pagina è servita da piantina_locale.py, si salva nel file del repo */
+  body.locale .b-manda { display: none !important; }
   .istruzioni { font-size: 15px; background: #fff7e6; border: 1px solid #f0d9a8; border-radius: 10px; padding: 8px 12px; margin: 0 0 10px; }
   .pulsanti { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; }
   .sottotitolo { font-size: 13px; font-weight: 600; color: #5f5e5a; margin: 12px 0 0; }
@@ -139,14 +141,14 @@
 </head>
 <body>
 <div class="wrap" id="pagina">
-  <div class="banner" id="banner" hidden>
+  <div class="banner" id="banner" hidden="">
     <p id="banner-testo"></p>
     <div class="pulsanti">
       <button type="button" class="btn verde piccolo" id="b-scarica-link">Scarica questa versione</button>
       <button type="button" class="btn piccolo" id="b-torna">Torna a quella pubblicata</button>
     </div>
   </div>
-  <div class="banner errore" id="errore-link" role="alert" hidden></div>
+  <div class="banner errore" id="errore-link" role="alert" hidden=""></div>
 
   <div class="testa">
     <div>
@@ -157,6 +159,7 @@
   </div>
   <div class="manda-vista solo-vista">
     <a class="btn verde grande b-manda" href="#" target="_blank" rel="noopener noreferrer">Manda a Giacomo</a>
+    <button type="button" class="btn verde grande solo-locale b-salva">Salva</button>
   </div>
 
   <div class="barra solo-modifica editor">
@@ -164,8 +167,9 @@
     <button type="button" class="btn" id="b-annulla">Annulla</button>
     <button type="button" class="btn" id="b-ripeti">Ripeti</button>
     <a class="btn verde grande b-manda" href="#" target="_blank" rel="noopener noreferrer">Manda a Giacomo</a>
+    <button type="button" class="btn verde grande solo-locale b-salva">Salva</button>
   </div>
-  <p class="istruzioni solo-modifica"><span id="istruzioni-testo">Trascina i tavoli mobili per spostarli, tocca un tavolo per cambiare posti e note, poi tocca Manda a Giacomo.</span> <span class="badge" id="l-sblocca" hidden>sala sbloccata</span></p>
+  <p class="istruzioni solo-modifica"><span id="istruzioni-testo">Trascina i tavoli mobili per spostarli, tocca un tavolo per cambiare posti e note, poi tocca Manda a Giacomo.</span> <span class="badge" id="l-sblocca" hidden="">sala sbloccata</span> <span class="badge" id="l-locale" hidden="">su questo PC</span></p>
   <div class="avviso" id="avviso" role="status"></div>
 
   <div class="lavoro">
@@ -212,6 +216,7 @@
         </div>
         <div class="pulsanti">
           <a class="btn verde grande b-manda" href="#" target="_blank" rel="noopener noreferrer">Manda a Giacomo</a>
+          <button type="button" class="btn verde grande solo-locale b-salva">Salva</button>
         </div>
         <div class="pulsanti">
           <button type="button" class="btn" id="b-scheda">Scheda misure</button>
@@ -265,7 +270,7 @@
 <script type="application/json" id="sala">
 {
   "nome": "Olimpo",
-  "aggiornata": "27/10/2026",
+  "aggiornata": "29/10/2026",
   "turni": ["20:00", "21:30"],
   "posti_quadrato_separato": 4,
   "scala": {"lato_quadrato_cm": 80},
@@ -291,7 +296,8 @@
   "finestre": [],
   "passaggi": [
     {"nome": "passaggio", "x": 334, "y": 480, "w": 82, "h": 324},
-    {"nome": "apertura", "x": 138, "y": 348, "w": 108, "h": 16}
+    {"nome": "apertura", "x": 138, "y": 348, "w": 108, "h": 16, "spazio_libero_cm": 90},
+    {"nome": "strettoia verso la cucina", "x": 138, "y": 364, "w": 108, "h": 116}
   ],
   "tavoli": [
     {"id": "1",   "tipo": "panca",        "x": 136, "y": 168,   "rot": -30, "posti": 4, "fisso": true, "note": "panca fissa", "confermato": true},
@@ -314,11 +320,11 @@
     {"id": "17",  "tipo": "panca",        "x": 434, "y": 609.2, "posti": 4, "fisso": true, "note": "panca fissa", "confermato": true},
     {"id": "18",  "tipo": "panca",        "x": 434, "y": 676,   "posti": 4, "fisso": true, "note": "panca fissa", "confermato": true},
     {"id": "19",  "tipo": "panca",        "x": 434, "y": 742.8, "posti": 4, "fisso": true, "note": "panca fissa", "confermato": true},
-    {"id": "20",  "tipo": "blocco",       "x": 510, "y": 404,   "moduli": 2, "verso": "orizzontale", "posti": 6, "fisso": false, "note": "2 quadrati uniti, si possono separare", "separabile": true, "da_regola": true},
-    {"id": "21",  "tipo": "blocco",       "x": 510, "y": 492,   "moduli": 2, "verso": "orizzontale", "posti": 6, "fisso": false, "note": "2 quadrati uniti, si possono separare", "separabile": true, "da_regola": true},
-    {"id": "22",  "tipo": "blocco",       "x": 510, "y": 580,   "moduli": 2, "verso": "orizzontale", "posti": 6, "fisso": false, "note": "2 quadrati uniti, si possono separare", "separabile": true, "da_regola": true},
-    {"id": "23",  "tipo": "blocco",       "x": 510, "y": 668,   "moduli": 2, "verso": "orizzontale", "posti": 6, "fisso": false, "note": "2 quadrati uniti, si possono separare", "separabile": true, "da_regola": true},
-    {"id": "24",  "tipo": "blocco",       "x": 510, "y": 756,   "moduli": 2, "verso": "orizzontale", "posti": 6, "fisso": false, "note": "2 quadrati uniti, si possono separare", "separabile": true, "da_regola": true},
+    {"id": "20",  "tipo": "blocco",       "x": 496, "y": 404,   "moduli": 2, "verso": "orizzontale", "posti": 4, "fisso": false, "note": "2 quadrati uniti attaccati al muro di sinistra, per lasciare il passaggio: 4 posti; staccati, 2 posti per quadrato (sopra e sotto)", "separabile": true, "da_regola": true},
+    {"id": "21",  "tipo": "blocco",       "x": 496, "y": 492,   "moduli": 2, "verso": "orizzontale", "posti": 4, "fisso": false, "note": "2 quadrati uniti attaccati al muro di sinistra, per lasciare il passaggio: 4 posti; staccati, 2 posti per quadrato (sopra e sotto)", "separabile": true, "da_regola": true},
+    {"id": "22",  "tipo": "blocco",       "x": 496, "y": 580,   "moduli": 2, "verso": "orizzontale", "posti": 4, "fisso": false, "note": "2 quadrati uniti attaccati al muro di sinistra, per lasciare il passaggio: 4 posti; staccati, 2 posti per quadrato (sopra e sotto)", "separabile": true, "da_regola": true},
+    {"id": "23",  "tipo": "blocco",       "x": 496, "y": 668,   "moduli": 2, "verso": "orizzontale", "posti": 4, "fisso": false, "note": "2 quadrati uniti attaccati al muro di sinistra, per lasciare il passaggio: 4 posti; staccati, 2 posti per quadrato (sopra e sotto)", "separabile": true, "da_regola": true},
+    {"id": "24",  "tipo": "blocco",       "x": 496, "y": 756,   "moduli": 2, "verso": "orizzontale", "posti": 4, "fisso": false, "note": "2 quadrati uniti attaccati al muro di sinistra, per lasciare il passaggio: 4 posti; staccati, 2 posti per quadrato (sopra e sotto)", "separabile": true, "da_regola": true},
     {"id": "25",  "tipo": "quadrato",     "x": 584, "y": 404,   "posti": 2, "fisso": false, "note": "tavolo da 2, contro il muro a destra", "confermato": true},
     {"id": "26",  "tipo": "quadrato",     "x": 584, "y": 492,   "posti": 2, "fisso": false, "note": "tavolo da 2, contro il muro a destra", "confermato": true},
     {"id": "27",  "tipo": "quadrato",     "x": 584, "y": 580,   "posti": 2, "fisso": false, "note": "tavolo da 2, contro il muro a destra", "confermato": true},
@@ -364,7 +370,10 @@
     "27/10/2026 · tavoli fissi (tondi 6 e 10, lungo 11, panche, 13A e 13B) e mobili (quadrati e quadrati uniti); aggiunti la cucina con la sua porta e un secondo bancone a sinistra, con posizioni da correggere; il bancone a L ora è fatto di due rettangoli; la piantina si corregge con il pulsante Modifica.",
     "27/10/2026 · la sala ha le sue misure (contorno modificabile); muri con spessore; misure in cm per ogni pezzo e scheda delle misure da stampare; nuovi elementi fissi (pilastri, porte, finestre, bagni, cassa, mobili, pedane, zone vietate, blocchi).",
     "27/10/2026 · forma nuova dal disegno di Giacomo: muro curvo in alto, striscia a destra larga 3,5 m, cucina e bagno in basso a sinistra, misure 10 / 6,8-7 / 10 / 14 / 4,8 m; il 9 letto dal muro storto alla cucina",
-    "27/10/2026 · corretti due testi: il lungo 11 è di 4,8 m (non 5 m) e il disegno ora è in scala."
+    "27/10/2026 · corretti due testi: il lungo 11 è di 4,8 m (non 5 m) e il disegno ora è in scala.",
+    "28/10/2026 · strettoia verso la cucina (dall'apertura alla cucina, fra il bancone di sinistra e il muro a L) segnata come passaggio da tenere libero, e 90 cm liberi davanti all'apertura, come per le porte.",
+    "29/10/2026 · 20-24 hanno 4 posti, non 6: 2 quadrati uniti con il muro a sinistra e il corridoio a destra non hanno sedie in testa (correzione di Giacomo, ramo prototipo-orari-liberi).",
+    "29/10/2026 · 20-24 attaccati al muro di sinistra per lasciare il passaggio verso 25-29 (circa 1 m); staccato, un loro quadrato ha 2 posti, sopra e sotto (da Giacomo)."
   ]
 }
 </script>
@@ -387,7 +396,9 @@
   var LIMITE_WA = 30000;                                    // un messaggio più lungo non si manda: si passa dal file
   // Sala bloccata: senza ?sblocca (in qualunque punto dell'indirizzo) si spostano solo i tavoli mobili
   var SBLOCCATA = /[?&]sblocca(?:[=&#]|$)/.test(location.search);
-  var S0 = normalizza(JSON.parse($('sala').textContent));    // la versione pubblicata, quella nel file: non si tocca mai
+  // Servita da piantina_locale.py su questo PC: la sala è sbloccata e "Salva" scrive nel file del repo (lo si scopre a pagina aperta, con attivaLocale)
+  var LOCALE = false;
+  var S0 = normalizza(JSON.parse($('sala').textContent));    // la versione pubblicata, quella nel file (in locale, dopo ogni Salva, quella appena scritta): non si modifica mai sul posto
   var S = copia(S0);
   var svg = $('mappa');
 
@@ -436,7 +447,7 @@
   var SEGNI = [[-1, -1], [1, -1], [1, 1], [-1, 1]];           // angoli: alto-sx, alto-dx, basso-dx, basso-sx
   var LATO = 32, GAP = 2, SEDIE_CM = 50, PASSO_CM = 5;
 
-  var ed = {attivo: false, sel: null, vertice: null, aggancio: true, griglia: true, quote: true, sporco: false, cambiate: 0, daLink: false,
+  var ed = {attivo: false, sel: null, vertice: null, aggancio: true, griglia: true, quote: true, sporco: false, cambiate: 0, daLink: false, salvando: false,
     annulla: [], ripeti: [], avvisati: {}, controlli: [], curva: {muro: null, vert: null, seg: null, prof: '', inv: false}};
   var drag = null, tocco = null, timerAvviso = null;
 
@@ -1210,6 +1221,7 @@
   function aggiornaBarra() {
     $('b-annulla').disabled = !ed.annulla.length;
     $('b-ripeti').disabled = !ed.ripeti.length;
+    if (LOCALE) Array.prototype.forEach.call(document.querySelectorAll('.b-salva'), function (b) { b.disabled = ed.salvando || !daSalvare(); });
   }
   function tutto(foglio) {
     var c = ed.attivo ? controlli() : {lista: [], avvisati: {}};
@@ -1687,7 +1699,7 @@
     document.body.classList.toggle('modifica', si);
     tutto();
     if (si) tutto();                 // la seconda volta con le misure dello schermo nuovo (mappa più grande da PC)
-    if (!si && ed.sporco) avviso('Ci sono modifiche non mandate: tocca Manda a Giacomo.');
+    if (!si && nonSalvate()) avviso(LOCALE ? 'Ci sono modifiche non salvate: tocca Salva.' : 'Ci sono modifiche non mandate: tocca Manda a Giacomo.');
   }
   $('b-modifica').addEventListener('click', function () { entra(true); });
   $('b-annulla').addEventListener('click', function () { confermaCampo(); annulla(); });
@@ -1703,6 +1715,7 @@
   });
   document.addEventListener('keydown', function (e) {
     if (document.body.classList.contains('con-scheda')) { if (e.key === 'Escape') chiudiScheda(); return; }
+    if (LOCALE && (e.ctrlKey || e.metaKey) && !e.altKey && e.key.toLowerCase() === 's') { e.preventDefault(); confermaCampo(); salvaLocale(); return; }      // Ctrl+S, anche dentro un campo
     if (!ed.attivo) return;
     var campo = /^(INPUT|SELECT|TEXTAREA)$/.test(e.target.tagName);
     if ((e.ctrlKey || e.metaKey) && !campo) {
@@ -1909,6 +1922,40 @@
     setTimeout(function () { URL.revokeObjectURL(url); a.remove(); }, 2000);
     ed.sporco = false;
     esito('Piantina salvata: trovi piantina.html tra i download. Mandamela su WhatsApp.');
+  }
+  // ---------------------------------------------------------------- "Salva" da piantina_locale.py: scrive nel file del repo (S0 è il file com'è adesso)
+  function daSalvare() { return canon(S) !== canon(S0); }
+  function nonSalvate() { return LOCALE ? daSalvare() : ed.sporco; }
+  function ora() {
+    var d = new Date();
+    return ('0' + d.getHours()).slice(-2) + ':' + ('0' + d.getMinutes()).slice(-2);
+  }
+  function salvaLocale() {
+    if (ed.salvando || drag) return;
+    if (!daSalvare()) { esito('Non hai cambiato niente: non c\'è nulla da salvare.'); return; }
+    preparaSalvataggio();
+    var inviata = copia(S);
+    ed.salvando = true;
+    aggiornaBarra();
+    function fallito(motivo) {
+      ed.salvando = false;
+      aggiornaBarra();
+      esito('Non sono riuscito a salvare: ' + motivo);
+    }
+    fetch('/__salva', {method: 'POST', headers: {'X-Piantina': 'salva', 'Content-Type': 'text/html;charset=utf-8'}, body: fileHtml()}).then(function (r) {
+      return r.json().then(function (j) { return {ok: r.ok && j.ok === true, errore: j.errore}; }, function () { return {ok: false}; });
+    }).then(function (r) {
+      if (!r.ok) { fallito((r.errore || 'il server locale ha risposto con un errore') + '.'); return; }
+      S0 = inviata;                    // il file ora è questo; se nel frattempo hai cambiato altro, resta da salvare
+      ed.salvando = false;
+      if (canon(S) === canon(inviata)) ed.sporco = false;
+      if (ed.daLink) {                 // la versione del link adesso è nel file: non è più "quella mandata"
+        ed.daLink = false;
+        try { history.replaceState(null, '', location.pathname + location.search); } catch (x) { location.hash = ''; }
+      }
+      aggiornaBarra(); aggiornaBanner();
+      esito('Salvata alle ' + ora() + '.');
+    }, function () { fallito('il server locale non risponde: riapri piantina_locale.cmd.'); });
   }
   function copiaDati() {
     var testo = formatta(S);
@@ -2236,11 +2283,12 @@
   $('b-torna').addEventListener('click', tornaPubblicata);
   window.addEventListener('hashchange', function () { caricaDaLink(true); });
 
-  [['b-salva2', salva], ['b-scarica-link', salva], ['b-copia', copiaDati], ['b-condividi', condividi], ['b-fine', function () { entra(false); }]].forEach(function (b) {
+  [['b-salva2', salva], ['b-scarica-link', function () { if (LOCALE) salvaLocale(); else salva(); }], ['b-copia', copiaDati], ['b-condividi', condividi], ['b-fine', function () { entra(false); }]].forEach(function (b) {
     $(b[0]).addEventListener('click', function () { confermaCampo(); b[1](); });
   });
+  Array.prototype.forEach.call(document.querySelectorAll('.b-salva'), function (b) { b.addEventListener('click', function () { confermaCampo(); salvaLocale(); }); });
   window.addEventListener('beforeunload', function (e) {
-    if (!ed.sporco) return undefined;
+    if (!nonSalvate()) return undefined;
     e.preventDefault();
     e.returnValue = '';
     return '';
@@ -2255,11 +2303,27 @@
     $('l-sblocca').hidden = false;
     $('istruzioni-testo').textContent = 'Trascina per spostare, tocca per modificare, poi tocca Manda a Giacomo.';
   }
+  function attivaLocale() {            // la pagina è servita da piantina_locale.py: sala sbloccata come con ?sblocca, Salva al posto di Manda a Giacomo
+    LOCALE = true; SBLOCCATA = true;
+    document.body.classList.add('locale');
+    document.body.classList.add('sbloccata');
+    $('l-sblocca').hidden = false;
+    $('l-locale').hidden = false;
+    $('istruzioni-testo').textContent = 'Trascina per spostare, tocca per modificare, poi tocca Salva (o Ctrl+S): scrive nel file della piantina.';
+    $('b-scarica-link').textContent = 'Salva questa versione';
+    tutto();
+  }
   tutto();
   caricaDaLink(false);                 // se l'indirizzo porta una versione mandata con WhatsApp, la si legge e la si mostra
+  // solo da http://127.0.0.1 o localhost si chiede al server se è piantina_locale.py; da file: e da GitHub Pages nessuna richiesta
+  if (location.protocol === 'http:' && /^(127\.0\.0\.1|localhost)$/.test(location.hostname) && typeof fetch === 'function') {
+    fetch('/__locale', {cache: 'no-store'}).then(function (r) { return r.ok ? r.json() : null; }).then(function (j) {
+      if (j && j.locale === true) attivaLocale();
+    }).then(null, function () { /* un altro server locale: la pagina resta com'è */ });
+  }
   // per le prove automatiche: i dati in memoria, il file che "Scarica il file" scaricherebbe, la scheda delle misure, le differenze e il messaggio
   window.piantina = {dati: function () { return S; }, file: fileHtml, json: function () { return formatta(S); }, voci: vociScheda,
-    pubblicata: function () { return S0; }, differenze: function () { return diffe(S0, S); }, manda: function () { return manda; }};
+    pubblicata: function () { return S0; }, differenze: function () { return diffe(S0, S); }, manda: function () { return manda; }, locale: function () { return LOCALE; }};
 })();
 </script>
 </body>

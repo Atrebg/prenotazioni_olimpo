@@ -130,10 +130,11 @@ def _testo(x: float, y: float, testo: str, cls: str) -> str:
 def _quadrati_blocco(t: dict) -> list[tuple[float, float]]:
     """Angoli in alto a sinistra dei quadrati del blocco, prima della rotazione (come nella piantina)."""
     k = int(t["moduli"])
-    L = k * LATO + (k - 1) * GAP
+    gap = float(t.get("spazio_u", GAP))          # i tavoli nuovi della disposizione libera: quadrati accostati
+    L = k * LATO + (k - 1) * gap
     out = []
     for i in range(k):
-        off = -L / 2 + i * (LATO + GAP)
+        off = -L / 2 + i * (LATO + gap)
         if t.get("verso") == "orizzontale":
             out.append((t["x"] + off, t["y"] - LATO / 2))
         else:

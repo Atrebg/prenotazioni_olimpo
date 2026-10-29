@@ -6,7 +6,9 @@ dove. Le "unità" assegnabili in un turno sono:
 - un tavolo semplice (panca, rettangolare, tondo, quadrato): una prenotazione, coperti <= posti;
 - il tavolo lungo: un gruppo fino ai suoi posti (20) oppure due gruppi fino a `LUNGO_DUE_GRUPPI` (8) ciascuno;
 - un blocco separabile di k quadrati: in ogni turno una partizione in pezzi CONTIGUI; il pezzo intero ha i posti del
-  blocco, un pezzo da j >= 2 quadrati 2j + 2 posti, un quadrato da solo `posti_quadrato_separato`.
+  blocco, un pezzo da j >= 2 quadrati 2j + 2 posti, un quadrato da solo `posti_quadrato_separato`. Eccezione (Giacomo,
+  29/10): un blocco senza sedie in testa, cioè con posti = 2k (i 20-24, attaccati al muro di sinistra per lasciare il
+  passaggio), dà a ogni pezzo di j quadrati diviso sul posto 2j posti, quindi 2 a un quadrato da solo (sopra e sotto).
 Le impostazioni del motore (servizio, pesi, tempi, chat) non stanno nella piantina: sono in `IMPOSTAZIONI` qui sotto.
 """
 from __future__ import annotations
@@ -142,6 +144,8 @@ class Piantina:
         if (a, b) == (0, k - 1):
             return int(t["posti"])
         j = b - a + 1
+        if int(t["posti"]) == 2 * k:               # niente sedie in testa (muro, corridoio): solo i lati lunghi
+            return 2 * j
         return 2 * j + 2 if j >= 2 else self.posti_separato
 
     def unita_del(self, t: dict) -> list[Unita]:

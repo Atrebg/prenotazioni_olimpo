@@ -13,7 +13,7 @@ Due scelte in configurazione (`dati/sala_esempio.json`, sovrascrivibili da riga 
 | chiave | valori | significato |
 |---|---|---|
 | `accettazione` | `ordine_di_arrivo` (default) · `tutte_insieme` | "i primi che prenotano restano dentro" · ottimizzazione unica (modalità originale) |
-| `disposizione` | `fissa` (default) · `variabile` | tavoli fermi tutta la sera · la piantina può cambiare durante il servizio |
+| `disposizione` | `fissa` (default) · `variabile` · `libera` | tavoli fermi tutta la sera · la piantina può cambiare durante il servizio · solo sala vera e solo da riga di comando: i quadrati mobili si spostano, ruotano, uniscono e dividono ([disposizione libera](#disposizione-libera-dei-tavoli-mobili---disposizione-libera)) |
 | `turni` | assente (default) · elenco di turni | orari liberi · ogni prenotazione occupa il tavolo per tutto il suo turno ([modalità a turni](#modalità-a-turni)) |
 
 **La sala vera dell'Olimpo si usa con `--sala olimpo/piantina.html`**: il motore legge direttamente il blocco
@@ -53,6 +53,7 @@ Negli esempi qui sotto si usa `.venv\Scripts\python.exe` (Windows); su Linux e m
 | `prova.py` | "c'è posto?" al telefono, senza scrivere file | `.venv\Scripts\python.exe prova.py --stato out\soluzione.json --coperti 2 --orario 21:00` |
 | `confronto.py` | confronta disposizione fissa e variabile, o politiche di proposta | `.venv\Scripts\python.exe confronto.py --modi fissa variabile` |
 | sala vera | tutti i comandi con `--sala olimpo/piantina.html` | `.venv\Scripts\python.exe esegui.py --sala olimpo\piantina.html --prenotazioni dati\olimpo_sabato.json --out out\olimpo_sabato` |
+| sala vera, tavoli mobili liberi | il motore dispone i quadrati, con sedie, muri e corridoi; confronto con i tavoli fermi | `.venv\Scripts\python.exe esegui.py --sala olimpo\piantina.html --prenotazioni dati\olimpo_sabato.json --disposizione libera --confronto out\olimpo_sabato_fissa\soluzione.json --out out\olimpo_sabato_libera` |
 | `confronto.py` sala vera | sabato con politica "sempre" e "mai" | `.venv\Scripts\python.exe confronto.py --sala olimpo\piantina.html --prenotazioni dati\olimpo_sabato.json --combinazioni fissa:sempre fissa:mai --out out\confronto_olimpo` |
 | `confronto.py` a turni | le tre combinazioni a turni su sabato_pieno | `.venv\Scripts\python.exe confronto.py --sala dati\sala_turni.json --combinazioni fissa:mai fissa:sempre variabile:sempre --out out\confronto_turni` |
 | `verifica.py` | verifica indipendente di una soluzione | `.venv\Scripts\python.exe verifica.py --sala dati\sala_esempio.json --prenotazioni dati\sabato_pieno.json --soluzione out\soluzione.json` |
@@ -235,7 +236,10 @@ motore (pesi, tempi, politica "sempre", 3 processi × 4 worker per la tabella) s
   posti meno tutti i seduti (un gruppo da 8 da solo lascia 12 posti vuoti, quindi va a un blocco da 8 se è libero).
 - **Blocchi separabili** (5, 8 da 3 quadrati; 7, 9, 12, 20-24 da 2): in ogni turno una partizione in pezzi contigui;
   intero = i posti del blocco, un pezzo da j ≥ 2 quadrati 2j + 2 posti, un quadrato da solo `posti_quadrato_separato`
-  (4). Un blocco da 3 diventa 3, 2+1 o 1+1+1; ogni pezzo ospita al più una prenotazione e, se il blocco è diviso,
+  (4). Eccezione (Giacomo, 29/10): un blocco senza sedie in testa, cioè con posti = 2k (i 20-24, 4 posti, attaccati al
+  muro di sinistra per lasciare un corridoio di 100 cm fino a 25-29), dà 2j posti a un pezzo di j quadrati diviso sul
+  posto: 2 + 2, mai più di 4. Un quadrato portato via in uno spazio aperto conta le sedie che ci stanno davvero. Un
+  blocco da 3 diventa 3, 2+1 o 1+1+1; ogni pezzo ospita al più una prenotazione e, se il blocco è diviso,
   ogni pezzo è occupato (un pezzo vuoto si riunirebbe al vicino). La partizione può cambiare tra i turni.
 - **Obiettivo**: più prenotazioni possibile in ordine di arrivo (chi prenota prima resta dentro, turno promesso
   congelato, orario nel turno più vicino, se il turno è pieno si propone l'altro), poi meno posti vuoti per tavolo
@@ -266,6 +270,10 @@ per spostare i tavoli col mouse, **Scarica il file** per scaricare lo stesso fil
 storico, da rimettere al posto di quello in `olimpo/`.
 
 - Sala bloccata: si muovono solo i tavoli mobili (`?sblocca` nell'indirizzo sblocca tutto). **Manda a Giacomo** apre WhatsApp con le modifiche e il link.
+- **Modifica in locale** (`piantina_locale.cmd`, oppure `.venv\Scripts\python.exe piantina_locale.py [--file F] [--porta N] [--no-browser]`):
+  apre la piantina da un server solo su 127.0.0.1 (porta 8770 o la prima libera), sbloccata, e **Salva** (o Ctrl+S)
+  riscrive `olimpo/piantina.html` al suo posto. Online non cambia niente finché non si pubblica. Il server accetta i
+  salvataggi solo dalla sua pagina, rifiuta file senza i dati della sala e non serve altri file della cartella.
 - Pannello a lato (da 900 px), Annulla/Ripeti, tastiera: Canc, Ctrl+Z/Y, frecce di 5 cm (Maiusc 50 cm), Esc.
 - Misure in centimetri per ogni pezzo (da sinistra, dall'alto, larghezza, profondità, rotazione) e per la sala;
   "Mostra misure" disegna le quote, griglia di 1 m, scatto di 5 cm.
@@ -283,7 +291,8 @@ scaricati dall'editor durante le prove sono in `tests/` e i test controllano che
 
 Sabato di prova `dati/olimpo_sabato.json`: 67 prenotazioni, 260 coperti, orari chiesti dalle 19:30 alle 22:00 (41 nel
 primo turno, 152 coperti; 26 nel secondo, 108), un gruppo da 18 alle 20:00 e uno da 14 alle 20:15: solo il lungo può
-prenderli. 151 posti per turno con i blocchi interi, 43 prenotazioni al massimo per turno con tutti i blocchi divisi.
+prenderli. 141 posti per turno con i blocchi interi (151 prima del 29/10, quando i 20-24 avevano 6 posti), 43
+prenotazioni al massimo per turno con tutti i blocchi divisi.
 
 | | politica "sempre" | politica "mai" |
 |---|---|---|
@@ -318,6 +327,93 @@ libero nel secondo, il riepilogo con i tavoli. Risposte identiche nei tre casi.
 
 Ricalcolo della tabella dopo una modifica: mediana 4,3 s, massimo 4,5 s. Con 2 worker per processo CP-SAT non
 dimostrava "turno pieno" nemmeno in 30 s (UNKNOWN), con 4 in mezzo secondo: per questo 3 processi × 4 worker.
+
+### Disposizione libera dei tavoli mobili (`--disposizione libera`)
+
+`esegui.py --sala olimpo/piantina.html --disposizione libera [--confronto <soluzione a tavoli fermi>] [--corridoio 60]`:
+i 29 quadrati mobili della piantina (i singoli 3, 4, 25-29 e quelli dentro i blocchi 5, 7, 8, 9, 12, 20-24) si spostano,
+si ruotano (0° o 90°), si uniscono in file fino a 4 e si dividono per turno; panche, tondi, lungo, 13A e 13B restano dove
+sono, con i loro posti e la zona delle loro sedie. Il modo a tavoli fermi resta il default e non cambia.
+File: `ristorante/sala_libera.py` (geometria in cm), `ristorante/modello_libero.py` (modelli), `ristorante/mappa_libera.py`
+(mappa), `verifica_libera` in `verifica.py` (verifica), `tests/test_libera.py`.
+
+- **Regole** (tarate sul disegno, 28/10): 1 sedia per ogni lato da 80 cm con 50 cm liberi davanti (SEDIE_CM
+  dell'editor; contro un muro o un ostacolo un lato non ha sedie); tavolo e sedie dentro la faccia interna dei muri
+  (curva compresa), ad almeno 2,5 cm da muri, ostacoli, porte e passaggi con lo spazio davanti, ingresso; fuori dalla
+  zona sedie dei fissi (50 cm, che non passa dall'altra parte di un muro); **40 cm fra le zone (tavolo + sedie) di due
+  tavoli diversi**, come fra le spalliere delle righe della striscia; **ogni tavolo dà su un corridoio di 60 cm da almeno
+  un lato** (zona d'accesso libera da tavoli e sedie); **strade di servizio riservate**, calcolate con i tavoli del
+  disegno al loro posto: ingresso → porta della cucina (dalla strettoia), ingresso → porta dei bagni, ingresso → tavolo
+  più lontano (in fondo alla striscia, nel corridoio fra 20-24 e 25-29); ogni tavolo e ogni porta si raggiungono
+  dall'ingresso con un corridoio di 60 cm. Nella piantina la **strettoia verso la cucina** (fra il bancone di sinistra e
+  il muro a L, dall'apertura alla cucina) è un passaggio, e l'apertura ha 90 cm liberi davanti, come le porte.
+- **I 29 quadrati restano sempre tutti in sala** (regola di Giacomo, 28/10): si spostano, si ruotano, si uniscono o si
+  dividono, mai spariscono. Il disegno così com'è (posizioni, rotazioni, posti decisi da Giacomo) è ammesso per
+  definizione; le regole qui sopra valgono per i pezzi che si spostano o cambiano forma, e fra quelli e il resto.
+- **Come lavora** (`ristorante/libera_varianti.py`, quello che usa `esegui.py`): si parte dal disegno, e finché basta
+  la serata è esattamente il modo a tavoli fermi. Se una richiesta verrebbe rifiutata in tutti i turni, il motore
+  propone le mosse. Prima gli attacchi a un pezzo fermo: uno o due quadrati staccati da pezzi separabili (o singoli
+  presi) e attaccati in testa o in coda a un pezzo che resta con la sua rotazione, anche spostato fino a 1 m o ruotato
+  di 15 gradi; il pezzo allungato tiene i posti della regola (4 quadrati = 10) se le sedie ci stanno, e dagli altri
+  tavoli sta a 140 cm fra i corpi o, dove il disegno aveva già meno spazio, non più vicino di prima. Poi un tavolo
+  nuovo da k quadrati (2 = 6, 3 = 8, 4 = 10 posti, contate le sedie che ci stanno) in ogni
+  posizione dove rispetta le regole rispetto a muri, cose vietate e fissi; smonta i pezzi che gli danno fastidio, se i
+  quadrati non bastano ne stacca uno da un altro pezzo (che resta dov'è, più corto), e con quelli che avanzano fa
+  tavoli nuovi dove ci stanno. Niente strade riservate: conta che nessun tavolo o porta raggiungibile col disegno
+  diventi irraggiungibile. Si provano le mosse migliori (meno pezzi toccati, meno posti persi) col solver, con tutte le
+  accettate. Le accettate restano nel loro turno ma il tavolo può cambiare fino alla cena: il registro e la mappa
+  dicono chi l'ha cambiato; nella piantina finale ogni cambio rispetto alla conferma costa 100 (più di 10 posti
+  vuoti), lo stesso tavolo su altri quadrati 10, e la penalità resta fuori dall'obiettivo dichiarato. Se le mosse fanno perdere qualcosa dopo, si tiene il solo disegno. In `serata.html` la
+  sezione «Da preparare in sala» ha una riga per mossa, e i tavoli nuovi sono disegnati con le loro sedie.
+- **Verifica indipendente** (`verifica_libera`, 18 controlli): geometria esatta in cm (poligono della sala con l'arco,
+  rettangoli ruotati, cerchi), inventario, muri, cose vietate, sedie libere, corridoi e raggiungibilità (flood fill su una
+  griglia di 5 cm: un punto è di corridoio se dista almeno 30 cm da tutto), posti dei pezzi, turni, registro, componenti.
+- **Misure di default** (anche nella mappa, sezione "Misure"): panche 1, 2, 14-19 senza misure = 80 × 80 cm (default
+  dell'editor); quadrati 80 cm (`scala.lato_quadrato_cm`, da confermare); sedie 50 cm (editor); corridoio 60 cm, zona sedie
+  dei fissi su tutti i lati, file senza spazio tra i quadrati, griglia 10 cm, rotazioni 0°/90°, file fino a 4 (scelte del
+  motore); dalla piantina: muri 20 cm, porte e ingresso con 90 cm davanti, tondi 80 e 135 cm, lungo 480 × 80, 13A/13B
+  110 × 90.
+
+Risultati del 29/10/2026 (piantina del 29/10: 20-24 da 4 posti attaccati al muro di sinistra, corridoio di 100 cm fino
+a 25-29; politica "sempre"; 1 esecuzione per serata):
+
+| | sabato libera | sabato fissa | venerdì libera | venerdì fissa |
+|---|---|---|---|---|
+| prenotazioni (nell'altro turno) | 66/67 (5) | 66/67 (5) | 35/35 (0) | 35/35 (0) |
+| coperti | 250/260 | 250/260 | 121/121 | 121/121 |
+| quadrati in sala | 29 | 29 | 29 | 29 |
+| posti nella striscia destra (20-29) | 30 | 30 | 30 | 30 |
+| mosse | nessuna | — | nessuna | — |
+| cambi di tavolo dopo la conferma | 36 | — | 5 | — |
+| tempo del comando | 3 min 2 s | 33 s | 22 s | 14 s |
+| verifica indipendente | PASS 16/16 | PASS 14/14 | PASS 16/16 | PASS 14/14 |
+
+Il sabato resta 66/67 anche coi 20-24 da 4: nel primo turno i dieci quadrati della striscia sinistra vanno a coppie da
+2 (2 posti per quadrato), mai un gruppo da 4 su un quadrato solo. Risultati del 28/10 (20-24 da 6 posti): stessi
+numeri, 40 posti nella striscia.
+
+- Mosse del motore (28/10, sera): una fila da 4 quadrati trova 1736 posizioni nella sala senza tavoli mobili (216
+  con le vecchie strade riservate), 0 col disegno al suo posto. Le mosse valide per un tavolo da 10 sono 4, tutte nella
+  striscia destra (smonta 3 file e 2 singoli, componi un 4 in verticale da 10 posti, i quadrati avanzati come due
+  tavoli da 2): costano 8 posti. Sabato il secondo turno è pieno e il solver dimostra che con nessuna delle 4 Marini ×10
+  entra: la libera resta 66/67 come la fissa.
+- Quadrati accostati (IPOTESI del 28/10, notte): i quadrati "uniti" di Giacomo sono tavoli accostati, un pezzo da k
+  quadrati è lungo k·80 cm in tutta la geometria (motore, verificatore, confronti "non peggio del disegno"); i 2 u fra
+  i quadrati restano solo nel disegno della mappa.
+- Attacchi e combinazioni per un tavolo da 10 (prima un pezzo da 10, poi altri pezzi da 8 o da 6 nella stessa
+  disposizione; i pezzi allungati con un lato d'accesso da 60 cm oltre le sedie, dove il disegno non l'aveva basta non
+  peggiorare): con le misure di oggi nessun attacco regge, tutti per i 140 cm o il "non peggio del disegno". I più
+  vicini, per poco più di 1 cm: 8 + 1 col quadrato del 9 (1,1-1,2 cm verso il 9), 7 + 2 coi quadrati dell'8 (1,0 cm
+  verso l'8), 24 + 2 nella striscia (1,2 cm verso il 23): da rifare con le misure vere del locale. Resta solo il
+  tavolo nuovo da 4 in verticale nella striscia, che costa 8 posti: col sabato pieno il solver dimostra che Marini non
+  entra. Le righe da 3 quadrati della striscia (21+26, 22+27, 23+28, 24+29) con 8 sedie ci stanno spostate di 15 cm;
+  la 20+25 no (21 cm verso il 12).
+- Stabilità alla conferma: chi arriva va al tavolo più piccolo che basta (a parità un pezzo del disegno) e chi è già
+  confermato resta dov'è se può (100 per un tavolo diverso, 10 per altri quadrati dello stesso blocco), 1,5 s per
+  conferma partendo dal piano trovato.
+- Col disegno il personale largo 60 cm non arriva alla parte destra della sala (10, 8, 9, 12, la striscia): ci arriva
+  solo uno largo 40 cm. I passaggi sono fra il 5 e il 7 (56 cm fra i corpi) e fra il 5 e il pilastro (50 cm), senza
+  contare le sedie dei tavoli mobili: le misure da prendere al locale.
 
 ## Il modello in parole
 
