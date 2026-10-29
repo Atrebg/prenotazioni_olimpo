@@ -58,8 +58,10 @@ Altre regole: una `confermata` arrivata su proposta ha `proposta` non nulla e `t
 
 ## Il registro (una riga per evento, solo in aggiunta, mai riscritto)
 
-Ogni riga: `{"quando": "…", "n": …, "evento": "…", …altri campi…, "testo": "…"}`. `testo` è una frase breve per il
-proprietario (es. "Rossi ×4"). Campi per evento:
+Ogni riga: `{"quando": "…", "n": …, "evento": "…", …altri campi…, "testo": "…", "deciso_da": "…"}`. `testo` è una
+frase breve per il proprietario (es. "Rossi ×4"). `deciso_da` è il modello che ha preso la decisione e scritto la riga:
+"haiku", "sonnet", "opus" (in modalità mista, le righe scritte da `decisore-sala` hanno "sonnet"). Va messo in ogni
+riga nuova; nei file vecchi può mancare. Serve a misurare quante decisioni passano a Sonnet. Campi per evento:
 
 | evento | campi in più |
 |---|---|
@@ -91,7 +93,8 @@ Una riga per mossa: `{"id": "M1", "stato": "proposta", "turni": ["secondo"], "un
 ## Esempio piccolo e valido
 
 Due cose in sospeso: Verdi aspetta il sì a una proposta, Pellegrino la risposta a una domanda. Un "sì" arrivato
-in una sessione nuova qui va chiarito (a quale dei due?).
+in una sessione nuova qui va chiarito (a quale dei due?). In modalità mista: le righe facili le ha scritte Haiku;
+la proposta a Verdi l'ha decisa `decisore-sala` ("sonnet"), perché nel secondo turno il passo 1 non trovava posto.
 
 ```json
 {
@@ -107,13 +110,13 @@ in una sessione nuova qui va chiarito (a quale dei due?).
   ],
   "mosse": [],
   "registro": [
-    {"quando": "2026-10-29", "n": 1, "evento": "confermata", "turno": "primo", "unita": "1", "testo": "Rossi ×4"},
-    {"quando": "2026-10-29", "n": 2, "evento": "proposta", "turno": "primo", "motivo": "alle 19:00 non c'è un turno", "testo": "Bianchi ×6: proposto il primo turno (20:00)"},
-    {"quando": "2026-10-29", "n": 2, "evento": "accettata su proposta", "turno": "primo", "unita": "12", "testo": "Bianchi ×6"},
-    {"quando": "2026-10-29", "n": 3, "evento": "proposta", "turno": "secondo", "motivo": "alle 23:00 non c'è un turno", "testo": "Verdi ×2: proposto il secondo turno (21:30)"},
-    {"quando": "2026-10-29", "n": 4, "evento": "confermata", "turno": "secondo", "unita": "4", "testo": "Neri ×2"},
-    {"quando": "2026-10-29", "n": 4, "evento": "annullata", "turno": "secondo", "da": "4", "testo": "Neri ×2"},
-    {"quando": "2026-10-29", "n": 5, "evento": "domanda", "testo": "Pellegrino ×4 alle 20:45: primo turno (20:00) o secondo (21:30)?"}
+    {"quando": "2026-10-29", "n": 1, "evento": "confermata", "turno": "primo", "unita": "1", "testo": "Rossi ×4", "deciso_da": "haiku"},
+    {"quando": "2026-10-29", "n": 2, "evento": "proposta", "turno": "primo", "motivo": "alle 19:00 non c'è un turno", "testo": "Bianchi ×6: proposto il primo turno (20:00)", "deciso_da": "haiku"},
+    {"quando": "2026-10-29", "n": 2, "evento": "accettata su proposta", "turno": "primo", "unita": "12", "testo": "Bianchi ×6", "deciso_da": "haiku"},
+    {"quando": "2026-10-29", "n": 3, "evento": "proposta", "turno": "secondo", "motivo": "alle 23:00 non c'è un turno", "testo": "Verdi ×2: proposto il secondo turno (21:30)", "deciso_da": "sonnet"},
+    {"quando": "2026-10-29", "n": 4, "evento": "confermata", "turno": "secondo", "unita": "4", "testo": "Neri ×2", "deciso_da": "haiku"},
+    {"quando": "2026-10-29", "n": 4, "evento": "annullata", "turno": "secondo", "da": "4", "testo": "Neri ×2", "deciso_da": "haiku"},
+    {"quando": "2026-10-29", "n": 5, "evento": "domanda", "testo": "Pellegrino ×4 alle 20:45: primo turno (20:00) o secondo (21:30)?", "deciso_da": "haiku"}
   ]
 }
 ```
@@ -161,8 +164,8 @@ con:
 
 ```
 },
-    {"quando": …, "evento": "proposta", …},
-    {"quando": …, "evento": "accettata su proposta", …}
+    {"quando": …, "evento": "proposta", …, "deciso_da": "sonnet"},
+    {"quando": …, "evento": "accettata su proposta", …, "deciso_da": "sonnet"}
   ]
 }
 ```

@@ -12,7 +12,9 @@ prenotazione (skill `prenotazione`) e si rifà tutto da capo.
    persone o la data, chiedilo. Se manca l'orario, rispondi per tutti e due i turni.
 2. Leggi il file della serata (se non c'è, la serata è vuota) e il catalogo (skill `sala`).
 3. Per ogni turno da controllare applica la skill `assegna-tavoli` **a mente**, fino al passo 3 compreso, sullo stato
-   letto adesso dal file (non riusare risposte di prima). Le `in_attesa` non occupano tavoli.
+   letto adesso dal file (non riusare risposte di prima). Le `in_attesa` non occupano tavoli. In modalità mista
+   (Haiku): se il passo 1 trova un'unità libera rispondi solo "sì, c'è posto"; altrimenti passa la domanda a
+   `decisore-sala` (vedi `CLAUDE.md`) e riporta la sua risposta.
 4. Rispondi in una o due righe, senza numeri di tavolo:
    - entra senza spostare nessuno: "Sì: nel secondo turno (21:30) c'è posto per 4.";
    - entra solo spostando chi è già confermato: "Sì, nel secondo turno (21:30), cambiando di tavolo una prenotazione

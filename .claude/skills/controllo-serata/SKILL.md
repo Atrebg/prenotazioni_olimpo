@@ -16,7 +16,7 @@ regola (C5, C6, C9 ogni 10 prenotazioni, tutto alla fine).
 
 | # | controllo | se non va |
 |---|---|---|
-| C1 | Il file è JSON valido, con `serata`, `piantina`, `prenotazioni`, `mosse`, `registro`; ogni prenotazione ha tutti i campi della skill `stato-serata` (se manca `domanda`, file vecchio: vale `null`) | FAIL; `domanda` mancante solo AVVISO |
+| C1 | Il file è JSON valido, con `serata`, `piantina`, `prenotazioni`, `mosse`, `registro`; ogni prenotazione ha tutti i campi della skill `stato-serata` (se manca `domanda`, file vecchio: vale `null`). Il campo `deciso_da` delle righe di registro è facoltativo: se manca, nessun avviso; se c'è, è un nome di modello ("haiku", "sonnet", "opus"). Una riga `rifiutata`, una `proposta` per mancanza di posto ("pieno" o "non trovo posto" nel motivo) o un `cambio tavolo` (tranne da 11-2 a 11-1 dopo un annullamento) con `deciso_da` "haiku" va contro la modalità mista | FAIL; `domanda` mancante e righe difficili decise da Haiku solo AVVISO |
 | C2 | `piantina` del file = piantina di oggi (`aggiornata` e numero di righe dello `storico`) | AVVISO; FAIL se un'unità assegnata non esiste più o ha meno posti dei coperti |
 | C3 | La piantina ha 29 quadrati mobili (quadrati + moduli dei blocchi mobili) | FAIL: i tavoli non possono sparire, va chiesto al proprietario |
 | C4 | `n` tutti diversi; da 1 al più alto senza buchi | FAIL se ripetuti; AVVISO se mancano numeri |

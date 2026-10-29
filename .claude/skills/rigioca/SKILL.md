@@ -65,8 +65,28 @@ scelte le fa la politica del cliente. **Non tocca mai `serate/`**: scrive solo i
       `stato-serata` vale per i messaggi veri).
    8. Se ti fermi o riprendi dopo un'interruzione, il file è la verità: rileggilo e riparti dalla prenotazione dopo
       l'ultimo `n` scritto, senza rifare le precedenti.
-4. Alla fine: skill `controllo-serata` completa sul file.
+4. Alla fine: skill `controllo-serata` completa sul file (con Haiku, se non riesci a farla per intero, passala
+   all'agente `controllo-sala`).
 5. Scrivi `prove/<etichetta>/esito.md` (sotto).
+
+In ogni riga di registro metti `deciso_da` con il modello che ha deciso quella prenotazione.
+
+## Modalità mista (la sessione gira su Haiku)
+
+Per **ogni** prenotazione, una alla volta:
+1. Haiku rilegge con Grep le confermate del turno chiesto T e fa i **passi 0 e 1** di `assegna-tavoli` in T (per un
+   orario fuori dai turni, nel turno più vicino).
+2. **ENTRA al passo 1** (unità libera adatta, nessun conteggio superato, nessuno spostato) → Haiku scrive la
+   prenotazione come al punto 3, con `deciso_da` "haiku". Per un orario fuori dai turni con la politica `sempre`
+   scrive `proposta` e `accettata su proposta`.
+3. **Tutto il resto** (passo 1 senza unità, conteggio superato, dubbio) → Haiku chiama l'agente `decisore-sala` per
+   **quella sola** prenotazione e passa: il path del file della prova, la riga della prenotazione del file di
+   ingresso con il suo `n` e `prenotata_il`, la politica del cliente, la data della serata e la frase "rigioca:
+   niente domande, 20:45 nel primo turno, decidi e scrivi solo questa prenotazione". **Aspetta** che abbia scritto il
+   file, poi passa alla prenotazione successiva. Non rifare e non riscrivere ciò che ha deciso.
+4. Mai una chiamata per più prenotazioni insieme, mai mandargli le prossime "già che c'è".
+5. Ogni 10 prenotazioni Haiku rilegge il file intero e fa C5, C6 e C9; alla fine il controllo completo (punto 4
+   sopra). Nell'esito aggiungi quante prenotazioni ha deciso Haiku e quante `decisore-sala` (dal campo `deciso_da`).
 
 ## esito.md
 

@@ -27,9 +27,16 @@ repository (la cartella di lavoro, quella che contiene `olimpo/piantina.html` e 
   altrimenti non scrivere niente; poi restituisci la domanda. La risposta può arrivarti in una chiamata nuova
   ("primo", "sì", "è un'altra"): la ritrovi tra le `in_attesa` dei file di `serate/` (skill `prenotazione`, punto 5).
 - Hai solo Read, Edit, Write, Glob e Grep: nessuno script, nessun comando.
+- In ogni riga di registro che scrivi metti `deciso_da` con il tuo modello.
+- **Se giri su Haiku** (chi ti chiama ha cambiato il modello; lo vedi dal tuo system prompt) vale la "Modalità
+  mista" di `CLAUDE.md`. Da sub-agent però non puoi chiamare altri agenti: nei casi che spettano a `decisore-sala`
+  **non decidere e non scrivere**, e restituisci a chi ti chiama la riga `serve decisore-sala` seguita dalle cinque
+  cose da passargli (testo esatto del messaggio, data di oggi, path del file della serata, "✓ …" che hai capito,
+  riga `in_attesa` a cui risponde, se c'è). Sarà chi ti chiama a lanciarlo.
 
 ## Cosa restituisci
 
 1. La risposta per il proprietario, esattamente come la scriveresti a lui (formato di `CLAUDE.md`).
 2. Sotto, separata, una riga per chi ti ha chiamato: file scritto (o "nessun file scritto") ed esito del controllo,
-   per esempio `File: serate/2026-10-31.json · controllo: PASS`.
+   per esempio `File: serate/2026-10-31.json · controllo: PASS`; oppure, su Haiku in un caso difficile,
+   `serve decisore-sala` con le cinque cose.

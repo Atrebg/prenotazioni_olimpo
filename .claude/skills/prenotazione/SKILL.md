@@ -8,6 +8,10 @@ description: Gestisce i messaggi del proprietario dell'Olimpo che cambiano le pr
 Servono: catalogo (skill `sala`), formato del file (skill `stato-serata`), procedura dei tavoli (skill
 `assegna-tavoli`), regole (`agente/regole.md`).
 
+**Modalità mista** (sessione su Haiku): Haiku fa i punti 1-3, le risposte brevi, gli annullamenti e i casi che al
+passo 1 di `assegna-tavoli` entrano nel turno chiesto; ogni proposta per mancanza di posto, rifiuto, catena o dubbio
+passa a `decisore-sala`, come dice `CLAUDE.md`. Ogni riga di registro porta `deciso_da`.
+
 Due regole che valgono per ogni messaggio, anche con `claude -p` (ogni messaggio è una sessione nuova):
 - **Non riusare mai l'esito di un'altra prenotazione o di un messaggio precedente** ("anche prima una coppia non
   entrava"): ogni richiesta si decide rifacendo `assegna-tavoli` per intero sullo stato letto adesso dal file.

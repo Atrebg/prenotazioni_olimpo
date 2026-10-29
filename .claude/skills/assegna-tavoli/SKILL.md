@@ -67,6 +67,10 @@ candidate che lo soddisfano e, se nessuna lo soddisfa, le tiene tutte:
 
 Se c'è almeno una candidata: ENTRA, senza cambi. Altrimenti passo 2.
 
+**Modalità mista**: se la sessione gira su Haiku, qui si ferma. ENTRA al passo 1 → Haiku scrive; qualsiasi altro
+esito (conteggio superato al passo 0, nessuna candidata, dubbio) → passa all'agente `decisore-sala` (vedi
+`CLAUDE.md`). I passi 2-4 li esegue solo Sonnet.
+
 Il costo copre la regola di buonsenso 2 (posti vuoti) e la 3 (poche divisioni). Non serve a decidere se entrare: si
 entra sempre se c'è un'unità libera adatta.
 

@@ -43,8 +43,34 @@ claude -c -p "sì" --permission-mode acceptEdits
 ```
 
 `-c` continua l'ultima conversazione; anche senza, una risposta breve ("sì", "primo") si ritrova, perché proposte e
-domande in sospeso sono scritte nel file della serata come prenotazioni `in_attesa`. Da un'altra sessione si usa l'agente `sala-olimpo`; per un secondo parere su una
-serata l'agente `controllo-sala` (sola lettura).
+domande in sospeso sono scritte nel file della serata come prenotazioni `in_attesa`. Da un'altra sessione si usa
+l'agente `sala-olimpo`; per un secondo parere su una serata l'agente `controllo-sala` (sola lettura).
+
+## Modalità mista (Haiku + Sonnet)
+
+Per spendere meno si può far girare la sessione su Haiku:
+
+```
+claude -p "Rossi 2 sab 20:00" --model haiku --permission-mode acceptEdits
+```
+
+Haiku costa da 5 a 8 volte meno a messaggio, ma a sala quasi piena sbaglia catene e "pieno" (misurato il
+29/10/2026: 4 falsi pieni in una rigioca, una disponibilità sbagliata, controlli saltati). Per questo, quando la
+sessione è Haiku, `CLAUDE.md` divide il lavoro:
+
+- **Haiku fa da sé**: lettura del messaggio, domande, risposte brevi, annullamenti, riepilogo, e le conferme che al
+  passo 1 di `assegna-tavoli` trovano un'unità libera nel turno chiesto, senza spostare nessuno.
+- **Tutto il resto passa all'agente `decisore-sala` (Sonnet)**: Haiku gli manda il testo del messaggio, la data, il
+  path del file della serata, ciò che ha capito e l'eventuale riga in attesa, poi riporta la sua risposta così com'è.
+  **Haiku non decide mai un rifiuto, una proposta dell'altro turno per mancanza di posto né un "pieno"**, e non sposta
+  nessuno.
+- Il controllo completo dopo ogni scrittura resta obbligatorio; se Haiku non riesce a farlo per intero, lo passa a
+  `controllo-sala`.
+- Ogni riga del registro dice chi ha deciso (`deciso_da`: "haiku" o "sonnet"), così si misura quante decisioni passano
+  a Sonnet. Nella rigioca in modalità mista Haiku chiama `decisore-sala` una volta per ogni prenotazione difficile, mai
+  a gruppi.
+
+Con Sonnet (o un modello superiore) la sessione fa tutto da sé, come sopra.
 
 ## Dove sta cosa
 
@@ -53,7 +79,8 @@ serata l'agente `controllo-sala` (sola lettura).
 - `.claude/skills/`: `sala` (catalogo dei tavoli dalla piantina, conteggi), `stato-serata` (formato del file),
   `assegna-tavoli` (la procedura centrale), `prenotazione`, `disponibilita`, `riepilogo`, `controllo-serata`,
   `rigioca`, `mossa-tavoli`.
-- `.claude/agents/`: `sala-olimpo` (l'assistente come sub-agent), `controllo-sala` (verificatore indipendente).
+- `.claude/agents/`: `sala-olimpo` (l'assistente come sub-agent), `decisore-sala` (Sonnet, i casi difficili in
+  modalità mista), `controllo-sala` (verificatore indipendente).
 - `olimpo/piantina.html`: la sala vera, fonte unica (blocco JSON `id="sala"`); si cambia solo con l'editor.
 - `dati/olimpo_sabato.json`, `dati/olimpo_venerdi.json`: serate di prova.
 - `serate/AAAA-MM-GG.json`: lo stato reale, una serata per file. **Fuori dal git**: contiene nomi e note dei clienti
@@ -181,6 +208,23 @@ sbagliato. Con le prove fatte fin qui, le decisioni vanno lasciate a Sonnet.
 Dopo queste prove la skill `rigioca` non contiene più i risultati attesi, e dalle skill sono spariti i nomi dei
 rifiutati del sabato. Gli esempi svolti di `assegna-tavoli` vengono però ancora dal sabato di prova, quindi quella
 serata non è più una prova alla cieca: per validare si usano le serate di `prove/dati-test/`.
+
+### Modalità mista (29/10/2026, `claude -p --model haiku`, stessi stati di partenza)
+
+| prova | esito | costo |
+|---|---|---|
+| conversazione a sala piena, 8 messaggi (regola attuale: Haiku controlla da sé le righe che tocca) | 8 decisioni giuste su 8, come Sonnet; i 3 messaggi facili (annullamento, conferma sul lungo libero, domanda dei coperti) restano tutti su Haiku | 0,018-0,072 $ i facili, 0,25-0,48 $ quelli passati a Sonnet; media 0,24 $ (Sonnet da solo 0,40, Haiku da solo 0,06) |
+| la stessa conversazione con la regola di prima (controllo su `controllo-sala` dopo ogni scrittura) | 8 su 8 | media 0,31 $: ogni messaggio facile pagava circa 0,20 $ di Sonnet per il controllo |
+| "3" come risposta, 3 prove | 3 su 3 | 0,51-0,56 $ (passa a Sonnet: il secondo turno è pieno) |
+| rigioca casi limite | 61/64, 255 coperti, **0 pieni falsi** (Haiku da solo: 4); 19 righe di registro decise da Sonnet e 57 da Haiku | 5,79 $ (Haiku 1,80 + Sonnet 3,99): più di Sonnet da solo, perché ogni passaggio fa ripartire un Sonnet che rilegge tutto |
+
+In questa conversazione 5 messaggi su 8 sono difficili, apposta. In una serata vera la quota dovrebbe essere più
+bassa: nella rigioca del sabato il passo 1 non trova posto per circa 11 prenotazioni su 67. Con circa 65 messaggi
+facili a 0,04 $ e 15 difficili a 0,35 $ un sabato costerebbe circa 8 $, contro circa 32 $ con Sonnet da solo. È una
+stima: la composizione dei messaggi di una serata vera non è misurata. Un piccolo spreco visto nella prova: un "no
+grazie" a una proposta, che Haiku può registrare da solo, è stato passato a Sonnet (0,25 $).
+
+Quindi: per i messaggi conviene la modalità mista, per le rigioche una sessione Sonnet.
 
 ## Limiti noti
 

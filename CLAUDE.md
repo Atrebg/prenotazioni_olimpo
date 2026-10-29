@@ -15,12 +15,70 @@ nei file JSON della serata.
 | prove e demo | `prove/<etichetta>/` | tu, solo con la skill `rigioca` o per prove |
 | prenotazioni di prova | `dati/olimpo_sabato.json`, `dati/olimpo_venerdi.json` | nessuno (sola lettura) |
 | procedure | `.claude/skills/<nome>/SKILL.md` | il proprietario |
+| agenti | `.claude/agents/`: `decisore-sala` (Sonnet, casi difficili in modalità mista), `controllo-sala` (verifica in sola lettura), `sala-olimpo` (l'assistente per altre sessioni) | il proprietario |
 
 ## All'inizio della sessione (una volta)
 
-1. Leggi `agente/regole.md`.
-2. Leggi la skill `sala` e, come dice lei, il blocco della sala nella piantina (Grep di `id="sala"` + Read con
+1. Guarda nel tuo system prompt quale modello sei. **Se sei Haiku, vale la "Modalità mista" qui sotto**; se sei
+   Sonnet o un modello superiore, fai tutto da te come descritto nel resto del file.
+2. Leggi `agente/regole.md`.
+3. Leggi la skill `sala` e, come dice lei, il blocco della sala nella piantina (Grep di `id="sala"` + Read con
    offset e limit: **mai il file intero**). Controlla la versione della piantina.
+
+## Modalità mista (solo se la sessione gira su Haiku)
+
+Haiku costa molto meno ma a sala quasi piena sbaglia le catene e i "pieno". Quindi divide il lavoro con l'agente
+`decisore-sala` (Sonnet).
+
+**Haiku fa da sé:**
+- capire il messaggio, le domande (nome già presente, dati mancanti, 20:45 senza turno) e il loro salvataggio
+  `in_attesa`, le risposte brevi, gli annullamenti, il riepilogo;
+- i **passi 0 e 1** di `assegna-tavoli`;
+- conferma e scrive **solo se al passo 1 trova un'unità libera adatta nel turno chiesto** (esito ENTRA al passo 1,
+  senza spostare nessuno, senza conteggi superati al passo 0). Lo stesso per: "sì" a una proposta che al passo 1
+  entra nel turno proposto, modifica che al passo 1 entra (o che non cambia tavolo: solo note, meno coperti nello
+  stesso turno), orario fuori turno quando al passo 1 c'è posto nel turno più vicino (si scrive la proposta di quel
+  turno), "c'è posto?" quando il passo 1 trova un'unità libera (si risponde solo "sì, c'è posto").
+
+**In tutti gli altri casi Haiku non decide e non scrive**: passa il messaggio a `decisore-sala` con l'Agent tool
+(`subagent_type`: `decisore-sala`), una chiamata per messaggio.
+Sono i casi in cui il passo 1 non trova niente o il passo 0 trova un conteggio superato: rifiuto, proposta
+dell'altro turno, catene, scambi, "pieno", "non trovo posto". Vale anche per la disponibilità senza unità libera al
+passo 1, la modifica o il "sì" che al passo 1 non entrano più, le mosse di tavoli, l'orario fuori turno senza posto
+nel turno più vicino, e **ogni caso in cui Haiku non è sicuro**.
+
+**Cosa passare a `decisore-sala`** (nel prompt dell'Agent tool, tutto per esteso):
+1. il testo esatto del messaggio del proprietario;
+2. la data di oggi;
+3. il path del file della serata (es. `serate/2026-10-31.json`);
+4. ciò che hai capito: "✓ Nome · N persone · data · turno";
+5. se c'è, la riga `in_attesa` a cui il messaggio risponde (copiata intera).
+
+**Cosa riportare**: la risposta di `decisore-sala` **così com'è**, senza la sua ultima riga "decisione: …" (quella
+serve a te). Non rifare la decisione, non riscrivere il file e non rifare il controllo: l'ha già fatto lui.
+
+**Controllo**: le scritture di Haiku sono sempre semplici (una conferma su un'unità libera, un annullamento, una
+domanda o una proposta rifiutata con "no grazie") e toccano poche righe. Dopo una di queste fai tu il **controllo
+delle righe toccate**, senza chiamare `controllo-sala`:
+1. rileggi il file con Read: deve essere JSON valido;
+2. la riga nuova o cambiata ha tutti i campi di `stato-serata`;
+3. se è una `confermata`: l'unità esiste nel catalogo (skill `sala`) e ha posti ≥ coperti;
+4. con Grep sulle confermate dello stesso turno, nessun'altra usa uno dei suoi pezzi (esclusività di pezzi, intero,
+   unioni e lungo);
+5. c'è la riga di registro con `deciso_da` "haiku".
+
+Nella risposta scrivi "Controllo: PASS (righe toccate)". Il controllo completo (C1-C15) lo fa `decisore-sala` sulle
+sue scritture; chiama `controllo-sala` solo se il proprietario chiede di controllare la serata o se uno dei 5 punti
+fallisce.
+
+**Registro**: in ogni riga che scrivi metti `deciso_da` con il nome del modello che ha deciso ("haiku", "sonnet",
+"opus"). Haiku non scrive mai, con `deciso_da` "haiku", un `rifiutata`, una `proposta` per mancanza di posto o un
+`cambio tavolo` (tranne il passaggio da 11-2 a 11-1 dopo un annullamento).
+
+**Rigioca**: vale la sezione "Modalità mista" della skill `rigioca` (una chiamata a `decisore-sala` per ogni
+prenotazione difficile, mai a gruppi). Per le rigioche conviene però una sessione Sonnet (`--model sonnet`): in
+modalità mista ogni passaggio fa ripartire un Sonnet che rilegge tutto, e la prova del 29/10/2026 è costata di più
+(5,79 $ per i casi limite, contro 4,70 $ di Sonnet da solo per il sabato).
 
 ## Quale skill per quale messaggio
 
@@ -53,8 +111,9 @@ con Read**: `.claude/skills/sala/SKILL.md`, `.claude/skills/stato-serata/SKILL.m
    "sì"/"no" a una proposta, "un'altra"/"modifica" a un doppio nome) e, se ne resta più di una, chiedi a quale si
    riferisce; nessuna → chiedi. Dettagli: skill `prenotazione`, punto 5.
 3. Applica la skill giusta, nell'ordine dei suoi passi, senza saltarne.
-4. Scrivi il file della serata (prenotazioni, domande in sospeso, mosse), poi applica `controllo-serata` **per
-   intero (C1-C15)** sul file riletto.
+4. Scrivi il file della serata (prenotazioni, domande in sospeso, mosse), con `deciso_da` = il tuo modello
+   ("haiku", "sonnet", "opus") in ogni riga di registro che aggiungi, poi applica `controllo-serata` **per intero
+   (C1-C15)** sul file riletto. Con Haiku, solo nei casi della "Modalità mista".
 5. Rispondi (formato sotto).
 
 Regole di metodo, che valgono anche con `claude -p`, dove ogni messaggio è una sessione nuova:
@@ -64,6 +123,8 @@ Regole di metodo, che valgono anche con `claude -p`, dove ogni messaggio è una 
 - **Non riusare mai l'esito di un'altra prenotazione o di un messaggio precedente**, anche se lo stato sembra uguale:
   rifai i passi sullo stato letto adesso dal file.
 - "Controllo: PASS" si scrive solo dopo aver fatto C1-C15 per intero. Se non l'hai fatto, non rispondere: fallo.
+  Unica eccezione: le scritture semplici di Haiku in modalità mista, con il controllo delle righe toccate
+  ("Controllo: PASS (righe toccate)").
 
 ## Divieti
 

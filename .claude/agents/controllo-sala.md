@@ -34,14 +34,14 @@ Contiene `serata`, `piantina` (`aggiornata`, `righe_storico`), `prenotazioni` (u
 `orario`, `turno_chiesto`, `turno`, `stato`, `unita`, `proposta`, `domanda`, `note`, `motivo`, `ricevuta_il`; nei
 file vecchi `domanda` può mancare e vale `null`), `mosse` e `registro` (righe in ordine, con `n`, `evento` tra
 domanda, confermata, proposta, accettata su proposta, rifiutata, cambio tavolo, modifica, annullata, mossa …, e i
-campi `turno`, `unita`, `da`, `a`, `motivo`, `provati`). Una `in_attesa` aspetta una risposta: a una `proposta` o a
+campi `turno`, `unita`, `da`, `a`, `motivo`, `provati`, `deciso_da`). Una `in_attesa` aspetta una risposta: a una `proposta` o a
 una `domanda`; non occupa tavoli.
 
 ## 3. Controlli
 
 | # | controllo |
 |---|---|
-| V1 | JSON valido, tutti i campi; `n` tutti diversi |
+| V1 | JSON valido, tutti i campi; `n` tutti diversi. `deciso_da` nelle righe di registro è facoltativo (assente nei file vecchi: nessun avviso); se c'è è un nome di modello. Avviso se "haiku" ha deciso un `rifiutata`, una `proposta` per mancanza di posto o un `cambio tavolo` (tranne 11-2 → 11-1 dopo un annullamento): in modalità mista li decide `decisore-sala` |
 | V2 | `piantina` del file uguale alla piantina letta (`aggiornata`, numero di righe dello `storico`); se diversa è un avviso, ma ogni unità assegnata deve esistere ancora |
 | V3 | ogni `confermata`: `coperti` presente, `domanda` nulla, `turno` "primo" o "secondo", `unita` esistente, coperti ≤ posti; da 11 coperti in su solo "11"; 9 o 10 solo "10" o "11" |
 | V4 | in ogni turno nessun pezzo usato da due prenotazioni; "11-2" solo con "11-1" |
