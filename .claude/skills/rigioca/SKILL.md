@@ -84,9 +84,9 @@ File dati/olimpo_sabato.json · serata 2026-10-31 · politica sempre · piantina
 | secondo turno (21:30) | … | … |
 
 ## Rifiutate
-- Marini ×10 (21:45): secondo turno pieno (dimostrato: …); primo turno … · mossa possibile: … / nessuna
+- Nome ×N (HH:MM): secondo turno pieno (dimostrato: …); primo turno … · mossa possibile: … / nessuna
 ## Su proposta
-- Ferrara ×14: chiesto il primo turno (20:15), entrata nel secondo
+- Nome ×N: chiesto il primo turno (HH:MM), entrata nel secondo
 ## Cambi di tavolo
 - Verdi ×7: da 10 a 13A+13B, per far posto a Costa ×10 (secondo turno)
 ## Da preparare in sala
@@ -96,8 +96,7 @@ Controllo 2026-10-31: PASS (15 controlli, 0 avvisi)
 ## Confronto con il riferimento
 ```
 
-**Riferimento** (motore CP-SAT del repository di origine sulla piantina del 29/10/2026, politica `sempre`): sabato
-`olimpo_sabato.json` 63 accettate su 67 (6 su proposta), 242 coperti su 260, rifiutate Marini ×10, Palumbo ×2,
-Sala ×4, Rossetti ×2; venerdì `olimpo_venerdi.json` 35 su 35. Nella sezione del confronto scrivi i tuoi numeri accanto
-a questi e le prenotazioni che differiscono. Un risultato diverso non è per forza un errore (il motore cerca tra tutte
-le disposizioni), ma ogni rifiuto "non dimostrato" va elencato.
+**Riferimento**: la skill non contiene i risultati attesi, apposta, perché una prova deve decidere ogni
+prenotazione senza sapere come va a finire. **Non leggere il README né altri esiti prima di aver finito.** Nella
+sezione del confronto scrivi i tuoi numeri ed elenca ogni rifiuto e ogni proposta "non dimostrati"; il confronto
+con il motore lo fa chi ti ha chiesto la prova.

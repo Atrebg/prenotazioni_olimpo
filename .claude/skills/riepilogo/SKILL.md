@@ -32,7 +32,7 @@ Da preparare in sala
 - Alle 21:30: riunisci 5; stacca 25 dal 20; lungo con due gruppi (Ferri ×8, Pellegrini ×8).
 
 In attesa di risposta: Verdi ×2 (proposto il secondo turno)
-Rifiutate: Marini ×10 (pieni tutti e due i turni)
+Rifiutate: Neri ×10 (pieni tutti e due i turni)
 Annullate: Neri ×2
 Cambi di tavolo: Verdi ×7 da 10 a 13A+13B (per far posto a Costa ×10)
 ```

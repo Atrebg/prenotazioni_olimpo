@@ -37,7 +37,7 @@ mai: lì si scrive solo "mossa possibile: …" nell'esito.
    davanti a una porta o all'ingresso, scarta la mossa. Se non riesci a dirlo dalle coordinate, scrivilo nella
    proposta.
 4. Nessuna mossa trovata: il rifiuto resta, e non proporre niente.
-5. Mossa trovata: proponila con una domanda sola: "Marini ×10 non entra in nessuno dei due turni. Si potrebbe, nel
+5. Mossa trovata: proponila con una domanda sola: "Neri ×10 non entra in nessuno dei due turni. Si potrebbe, nel
    secondo turno, attaccare il quadrato 3 in testa al blocco 5: 4 quadrati in fila, 10 posti (da verificare in sala).
    La faccio?". Nel file (skill `stato-serata`):
    - una riga in `mosse` con `"stato": "proposta"`, i `turni`, l'`unita` (es. "5+3"), i `posti`, i pezzi in `usa`,

@@ -176,7 +176,7 @@ provato per ogni turno non dimostrato. Deve contenere, per quel turno:
 Esempio: `"provati": "primo: 2a 7 (Mazza ×5 > 4) no, 5ab/8ab non occupati, 13A+13B e unioni non usate, 11 (Ricci ×18)
 no, scambio lungo–tondo no (11 da 11 in su); stringersi: Mazza ×5 (7), Ricci ×18 (11, no); catene da 1: U da 3 a
 24+29, 31 U, nessuna; da 2: U da 3 a 24+29, 31 U, nessuna; da 3: U da 3 a 24+29, 31 U, nessuna; passo 3: giro 1 fuori
-Sala ×4, giro 2 fuori Rossetti ×2"`. Un `provati` vuoto o generico ("nessuna catena", "provato tutto") **non basta**:
+Neri ×4, giro 2 fuori Gallo ×2"`. Un `provati` vuoto o generico ("nessuna catena", "provato tutto") **non basta**:
 il controllo C15 lo segna FAIL. Il formato del `motivo` è nella skill `stato-serata`.
 
 ## Esempi svolti sulla sala vera (catalogo del 29/10/2026)

@@ -162,6 +162,26 @@ messaggio e un'ottantina di messaggi per un sabato da 67 prenotazioni, fanno cir
 numero di messaggi a serata non è misurato. La rigioca invece costa meno per prenotazione (4,70 $ per 67), perché la
 sessione è una sola.
 
+### Sonnet 5.5 contro Haiku 5.5 (29/10/2026, `claude -p --model haiku`, stesse prove e stessi stati di partenza)
+
+| prova | Sonnet 5.5 | Haiku 5.5 |
+|---|---|---|
+| rigioca del sabato | 63/67, 0 pieni falsi · 4,70 $ · 22 min | 63/67, 0 pieni falsi · 0,23 $ · 7 min, ma con il file scritto in un colpo solo alla fine e la skill che allora conteneva il risultato atteso (vedi sotto) |
+| rigioca coppie (serata nuova) | 72/84, 0 pieni falsi (sotto-agente, costo non misurato) | 72/84, 0 pieni falsi · 2,13 $ · 19 min |
+| rigioca casi limite (serata nuova) | 61/64, 0 pieni falsi (sotto-agente, costo non misurato) | 61/64 ma **4 pieni falsi**: Fontana, Pastore, Melis e Mazzoni mandati nel secondo turno mentre nel primo c'era posto · 1,89 $ · 20 min |
+| conversazione a sala piena, 8 messaggi | 8 giusti · 0,13-0,50 $ a messaggio | 7 giusti; la disponibilità finale "non trovo posto per 2" è sbagliata (ha riusato tentativi vecchi; una coppia entrava) · 0,015-0,14 $ a messaggio |
+| "3" come risposta, 3 prove | 3 su 3 · 0,72-0,84 $ | 3 su 3 · 0,10-0,15 $ |
+| controllo della serata per intero | sempre | saltato o parziale in 3 messaggi su 8 |
+
+Haiku costa da 5 a 8 volte meno a messaggio. Nelle rigioche lunghe la differenza scende: sopra i 100 mila token di
+contesto Haiku 5.5 costa 5 volte di più, e legge di più (25-31 milioni di token dalla cache contro 15,5). Haiku però
+sbaglia più spesso proprio quando la sala è quasi piena, cioè dove un errore fa perdere un cliente o gli dà il turno
+sbagliato. Con le prove fatte fin qui, le decisioni vanno lasciate a Sonnet.
+
+Dopo queste prove la skill `rigioca` non contiene più i risultati attesi, e dalle skill sono spariti i nomi dei
+rifiutati del sabato. Gli esempi svolti di `assegna-tavoli` vengono però ancora dal sabato di prova, quindi quella
+serata non è più una prova alla cieca: per validare si usano le serate di `prove/dati-test/`.
+
 ## Limiti noti
 
 - **"Pieno" dimostrato solo dai conteggi per soglia** (condizioni necessarie): un turno davvero pieno ma non coperto
