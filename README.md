@@ -224,7 +224,34 @@ facili a 0,04 $ e 15 difficili a 0,35 $ un sabato costerebbe circa 8 $, contro c
 stima: la composizione dei messaggi di una serata vera non è misurata. Un piccolo spreco visto nella prova: un "no
 grazie" a una proposta, che Haiku può registrare da solo, è stato passato a Sonnet (0,25 $).
 
-Quindi: per i messaggi conviene la modalità mista, per le rigioche una sessione Sonnet.
+### Sabato intero in modalità mista (29/10/2026, un `claude -p --model haiku` per messaggio)
+
+Un simulatore manda le 67 prenotazioni di `dati/olimpo_sabato.json` nell'ordine d'arrivo, una sessione nuova per
+messaggio, e risponde come il proprietario: "sì" alle proposte, "primo" alle domande sulle 20:45. Lo stato finale è
+rifatto con il CP-SAT esterno.
+
+| voce | misura |
+|---|---|
+| messaggi | 78 (67 prenotazioni e 11 risposte brevi) |
+| costo | **7,07 $**: Haiku 2,46 $, Sonnet 4,61 $ |
+| solo Haiku | 68 messaggi, media 0,030 $ e 81 s |
+| passati a Sonnet | 10 messaggi, media 0,505 $ e 229 s; registro: 66 righe decise da Haiku, 12 da Sonnet |
+| tempo | 130 minuti in tutto |
+| esito | 63 confermate su 67 (3 su proposta), 242 coperti, finale valida, **0 pieni falsi** nelle decisioni prese |
+
+I numeri coincidono con il motore (63/67, 242 coperti), ma per caso: due prenotazioni non sono mai state decise
+per errori di lettura di Haiku, e il posto liberato è andato a Palumbo ×2 e Sala ×4, che il motore rifiuta.
+- **Caputo ×4 delle 20:30** letto come "Caruso", già prenotato: Haiku ha salvato una domanda "è un'altra o la
+  modifico?" sotto il nome Caruso, rimasta aperta fino alla fine.
+- **Testa ×2 delle 21:15**: "Testa" non riconosciuto come cognome, Haiku ha chiesto per chi era la prenotazione e
+  non ha scritto nulla.
+Rifatte con il CP-SAT come se fossero state rifiutate, entravano tutte e due in entrambi i turni.
+
+La domanda di Caruso rimasta aperta ha anche reso ambiguo un "sì" successivo (Bruno): Haiku ha chiesto quale
+richiesta confermare e il secondo "sì" è passato a Sonnet (0,25 $ in più).
+
+Quindi: per i messaggi conviene la modalità mista, per le rigioche una sessione Sonnet. Prima di usarla va
+corretta la lettura del nome (preso come scritto, mai sostituito con un nome simile già presente).
 
 ## Limiti noti
 
