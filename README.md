@@ -46,6 +46,17 @@ claude -c -p "sì" --permission-mode acceptEdits
 domande in sospeso sono scritte nel file della serata come prenotazioni `in_attesa`. Da un'altra sessione si usa
 l'agente `sala-olimpo`; per un secondo parere su una serata l'agente `controllo-sala` (sola lettura).
 
+**Solo le istruzioni del ristorante.** `.claude/settings.json` esclude le istruzioni personali di chi lancia Claude
+Code (`claudeMdExcludes` su `**/.claude/CLAUDE.md`; il `CLAUDE.md` del fork sta nella radice e resta). Con
+`claude -p` conviene escludere anche skill, agenti, plugin e server MCP personali:
+
+```
+claude -p "Rossi 4 sab 20:30" --model haiku --permission-mode acceptEdits --setting-sources project --strict-mcp-config
+```
+
+Su questo computer, il 29/10/2026, il contesto iniziale passa da circa 46.300 token a 36.700 con la sola
+impostazione, e a 30.500 con le due opzioni. Le impostazioni gestite dall'azienda restano comunque attive.
+
 ## Modalità mista (Haiku + Sonnet)
 
 Per spendere meno si può far girare la sessione su Haiku:
@@ -250,8 +261,16 @@ Rifatte con il CP-SAT come se fossero state rifiutate, entravano tutte e due in 
 La domanda di Caruso rimasta aperta ha anche reso ambiguo un "sì" successivo (Bruno): Haiku ha chiesto quale
 richiesta confermare e il secondo "sì" è passato a Sonnet (0,25 $ in più).
 
-Quindi: per i messaggi conviene la modalità mista, per le rigioche una sessione Sonnet. Prima di usarla va
-corretta la lettura del nome (preso come scritto, mai sostituito con un nome simile già presente).
+I due messaggi sono stati poi rifatti 3 volte ciascuno sullo stato della serata di quel momento (lo stato finale
+senza le righe arrivate dopo), con le stesse regole. In ogni prova la versione attuale e quella senza le istruzioni
+personali hanno dato 12 esiti giusti su 12: Caputo è stato confermato al 16, Testa al 18 del secondo turno, anche
+con la domanda di Caruso ancora aperta. Gli errori non si ripetono: sono sbagli occasionali, 2 su 78 messaggi in una
+sola serata, e non una regola che manca. Per questo non sono state aggiunte regole. Senza le istruzioni personali i
+due messaggi costano meno: 0,021-0,023 $ invece di 0,025-0,029 $ per Caputo, 0,024-0,027 $ invece di 0,048-0,066 $
+per Testa. Contro sbagli di questo tipo c'è la prima riga della risposta ("✓ Caruso · 4 persone…"), che mostra al
+proprietario cosa ha capito l'assistente.
+
+Quindi: per i messaggi conviene la modalità mista, per le rigioche una sessione Sonnet.
 
 ## Limiti noti
 
