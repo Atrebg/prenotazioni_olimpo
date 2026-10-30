@@ -1,6 +1,6 @@
 ---
 name: mossa-tavoli
-description: Proposte di spostamenti veri dei tavoli mobili dell'Olimpo (attaccare un quadrato a un blocco, spostare un tavolo) quando un gruppo verrebbe rifiutato in tutti e due i turni — regole (solo tavoli mobili, quadrati sempre in sala, mai in passaggi, porte e ingresso, posti 2k+2), come proporla, come registrarla dopo il sì del proprietario. Usala solo dopo un rifiuto nei due turni o se il proprietario chiede come far entrare un gruppo.
+description: Proposte di spostamenti veri dei tavoli mobili dell'Olimpo (attaccare un quadrato a un blocco, spostare un tavolo) quando un gruppo verrebbe rifiutato nei due turni — regole, proposta, registrazione dopo il sì. Usala solo dopo un rifiuto nei due turni o se il proprietario chiede come far entrare un gruppo.
 ---
 
 # Mosse: spostare tavoli veri (solo come proposta)

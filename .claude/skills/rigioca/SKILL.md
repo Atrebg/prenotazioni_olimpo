@@ -1,12 +1,13 @@
 ---
 name: rigioca
-description: Per prove e demo dell'Olimpo — rigioca un file di prenotazioni come dati/olimpo_sabato.json in ordine di arrivo (prenotata_il), come se ogni riga fosse un messaggio del proprietario, con una politica del cliente data (default "sempre": accetta la proposta dell'altro turno), e scrive prove/<etichetta>/AAAA-MM-GG.json più prove/<etichetta>/esito.md. Usala per "rigioca", "simula la serata", "prova il sabato", "demo".
+description: Prove e demo dell'Olimpo — rigioca un file di prenotazioni come dati/olimpo_sabato.json in ordine di arrivo, come messaggi del proprietario, con una politica del cliente (default "sempre"), e scrive in prove/<etichetta>/ la serata ed esito.md. Usala per "rigioca", "simula la serata", "prova il sabato", "demo".
 ---
 
 # Rigioca una serata di prova
 
-Stesse procedure dei messaggi veri (skill `prenotazione`, punti 3-4, e `assegna-tavoli`), ma **senza domande**: le
-scelte le fa la politica del cliente. **Non tocca mai `serate/`**: scrive solo in `prove/`.
+Stesse procedure dei messaggi veri (skill `prenotazione`, punti 3-4, e `assegna-tavoli` con
+`assegna-tavoli-difficile`), ma **senza domande**: le scelte le fa la politica del cliente. **Non tocca mai
+`serate/`**: scrive solo in `prove/`.
 
 ## Ingresso
 
@@ -37,8 +38,9 @@ scelte le fa la politica del cliente. **Non tocca mai `serate/`**: scrive solo i
 > rifiutarlo, la skill `assegna-tavoli` va eseguita per intero (passo 2a con lo scambio con il lungo, catene fino a 3
 > spostamenti, passo 3), e nel registro va scritto un `provati` specifico (controllo C15).
 
-1. Leggi la sala (skill `sala` e catalogo, da rigenerare prima di cominciare se la piantina è cambiata) e il file.
-   Ordina le prenotazioni per `prenotata_il`; a parità, l'ordine del file.
+1. Controlla la versione della piantina (i Grep di `CLAUDE.md`), leggi il catalogo (se la piantina è cambiata,
+   rigeneralo prima di cominciare: skill `sala`) e il file. Ordina le prenotazioni per `prenotata_il`; a parità,
+   l'ordine del file.
 2. Crea con Write `prove/<etichetta>/AAAA-MM-GG.json` con lo scheletro della skill `stato-serata`.
 3. Per ogni prenotazione, nell'ordine (k = 1, 2, …):
    1. `n` = k, `id`, `nome`, `coperti`, `orario`, `note` ("" se manca), `ricevuta_il` = `prenotata_il`.
@@ -59,11 +61,12 @@ scelte le fa la politica del cliente. **Non tocca mai `serate/`**: scrive solo i
    5. Rifiutata in tutti e due i turni: guarda la skill `mossa-tavoli` **solo per scrivere nell'esito** "mossa
       possibile: …". Non applicarla e non scriverla in `mosse`.
    6. **Aggiorna il file DOPO OGNI prenotazione** (skill `stato-serata`, "Come scrivere"), prima di passare alla
-      successiva: aggiungi la riga, le righe di registro e aggiorna le righe di chi hai spostato. Non decidere tutto a
-      mente per scrivere alla fine: l'ordine di arrivo va rispettato e chi è entrato prima non si toglie più.
+      successiva: aggiungi la riga, le righe di registro (un file ciascuna) e aggiorna le righe di chi hai spostato.
+      Non decidere tutto a mente per scrivere alla fine: l'ordine di arrivo va rispettato e chi è entrato prima non si
+      toglie più.
    7. Ogni 10 prenotazioni rileggi il file intero e applica i controlli C5, C6 e C9 della skill
-      `controllo-serata`. In `rigioca` basta questo: non serve rileggere dopo ogni scrittura (la regola di
-      `stato-serata` vale per i messaggi veri).
+      `controllo-serata` (C9 con il Grep `-o` del registro, skill `stato-serata`). In `rigioca` basta questo: non
+      serve rileggere dopo ogni scrittura (la regola di `stato-serata` vale per i messaggi veri).
    8. Se ti fermi o riprendi dopo un'interruzione, il file è la verità: rileggilo e riparti dalla prenotazione dopo
       l'ultimo `n` scritto, senza rifare le precedenti.
 4. Alla fine: skill `controllo-serata` completa sul file (con Haiku, se non riesci a farla per intero, passala

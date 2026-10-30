@@ -1,6 +1,6 @@
 ---
 name: riepilogo
-description: Riepilogo di una serata dell'Olimpo per il proprietario ("riepilogo sab", "com'è messo sabato?", "chi c'è stasera?") — per turno e per tavolo, coperti, tavoli liberi, note, proposte in attesa, rifiutate, e la lista "Da preparare in sala" (blocchi da dividere, unioni da montare, tavolo lungo, cambi alle 21:30). Usala per ogni richiesta di riepilogo o di piantina della serata. Non scrive niente.
+description: Riepilogo di una serata dell'Olimpo ("riepilogo sab", "chi c'è stasera?", "perché è rifiutato X?") — per turno e tavolo, coperti, liberi, note, in attesa, rifiutate e "Da preparare in sala". Usala per ogni richiesta di riepilogo o di piantina della serata. Non scrive niente.
 ---
 
 # Riepilogo di una serata
@@ -56,6 +56,7 @@ Cambi di tavolo: Verdi ×7 da 10 a 13A+13B (per far posto a Costa ×10)
     ("riunisci 5", "dividi 7 in 7a + 7b", "stacca 25 dal 20", "unisci 26 al 21"). Un blocco che nel secondo turno
     non serve resta com'è.
 - **In attesa, rifiutate, annullate**: nome ×coperti e, in breve, il motivo, la proposta o la domanda che aspetta
-  risposta ("Pellegrino ×4: primo o secondo turno?").
-- **Cambi di tavolo**: le righe `cambio tavolo` del registro, in breve.
+  risposta ("Pellegrino ×4: primo o secondo turno?"). "Perché è rifiutato X?": la sua riga e il Grep del suo `n` nel
+  registro (`provati`), senza riepilogo.
+- **Cambi di tavolo**: le righe `cambio tavolo` del registro (Grep mirato, skill `stato-serata`), in breve.
 - Le note dei clienti vanno sempre riportate.

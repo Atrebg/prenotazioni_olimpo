@@ -12,24 +12,28 @@ nei file JSON della serata.
 | la sala (tavoli, posti, unioni, turni) | `olimpo/piantina.html`, blocco `<script type="application/json" id="sala">` | solo il proprietario, con l'editor |
 | regole dure e di buonsenso, zone della sala | `agente/regole.md` | il proprietario |
 | unità, soglie e liste ricavate dalla piantina | `agente/catalogo.md` | tu, solo quando cambia la piantina |
-| stato di una serata | `serate/AAAA-MM-GG.json` (una serata per file) | tu |
+| stato di una serata e registro | `serate/AAAA-MM-GG.json` (una serata per file), `serate/registro-AAAA-MM-GG/` (un file per evento) | tu |
 | prove e demo | `prove/<etichetta>/` | tu, solo con la skill `rigioca` o per prove |
 | prenotazioni di prova | `dati/olimpo_sabato.json`, `dati/olimpo_venerdi.json` | nessuno (sola lettura) |
 | procedure | `.claude/skills/<nome>/SKILL.md` | il proprietario |
 | agenti | `.claude/agents/`: `decisore-sala` (Sonnet, casi difficili in modalità mista), `controllo-sala` (verifica in sola lettura), `sala-olimpo` (l'assistente per altre sessioni) | il proprietario |
 
-## All'inizio della sessione (una volta)
+## All'inizio della sessione (un solo passaggio)
 
 1. Guarda nel tuo system prompt quale modello sei. **Se sei Haiku, vale la "Modalità mista" qui sotto**; se sei
    Sonnet o un modello superiore, fai tutto da te come descritto nel resto del file.
-2. Leggi `agente/regole.md`.
-3. Leggi la skill `sala`, `agente/catalogo.md` e, come dice la skill, il blocco della sala nella piantina (Grep di
-   `id="sala"` + Read con offset e limit: **mai il file intero**). Piantina diversa dal catalogo: skill `sala`,
-   punto 2.
+2. **Nello stesso turno, in parallelo**: Read di `agente/catalogo.md`, delle skill `prenotazione`, `assegna-tavoli`,
+   `stato-serata` e del file della serata (sempre: se Read dice che non esiste, la serata è vuota; per una risposta
+   breve, in più, il Grep delle `in_attesa`: "Per ogni messaggio", punto 2); `agente/regole.md` solo per le zone (coppie, gruppi da 8 in su, note). La versione della piantina **solo
+   con Grep**, senza Read, su `olimpo/piantina.html`: `"aggiornata": |^    "\d\d/\d\d/\d{4} · .*"$` (content: data
+   e ultima riga dello storico) e `^    "\d\d/\d\d/\d{4} · ` (count: righe dello storico), da confrontare con il
+   catalogo; se è diversa, skill `sala`, punto 2.
+3. Il resto solo quando serve (`assegna-tavoli-difficile` solo Sonnet o superiore). La piantina si legge con Read solo
+   per rigenerare il catalogo.
 
 ## Modalità mista (solo se la sessione gira su Haiku)
 
-Haiku costa molto meno ma a sala quasi piena sbaglia le catene e i "pieno". Quindi divide il lavoro con l'agente
+Haiku costa meno ma a sala quasi piena sbaglia le catene e i "pieno": divide il lavoro con l'agente
 `decisore-sala` (Sonnet).
 
 **Haiku fa da sé:**
@@ -43,7 +47,7 @@ Haiku costa molto meno ma a sala quasi piena sbaglia le catene e i "pieno". Quin
   turno), "c'è posto?" quando il passo 1 trova un'unità libera (si risponde solo "sì, c'è posto").
 
 **In tutti gli altri casi Haiku non decide e non scrive**: passa il messaggio a `decisore-sala` con l'Agent tool
-(`subagent_type`: `decisore-sala`), una chiamata per messaggio.
+(`subagent_type`: `decisore-sala`, `effort`: "medium", anche nella rigioca), una chiamata per messaggio.
 Sono i casi in cui il passo 1 non trova niente o il passo 0 trova un conteggio superato: rifiuto, proposta
 dell'altro turno, catene, scambi, "pieno", "non trovo posto". Vale anche per la piantina diversa dal catalogo, la
 disponibilità senza unità libera al passo 1, la modifica o il "sì" che al passo 1 non entrano più, le mosse di
@@ -67,7 +71,7 @@ delle righe toccate**, senza chiamare `controllo-sala`:
 3. se è una `confermata`: l'unità esiste nel catalogo e ha posti ≥ coperti;
 4. con Grep sulle confermate dello stesso turno, nessun'altra usa uno dei suoi pezzi (esclusività di pezzi, intero,
    unioni e lungo);
-5. c'è la riga di registro con `deciso_da` "haiku".
+5. hai scritto la riga di registro (il suo file) con `deciso_da` "haiku".
 
 Nella risposta scrivi "Controllo: PASS (righe toccate)". Il controllo completo (C1-C15) lo fa `decisore-sala` sulle
 sue scritture; chiama `controllo-sala` solo se il proprietario chiede di controllare la serata o se uno dei 5 punti
@@ -79,8 +83,7 @@ fallisce.
 
 **Rigioca**: vale la sezione "Modalità mista" della skill `rigioca` (una chiamata a `decisore-sala` per ogni
 prenotazione difficile, mai a gruppi). Per le rigioche conviene però una sessione Sonnet (`--model sonnet`): in
-modalità mista ogni passaggio fa ripartire un Sonnet che rilegge tutto, e la prova del 29/10/2026 è costata di più
-(5,79 $ per i casi limite, contro 4,70 $ di Sonnet da solo per il sabato).
+modalità mista costano di più (prova del 29/10/2026).
 
 ## Quale skill per quale messaggio
 
@@ -88,16 +91,13 @@ modalità mista ogni passaggio fa ripartire un Sonnet che rilegge tutto, e la pr
 |---|---|
 | nuova prenotazione ("Rossi 4 sab 20:30", "Rossi 4 sab 2t", testo libero), risposte brevi a proposte e domande in sospeso ("sì", "no grazie", "primo", "è un'altra"), modifica, annullamento ("annulla Rossi sab") | `prenotazione` (che usa `assegna-tavoli`, `stato-serata`, `controllo-serata`) |
 | "c'è posto per 4 sabato alle 21?" | `disponibilita` (non scrive niente) |
-| "riepilogo sab", "chi c'è stasera?", "come preparo la sala?" | `riepilogo` (non scrive niente) |
+| "riepilogo sab", "chi c'è stasera?", "come preparo la sala?", "perché Rossi è rifiutato?" | `riepilogo` (non scrive niente) |
 | un gruppo non entra in nessuno dei due turni, "come lo faccio entrare?" | `mossa-tavoli` |
 | "rigioca dati/olimpo_sabato.json", "prova", "demo" | `rigioca` (scrive solo in `prove/`) |
 | "controlla la serata di sabato" | `controllo-serata` (o l'agente `controllo-sala`, sola lettura) |
 
-Il formato dei file di serata è nella skill `stato-serata`. **Se le skill non vengono caricate da sole, leggile tu
-con Read**: `.claude/skills/sala/SKILL.md`, `.claude/skills/stato-serata/SKILL.md`,
-`.claude/skills/assegna-tavoli/SKILL.md`, `.claude/skills/prenotazione/SKILL.md`,
-`.claude/skills/disponibilita/SKILL.md`, `.claude/skills/riepilogo/SKILL.md`,
-`.claude/skills/controllo-serata/SKILL.md`, `.claude/skills/rigioca/SKILL.md`, `.claude/skills/mossa-tavoli/SKILL.md`.
+Il formato dei file di serata e del registro è nella skill `stato-serata`. **Se le skill non vengono caricate da
+sole, leggile tu con Read** da `.claude/skills/<nome>/SKILL.md`.
 
 ## Per ogni messaggio
 
@@ -113,15 +113,15 @@ con Read**: `.claude/skills/sala/SKILL.md`, `.claude/skills/stato-serata/SKILL.m
    "sì"/"no" a una proposta, "un'altra"/"modifica" a un doppio nome) e, se ne resta più di una, chiedi a quale si
    riferisce; nessuna → chiedi. Dettagli: skill `prenotazione`, punto 5.
 3. Applica la skill giusta, nell'ordine dei suoi passi, senza saltarne.
-4. Scrivi il file della serata (prenotazioni, domande in sospeso, mosse), con `deciso_da` = il tuo modello
-   ("haiku", "sonnet", "opus") in ogni riga di registro che aggiungi, poi applica `controllo-serata` **per intero
+4. Scrivi il file della serata (prenotazioni, domande in sospeso, mosse) e le righe di registro, un file ciascuna,
+   con `deciso_da` = il tuo modello ("haiku", "sonnet", "opus"), poi applica `controllo-serata` **per intero
    (C1-C15)** sul file riletto. Con Haiku, solo nei casi della "Modalità mista".
 5. Rispondi (formato sotto).
 
 Regole di metodo, che valgono anche con `claude -p`, dove ogni messaggio è una sessione nuova:
 - "Non c'è posto perché le unità di adesso sono tutte occupate" non vale: prima di dire "non trovo posto" la skill
-  `assegna-tavoli` va eseguita per intero (schemi fissi compreso lo scambio con il lungo, catene di spostamenti,
-  riassegnazione del turno), con un `provati` specifico nel registro.
+  `assegna-tavoli` va eseguita per intero, con `assegna-tavoli-difficile` (schemi fissi compreso lo scambio con il
+  lungo, catene di spostamenti, riassegnazione del turno), con un `provati` specifico nel registro.
 - **Non riusare mai l'esito di un'altra prenotazione o di un messaggio precedente**, anche se lo stato sembra uguale:
   rifai i passi sullo stato letto adesso dal file.
 - "Controllo: PASS" si scrive solo dopo aver fatto C1-C15 per intero. Se non l'hai fatto, non rispondere: fallo.

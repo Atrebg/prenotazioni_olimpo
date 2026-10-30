@@ -1,6 +1,6 @@
 ---
 name: disponibilita
-description: Risponde alle domande del proprietario dell'Olimpo del tipo "c'è posto per N sabato alle 21?", "come siamo messi venerdì per un gruppo da 12?" senza registrare niente e senza scrivere file. Usala per ogni domanda sulla disponibilità che non chiede di prenotare.
+description: Domande del proprietario dell'Olimpo come "c'è posto per N sabato alle 21?" o "come siamo messi venerdì per 12?", senza registrare niente. Usala per ogni domanda sulla disponibilità che non chiede di prenotare.
 ---
 
 # Disponibilità: "c'è posto per N …?" senza scrivere niente
@@ -10,9 +10,10 @@ prenotazione (skill `prenotazione`) e si rifà tutto da capo.
 
 1. Ricava coperti, data e orario o turno come nella skill `prenotazione` (punti 2 e 3). Se manca il numero di
    persone o la data, chiedilo. Se manca l'orario, rispondi per tutti e due i turni.
-2. Leggi il file della serata (se non c'è, la serata è vuota) e il catalogo (skill `sala`).
-3. Per ogni turno da controllare applica la skill `assegna-tavoli` **a mente**, fino al passo 3 compreso, sullo stato
-   letto adesso dal file (non riusare risposte di prima). Le `in_attesa` non occupano tavoli. In modalità mista
+2. Leggi il file della serata (se non c'è, la serata è vuota) e il catalogo.
+3. Per ogni turno da controllare applica la skill `assegna-tavoli` **a mente**, fino al passo 3 compreso
+   (`assegna-tavoli-difficile`), sullo stato letto adesso dal file (non riusare risposte di prima). Le `in_attesa`
+   non occupano tavoli. In modalità mista
    (Haiku): se il passo 1 trova un'unità libera rispondi solo "sì, c'è posto"; altrimenti passa la domanda a
    `decisore-sala` (vedi `CLAUDE.md`) e riporta la sua risposta.
 4. Rispondi in una o due righe, senza numeri di tavolo:

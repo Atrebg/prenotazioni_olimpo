@@ -73,6 +73,7 @@ sessione è Haiku, `CLAUDE.md` divide il lavoro:
   passo 1 di `assegna-tavoli` trovano un'unità libera nel turno chiesto, senza spostare nessuno.
 - **Tutto il resto passa all'agente `decisore-sala` (Sonnet)**: Haiku gli manda il testo del messaggio, la data, il
   path del file della serata, ciò che ha capito e l'eventuale riga in attesa, poi riporta la sua risposta così com'è.
+  La chiamata chiede `effort` "medium".
   **Haiku non decide mai un rifiuto, una proposta dell'altro turno per mancanza di posto né un "pieno"**, e non sposta
   nessuno.
 - Il controllo completo dopo ogni scrittura resta obbligatorio; se Haiku non riesce a farlo per intero, lo passa a
@@ -90,14 +91,17 @@ Con Sonnet (o un modello superiore) la sessione fa tutto da sé, come sopra.
 - `agente/catalogo.md`: unità, soglie del "pieno" e liste ricavate dalla piantina, con la versione della piantina da
   cui vengono. Lo rigenera l'assistente solo quando la piantina cambia.
 - `.claude/skills/`: `sala` (come si ricavano le unità e il catalogo dalla piantina), `stato-serata` (formato del file),
-  `assegna-tavoli` (la procedura centrale), `prenotazione`, `disponibilita`, `riepilogo`, `controllo-serata`,
-  `rigioca`, `mossa-tavoli`.
+  `assegna-tavoli` (la procedura centrale: conteggi, incastro tra le unità libere, spareggi) e
+  `assegna-tavoli-difficile` (ritocchi, catene, scambi e "pieno", solo per Sonnet), `prenotazione`, `disponibilita`,
+  `riepilogo`, `controllo-serata`, `rigioca`, `mossa-tavoli`.
 - `.claude/agents/`: `sala-olimpo` (l'assistente come sub-agent), `decisore-sala` (Sonnet, i casi difficili in
   modalità mista), `controllo-sala` (verificatore indipendente).
 - `olimpo/piantina.html`: la sala vera, fonte unica (blocco JSON `id="sala"`); si cambia solo con l'editor.
 - `dati/olimpo_sabato.json`, `dati/olimpo_venerdi.json`: serate di prova.
-- `serate/AAAA-MM-GG.json`: lo stato reale, una serata per file. **Fuori dal git**: contiene nomi e note dei clienti
-  e il repository di origine è pubblico; in più cambia a ogni messaggio. Va copiato a parte (backup) da chi lo usa.
+- `serate/AAAA-MM-GG.json`: lo stato reale, una serata per file. Il registro sta accanto, in
+  `serate/registro-AAAA-MM-GG/`, un file per evento (`<NNN>-n<n>-<evento>.json`), così nessun messaggio deve
+  rileggerlo. **Fuori dal git**: contiene nomi e note dei clienti e il repository di origine è pubblico; in più
+  cambia a ogni messaggio. Va copiato a parte (backup) da chi lo usa.
 - `prove/<etichetta>/`: prove e demo (rigioca, casi manuali). Fuori dal git: si rifanno quando servono.
 
 ## Aggiornare la piantina
@@ -276,6 +280,39 @@ per Testa. Contro sbagli di questo tipo c'è la prima riga della risposta ("✓ 
 proprietario cosa ha capito l'assistente.
 
 Quindi: per i messaggi conviene la modalità mista, per le rigioche una sessione Sonnet.
+
+### Costo ridotto (30/10/2026, stesso simulatore, `claude -p --model haiku` senza istruzioni personali)
+
+Cambiato per spendere meno, senza regole nuove: il registro fuori dal file della serata (un file per evento), la
+procedura divisa in `assegna-tavoli` (base, l'unica che legge Haiku) e `assegna-tavoli-difficile` (solo Sonnet), le
+letture iniziali tutte in un turno, la versione della piantina con due Grep invece del Read, `decisore-sala` che
+legge solo i file che gli servono, la chiamata a `decisore-sala` con `effort` "medium".
+
+| voce | prima (29/10) | dopo (30/10) |
+|---|---|---|
+| sabato, costo totale | 7,07 $ (Haiku 2,46, Sonnet 4,61) | **5,58 $** (Haiku 1,23, Sonnet 4,35) |
+| messaggio solo Haiku | 0,030 $ · 81 s | 0,016 $ · 70 s |
+| messaggio passato a Sonnet | 0,505 $ · 229 s (10) | 0,409 $ · 208 s (11) |
+| turni Haiku con contesto oltre 100K (5 volte più cari) | 68 | 0 |
+| sabato, esito | 63/67, 242 coperti, 0 pieni falsi | 63/67, 244 coperti, 0 pieni falsi |
+| casi limite, esito e costo | — | 61/64, 265 coperti, 0 pieni falsi · 5,73 $ |
+
+- **Il risparmio viene da Haiku** (metà del costo a messaggio) e dal contesto più corto di Sonnet. L'`effort`
+  "medium" non ha cambiato il ragionamento di Sonnet: circa 20 mila token di output a chiamata prima e dopo (88%
+  ragionamento).
+- **Il primo giro aveva perso righe**: Haiku contava il registro con un Glob di `serate/*`, che non entra nella
+  cartella, e riscriveva `001-confermata.json` (9 righe di registro perse in due serate); una volta non ha letto il
+  file della serata e l'ha ricreato, perdendo la prima prenotazione. Corretto in `stato-serata`: il Glob indica la
+  cartella, il nome del file porta `n` (`003-n2-…`), il file della serata si crea solo se il Read dice che non c'è e
+  poi si cambia solo con Edit. Nel secondo giro un numero sbagliato c'è stato ancora 2 volte, senza perdere nulla
+  grazie a `n` nel nome.
+- **Differenze dal motore, tutte valide al CP-SAT**: `decisore-sala` ha proposto da sé una mossa di tavoli quando un
+  gruppo grande non entrava (Marini ×10 sui blocchi 23 e 24 nel sabato, Barone ×12 su 22+23+28 nei casi limite) e
+  il simulatore ha detto sì. Nelle stesse serate sono stati rifiutati due gruppi che il motore accetta (Bruno ×6,
+  Vitali ×2) e accettato uno che il motore rifiuta (Palumbo ×2).
+- **Un nome confuso**: Ferraro ×4 scambiato per Ferrara ×14 (come Caputo per Caruso il 29/10), con la domanda "è
+  un'altra o la modifico?". Il simulatore rispondeva "primo" a quella domanda; corretto dopo la prova. Al suo arrivo
+  Ferraro entrava in tutti e due i turni.
 
 ### Sala diversa (30/10/2026, regole generalizzate, `claude -p` senza istruzioni personali)
 

@@ -1,13 +1,14 @@
 ---
 name: stato-serata
-description: Formato del file di stato di una serata dell'Olimpo (serate/AAAA-MM-GG.json, una serata per file) — campi delle prenotazioni, stati, proposte e domande in sospeso, registro degli eventi, mosse di tavoli, e come aggiungere o cambiare righe con Edit senza rompere il JSON. Leggila prima di leggere, creare o modificare un file di serata (anche per le prove in prove/).
+description: Formato del file di una serata dell'Olimpo (serate/AAAA-MM-GG.json) e del suo registro (un file per evento in serate/registro-AAAA-MM-GG/) — campi, stati, proposte e domande in sospeso, eventi, mosse, come scrivere senza rompere il JSON. Leggila prima di leggere o scrivere un file di serata (anche in prove/).
 ---
 
 # Il file di una serata: `serate/AAAA-MM-GG.json`
 
 Una serata = un file, con la data della cena nel nome (es. `serate/2026-10-31.json`). Le prove usano lo stesso
-formato in `prove/<etichetta>/AAAA-MM-GG.json`. Se il file non esiste, la serata è vuota: crealo con Write alla
-prima scrittura, partendo dallo scheletro qui sotto.
+formato in `prove/<etichetta>/AAAA-MM-GG.json`. Se il file non esiste (lo dice il Read), la serata è vuota: crealo
+con Write alla prima scrittura, partendo dallo scheletro qui sotto. **Se esiste, si cambia solo con Edit**: un Write
+lo riscrive e cancella le prenotazioni che ci sono.
 
 ## Scheletro
 
@@ -17,8 +18,7 @@ prima scrittura, partendo dallo scheletro qui sotto.
   "giorno": "sabato",
   "piantina": {"aggiornata": "29/10/2026", "righe_storico": 17},
   "prenotazioni": [],
-  "mosse": [],
-  "registro": []
+  "mosse": []
 }
 ```
 
@@ -54,15 +54,32 @@ provati, separate da "; ". Esempio con un turno dimostrato e l'altro no: `"secon
 da 9 in su, al massimo 2); primo turno: non trovo posto (non dimostrato)"`. Per una proposta non accettata aggiungi
 in fondo "; proposta del primo turno non accettata".
 
-Altre regole: una `confermata` arrivata su proposta ha `proposta` non nulla e `turno` uguale al turno proposto. Le
-**divisioni dei blocchi non si scrivono**: si ricavano dalle unità assegnate.
+Altre regole: una **proposta** è una `in_attesa` con `turno` e `unita` `null`, `proposta` = `{"turno": …, "motivo":
+…}`, `motivo` "aspetta il sì alla proposta" e la riga di registro `proposta`; una `confermata` arrivata su proposta
+ha `proposta` non nulla e `turno` uguale al turno proposto. **Spostata a un'altra serata**: là è nuova (`n` di quella
+serata; registro `confermata`, testo "… spostata dal 31/10"), qui `annullata` con `motivo` "spostata al …" e
+registro `annullata`. Le **divisioni dei blocchi non si scrivono**: si ricavano dalle unità assegnate.
 
-## Il registro (una riga per evento, solo in aggiunta, mai riscritto)
+## Il registro (una riga per evento, ognuna in un file, mai riscritta)
+
+Non sta nel file: ogni riga è un file a sé in `registro-AAAA-MM-GG/` accanto al file
+(`serate/registro-2026-10-31/`, `prove/<etichetta>/registro-2026-10-31/`).
+- **Scrivere**: Glob con pattern `<cartella>/*.json` (es. `serate/registro-2026-10-31/*.json`: `serate/*` non
+  entra nella cartella), insieme all'Edit del file; NNN = quanti sono + 1, a 3 cifre (Glob ne mostra 100: se sono di
+  più, NNN = 100 + quanti ne trova `1*.json`). Write di `<cartella>/<NNN>-n<n>-<evento>.json` (spazi dell'evento in
+  "-": `003-n2-accettata-su-proposta.json`) con la riga; con `n` nel nome un NNN sbagliato non riscrive la riga di
+  un'altra prenotazione. Più righe: NNN consecutivi.
+- **File vecchi** con `"registro"` dentro: restano così; le loro righe vengono prima della cartella.
+- **Rileggere**: nei messaggi normali mai; solo i controlli, i cambi di tavolo del riepilogo e "perché è stato
+  rifiutato X?", con Grep mirati sulla cartella (content), mai file per file. Il nome dà ordine ed evento (parametro
+  `glob`, es. `*-cambio-tavolo.json`); `"n": 7,` dà una prenotazione, `non trovo posto` i `provati`; per `n`,
+  `evento`, `turno` e unità di tutte le righe, `-o` con:
+  `"n": [^,]*, "evento": "[^"]*"(, "turno": "[^"]*")?(, "unita": "[^"]*"|, "da": "[^"]*", "a": "[^"]*")?`
 
 Ogni riga: `{"quando": "…", "n": …, "evento": "…", …altri campi…, "testo": "…", "deciso_da": "…"}`. `testo` è una
 frase breve per il proprietario (es. "Rossi ×4"). `deciso_da` è il modello che ha preso la decisione e scritto la riga:
 "haiku", "sonnet", "opus" (in modalità mista, le righe scritte da `decisore-sala` hanno "sonnet"). Va messo in ogni
-riga nuova; nei file vecchi può mancare. Serve a misurare quante decisioni passano a Sonnet. Campi per evento:
+riga nuova; nei file vecchi può mancare. Campi per evento:
 
 | evento | campi in più |
 |---|---|
@@ -77,8 +94,8 @@ riga nuova; nei file vecchi può mancare. Serve a misurare quante decisioni pass
 | `mossa proposta`, `mossa confermata`, `mossa respinta` | `mossa` (id della mossa) al posto di `n` |
 | `piantina cambiata` | solo `testo` (e `n`: `null`) |
 
-`provati` è il riassunto di che cosa hai provato prima di dire "non trovo posto" (skill `assegna-tavoli`, "Cosa
-scrivere quando non entra").
+`provati` è il riassunto di che cosa hai provato prima di dire "non trovo posto" (skill
+`assegna-tavoli-difficile`, "Cosa scrivere quando non entra").
 
 Il **turno promesso** di una prenotazione è il `turno` dell'ultima riga `confermata`, `accettata su proposta` o
 `modifica` con il suo `n`; la sua **unità** è quella dell'ultima riga tra queste e `cambio tavolo` (campo `a`).
@@ -109,23 +126,26 @@ la proposta a Verdi l'ha decisa `decisore-sala` ("sonnet"), perché nel secondo 
     {"n": 4, "id": null, "nome": "Neri", "coperti": 2, "orario": "21:30", "turno_chiesto": "secondo", "turno": "secondo", "stato": "annullata", "unita": null, "proposta": null, "domanda": null, "note": "", "motivo": "annullata dal proprietario", "ricevuta_il": "2026-10-29"},
     {"n": 5, "id": null, "nome": "Pellegrino", "coperti": 4, "orario": "20:45", "turno_chiesto": null, "turno": null, "stato": "in_attesa", "unita": null, "proposta": null, "domanda": "Primo turno (20:00) o secondo (21:30)?", "note": "", "motivo": "aspetta la risposta alla domanda", "ricevuta_il": "2026-10-29"}
   ],
-  "mosse": [],
-  "registro": [
-    {"quando": "2026-10-29", "n": 1, "evento": "confermata", "turno": "primo", "unita": "1", "testo": "Rossi ×4", "deciso_da": "haiku"},
-    {"quando": "2026-10-29", "n": 2, "evento": "proposta", "turno": "primo", "motivo": "alle 19:00 non c'è un turno", "testo": "Bianchi ×6: proposto il primo turno (20:00)", "deciso_da": "haiku"},
-    {"quando": "2026-10-29", "n": 2, "evento": "accettata su proposta", "turno": "primo", "unita": "12", "testo": "Bianchi ×6", "deciso_da": "haiku"},
-    {"quando": "2026-10-29", "n": 3, "evento": "proposta", "turno": "secondo", "motivo": "alle 23:00 non c'è un turno", "testo": "Verdi ×2: proposto il secondo turno (21:30)", "deciso_da": "sonnet"},
-    {"quando": "2026-10-29", "n": 4, "evento": "confermata", "turno": "secondo", "unita": "4", "testo": "Neri ×2", "deciso_da": "haiku"},
-    {"quando": "2026-10-29", "n": 4, "evento": "annullata", "turno": "secondo", "da": "4", "testo": "Neri ×2", "deciso_da": "haiku"},
-    {"quando": "2026-10-29", "n": 5, "evento": "domanda", "testo": "Pellegrino ×4 alle 20:45: primo turno (20:00) o secondo (21:30)?", "deciso_da": "haiku"}
-  ]
+  "mosse": []
 }
+```
+
+La cartella `serate/registro-2026-10-31/` (nome del file → contenuto):
+
+```
+001-n1-confermata.json          {"quando": "2026-10-29", "n": 1, "evento": "confermata", "turno": "primo", "unita": "1", "testo": "Rossi ×4", "deciso_da": "haiku"}
+002-n2-proposta.json            {"quando": "2026-10-29", "n": 2, "evento": "proposta", "turno": "primo", "motivo": "alle 19:00 non c'è un turno", "testo": "Bianchi ×6: proposto il primo turno (20:00)", "deciso_da": "haiku"}
+003-n2-accettata-su-proposta.json {"quando": "2026-10-29", "n": 2, "evento": "accettata su proposta", "turno": "primo", "unita": "12", "testo": "Bianchi ×6", "deciso_da": "haiku"}
+004-n3-proposta.json            {"quando": "2026-10-29", "n": 3, "evento": "proposta", "turno": "secondo", "motivo": "alle 23:00 non c'è un turno", "testo": "Verdi ×2: proposto il secondo turno (21:30)", "deciso_da": "sonnet"}
+005-n4-confermata.json          {"quando": "2026-10-29", "n": 4, "evento": "confermata", "turno": "secondo", "unita": "4", "testo": "Neri ×2", "deciso_da": "haiku"}
+006-n4-annullata.json           {"quando": "2026-10-29", "n": 4, "evento": "annullata", "turno": "secondo", "da": "4", "testo": "Neri ×2", "deciso_da": "haiku"}
+007-n5-domanda.json             {"quando": "2026-10-29", "n": 5, "evento": "domanda", "testo": "Pellegrino ×4 alle 20:45: primo turno (20:00) o secondo (21:30)?", "deciso_da": "haiku"}
 ```
 
 ## Come scrivere senza rompere il file
 
-Indentazione di 2 spazi; **ogni prenotazione, ogni riga di registro e ogni mossa su una riga sola**, con 4 spazi
-davanti, come nell'esempio. Un array vuoto si scrive `[]`. I punti di aggancio per Edit sono questi (unici nel file):
+Indentazione di 2 spazi; **ogni prenotazione e ogni mossa su una riga sola**, con 4 spazi davanti, come
+nell'esempio. Un array vuoto si scrive `[]`. I punti di aggancio per Edit sono questi (unici nel file):
 
 **Aggiungere una prenotazione.** Se `prenotazioni` è vuoto, sostituisci `"prenotazioni": [],` con:
 
@@ -152,30 +172,11 @@ con:
   "mosse"
 ```
 
-**Aggiungere righe di registro.** Se `registro` è vuoto, sostituisci `"registro": []` con `"registro": [` + a capo
-+ le righe + a capo + `  ]`. Altrimenti sostituisci la fine del file:
+Più prenotazioni aggiunte insieme vanno **separate da virgole**, e l'ultima non ha la virgola.
 
-```
-}
-  ]
-}
-```
-
-con:
-
-```
-},
-    {"quando": …, "evento": "proposta", …, "deciso_da": "sonnet"},
-    {"quando": …, "evento": "accettata su proposta", …, "deciso_da": "sonnet"}
-  ]
-}
-```
-
-Più righe aggiunte insieme vanno **separate da virgole**, e l'ultima non ha la virgola. Lo stesso vale per più
-prenotazioni.
-
-**Aggiungere una mossa.** Se `mosse` è vuoto, sostituisci `"mosse": [],` con `"mosse": [` + a capo + la riga + a
-capo + `  ],`. Altrimenti sostituisci `}` + a capo + `  ],` + a capo + `  "registro"` come per le prenotazioni.
+**Aggiungere una mossa.** Se `mosse` è vuoto, sostituisci `"mosse": []` con `"mosse": [` + a capo + la riga + a capo
++ `  ]`. Altrimenti, come per le prenotazioni, sostituisci la fine dell'ultima mossa: `}` + a capo + `  ]` + a capo +
+`}` (nei file vecchi `}` + a capo + `  ],` + a capo + `  "registro"`).
 
 **Cambiare una prenotazione** (stato, unità, turno, coperti, domanda): Edit della sua riga intera, che comincia con
 `    {"n": <numero>, ` ed è unica. Non cambiare mai `n` né `ricevuta_il`.

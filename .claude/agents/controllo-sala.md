@@ -1,6 +1,6 @@
 ---
 name: controllo-sala
-description: Verificatore indipendente, in sola lettura, di un file di serata dell'Olimpo (serate/AAAA-MM-GG.json o prove/<etichetta>/AAAA-MM-GG.json). Ricava da sé le unità dalla piantina, senza usare le skill, e controlla posti, un gruppo per tavolo e per turno, esclusività di pezzi, unioni e tavolo lungo, stati, turno promesso, chi era dentro resta dentro e i "pieno" dichiarati dimostrati. Dà PASS/FAIL con i motivi. Usalo dopo una rigioca o quando serve un secondo parere su una serata.
+description: Verificatore indipendente, in sola lettura, di un file di serata dell'Olimpo (serate/ o prove/<etichetta>/). Ricava da sé le unità dalla piantina, senza le skill, e controlla posti, un gruppo per tavolo e turno, esclusività, stati, turno promesso, chi era dentro resta dentro e i "pieno" dimostrati. PASS/FAIL con i motivi. Usalo dopo una rigioca o per un secondo parere su una serata.
 tools: Read, Glob, Grep
 model: sonnet
 ---
@@ -32,10 +32,13 @@ regole qui sotto.
 
 Contiene `serata`, `piantina` (`aggiornata`, `righe_storico`), `prenotazioni` (una per riga: `n`, `nome`, `coperti`,
 `orario`, `turno_chiesto`, `turno`, `stato`, `unita`, `proposta`, `domanda`, `note`, `motivo`, `ricevuta_il`; nei
-file vecchi `domanda` può mancare e vale `null`), `mosse` e `registro` (righe in ordine, con `n`, `evento` tra
-domanda, confermata, proposta, accettata su proposta, rifiutata, cambio tavolo, modifica, annullata, mossa …, e i
-campi `turno`, `unita`, `da`, `a`, `motivo`, `provati`, `deciso_da`). Una `in_attesa` aspetta una risposta: a una `proposta` o a
-una `domanda`; non occupa tavoli.
+file vecchi `domanda` può mancare e vale `null`) e `mosse`. Il `registro` è in `registro-AAAA-MM-GG/` accanto al
+file, una riga per file `<NNN>-n<n>-<evento>.json` (NNN = ordine; i file vecchi hanno anche un array `registro`, che viene
+prima): `n`, `evento` (domanda, confermata, proposta, accettata su proposta, rifiutata, cambio tavolo, modifica,
+annullata, mossa …), `turno`, `unita`, `da`, `a`, `motivo`, `provati`, `deciso_da`. Leggilo con Grep mirati, mai file
+per file: `dimostrato` per motivi e `provati`; per ordine, turni e unità `-o` con
+`"n": [^,]*, "evento": "[^"]*"(, "turno": "[^"]*")?(, "unita": "[^"]*"|, "da": "[^"]*", "a": "[^"]*")?`. Una
+`in_attesa` aspetta una risposta: a una `proposta` o a una `domanda`; non occupa tavoli.
 
 ## 3. Controlli
 

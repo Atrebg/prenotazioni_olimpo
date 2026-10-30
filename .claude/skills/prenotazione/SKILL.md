@@ -1,6 +1,6 @@
 ---
 name: prenotazione
-description: Gestisce i messaggi del proprietario dell'Olimpo che cambiano le prenotazioni — nuova prenotazione (formato compatto "Rossi 4 sab 20:30" o testo libero), risposte brevi a proposte e domande in sospeso ("sì", "no grazie", "primo", "è un'altra"), modifica, annullamento — con data, turno, proposte, domande salvate nel file, scrittura della serata e controllo finale. Usala per ogni messaggio che registra, cambia o annulla una prenotazione, o che risponde a qualcosa in sospeso.
+description: Messaggi che cambiano le prenotazioni dell'Olimpo — nuova ("Rossi 4 sab 20:30" o testo libero), risposte brevi a cose in sospeso ("sì", "no grazie", "primo", "è un'altra"), modifica, annullamento — con data, turno, domande salvate e scrittura. Usala per ogni messaggio che registra, cambia o annulla una prenotazione o risponde a qualcosa in sospeso.
 ---
 
 # Prenotazioni: nuova, risposte, modifica, annullamento
@@ -8,15 +8,8 @@ description: Gestisce i messaggi del proprietario dell'Olimpo che cambiano le pr
 Servono: catalogo (`agente/catalogo.md`), formato del file (skill `stato-serata`), procedura dei tavoli (skill
 `assegna-tavoli`), regole (`agente/regole.md`).
 
-**Modalità mista** (sessione su Haiku): Haiku fa i punti 1-3, le risposte brevi, gli annullamenti e i casi che al
-passo 1 di `assegna-tavoli` entrano nel turno chiesto; ogni proposta per mancanza di posto, rifiuto, catena o dubbio
-passa a `decisore-sala`, come dice `CLAUDE.md`. Ogni riga di registro porta `deciso_da`.
-
-Due regole che valgono per ogni messaggio, anche con `claude -p` (ogni messaggio è una sessione nuova):
-- **Non riusare mai l'esito di un'altra prenotazione o di un messaggio precedente** ("anche prima una coppia non
-  entrava"): ogni richiesta si decide rifacendo `assegna-tavoli` per intero sullo stato letto adesso dal file.
-- **Dopo ogni scrittura, `controllo-serata` per intero (C1-C15)** sul file riletto. Nella risposta scrivi "Controllo:
-  PASS" solo se l'hai fatto davvero; se non l'hai fatto, non rispondere: fallo prima.
+**Modalità mista** (Haiku) e regole di metodo (non riusare esiti di prima, controllo dopo ogni scrittura): come dice
+`CLAUDE.md`. Ogni riga di registro porta `deciso_da`.
 
 ## 1. Capire il messaggio
 
@@ -61,47 +54,34 @@ domanda sola, su quello che manca.
 - **20:45 senza turno detto**: chiedi "Primo turno (20:00) o secondo (21:30)?" e salva la domanda (punto 1).
   Eccezione: nelle prove della skill `rigioca` non si fanno domande e le 20:45 vanno nel primo turno.
 - **Prima delle 19:15 o dopo le 22:15**: non si registra. `turno_chiesto` = `null`; si propone il turno più vicino
-  (prima delle 19:15 il primo, dopo le 22:15 il secondo) come al punto 4, caso "proposta": "Alle 19:00 non c'è un
-  turno. Il più vicino è il primo, alle 20:00. Va bene?". Se il più vicino non ha posto e l'altro sì, proponi
-  l'altro.
+  (prima delle 19:15 il primo, dopo le 22:15 il secondo; proposta come in `stato-serata`): "Alle 19:00 non c'è un
+  turno. Il più vicino è il primo, alle 20:00. Va bene?". Se non ha posto: `assegna-tavoli-difficile`, "Cosa
+  scrivere quando non entra".
 
 ## 4. Nuova prenotazione
 
-1. Leggi il file della serata (se non c'è, la serata è vuota) e controlla la piantina (skill `sala`, punto 2).
+1. Il file della serata e la versione della piantina li hai già letti all'inizio (`CLAUDE.md`).
 2. **Stesso nome** già presente nella serata (`confermata` o `in_attesa`): chiedi "C'è già Rossi alle 20:30 per 4
    persone (sab 31/10): è un'altra prenotazione o la modifico?" e salva la richiesta come domanda (punto 1).
 3. `n` = il più alto della serata + 1.
 4. `assegna-tavoli` per c = coperti nel turno chiesto T.
-   - **ENTRA** → scrivi la prenotazione `confermata` con la sua `unita`. Se ci sono cambi, aggiorna prima la riga di
-     ogni prenotazione spostata (`unita`) e aggiungi al registro una riga `cambio tavolo` per ognuna ("per far posto
-     a Rossi ×4"); poi la riga `confermata`.
-   - **Non entra in T** → `assegna-tavoli` nell'altro turno T', senza scrivere i tavoli.
-     - Entra in T' → scrivi la prenotazione `in_attesa`, `turno` e `unita` `null`, `proposta` = `{"turno": T',
-       "motivo": …}`, `motivo` = "aspetta il sì alla proposta"; registro `proposta` (con `provati` se T non è
-       dimostrato). Risposta: "Il primo turno è pieno. Posso nel secondo, alle 21:30. Va bene?". Se il "pieno" non
-       è dimostrato: "Nel primo turno non trovo posto. Posso nel secondo, alle 21:30. Va bene?".
-     - Non entra neanche in T' → skill `mossa-tavoli`. Se trova una mossa, la prenotazione è `in_attesa` con la
-       proposta della mossa (vedi quella skill). Altrimenti scrivi la prenotazione `rifiutata` con il motivo dei due
-       turni (formato in `stato-serata`); registro `rifiutata` con `provati`. Risposta: "Il primo turno è pieno, e
-       anche il secondo." (con "non trovo posto" al posto di "pieno" per un turno non dimostrato).
+   - **ENTRA** → scrivi la prenotazione `confermata` con la sua `unita` (con cambi di tavolo: skill
+     `assegna-tavoli-difficile`, "Cosa scrivere quando non entra").
+   - **Non entra in T** → skill `assegna-tavoli-difficile`, "Cosa scrivere quando non entra" (altro turno, mossa,
+     rifiuto).
 5. Skill `controllo-serata` per intero (C1-C15), poi rispondi.
 
 ## 5. Risposte brevi: proposte e domande in sospeso
 
-1. **A che cosa risponde.** Se in questa conversazione hai appena fatto una proposta o una domanda, la risposta è per
-   quella. Altrimenti (per esempio un `claude -p` da solo) cerca le righe `"stato": "in_attesa"` con Grep nei file di
-   `serate/` con data da oggi in poi (sono sia proposte sia domande):
-   - una sola → è quella;
-   - più di una → chiedi a quale si riferisce, elencandole in breve ("Ferrara ×14 sab 31/10 (secondo turno?) o
-     Pellegrino ×4 sab 31/10 (primo o secondo turno?)");
-   - nessuna, o la risposta non c'entra con quella trovata (es. "2t" a "è un'altra prenotazione?") → chiedi.
+1. **A che cosa risponde**: come in `CLAUDE.md` ("Per ogni messaggio", punto 2). Se chiedi a quale, elencale in breve
+   ("Ferrara ×14 sab 31/10 (secondo turno?) o Pellegrino ×4 sab 31/10 (primo o secondo turno?)"); se la risposta non
+   c'entra con quella trovata (es. "2t" a "è un'altra prenotazione?"), chiedi.
 2. **Sì a una proposta** ("sì", "ok", "va bene", oppure il turno proposto): rifai `assegna-tavoli` nel turno
    proposto, perché nel frattempo la sala può essere cambiata.
    - ENTRA → la riga diventa `confermata`, `turno` = turno proposto, `unita`, `motivo` `null` (la `proposta` resta);
      registro: eventuali `cambio tavolo`, poi `accettata su proposta`. Risposta: "✓ … · secondo turno (21:30)
      Confermata."
-   - Non entra più → se adesso c'è posto nel turno chiesto all'inizio, proponilo (resta `in_attesa`, nuova
-     `proposta`, registro `proposta`); altrimenti `rifiutata` ("nel frattempo si è riempito anche il secondo turno").
+   - Non entra più → `assegna-tavoli-difficile`, "Cosa scrivere quando non entra".
 3. **No a una proposta** ("no", "no grazie"): `rifiutata`, `motivo` = il motivo della proposta + "; proposta non
    accettata"; registro `rifiutata`.
 4. **Risposta a una domanda**: completa la richiesta salvata con la risposta, metti `domanda` a `null` e riprendi
@@ -128,12 +108,9 @@ domanda sola, su quello che manca.
    - altrimenti `assegna-tavoli` per la versione nuova, **togliendo la prenotazione stessa** dalle occupate (passo 0).
      ENTRA → aggiorna la riga (coperti, orario, `turno_chiesto`, `turno`, `unita`), registro: eventuali
      `cambio tavolo`, poi `modifica` ("4 → 6 coperti", "primo → secondo turno"). `n` non cambia.
-   - Non entra → **non cambia niente**: resta la versione di prima. Rispondi "Nel secondo turno non c'è posto per 6:
-     resta la prenotazione di prima (4 persone, primo turno)." Se nell'altro turno c'è posto, dillo e chiedi se la
-     sposti lì (senza scrivere).
-5. **Altra serata**: prova `assegna-tavoli` nel file dell'altra serata. Se entra: là una prenotazione nuova (`n`
-   nuovo di quella serata; registro `confermata` con testo "… spostata dal 31/10"), qui la riga diventa `annullata`
-   con `motivo` "spostata al …" e registro `annullata`. Se non entra: non cambia niente, e lo dici.
+   - Non entra → **non cambia niente** (`assegna-tavoli-difficile`, "Cosa scrivere quando non entra").
+5. **Altra serata**: prova `assegna-tavoli` nel file dell'altra serata. Se entra: scrivi come dice `stato-serata`
+   ("Spostata a un'altra serata"). Se non entra: non cambia niente, e lo dici.
 
 ## 7. Annullamento
 
@@ -147,15 +124,5 @@ domanda sola, su quello che manca.
 
 ## 8. Risposte
 
-- Prima riga: ciò che hai capito, "✓ Rossi · 4 persone · sab 31/10 · primo turno (20:00)" (con l'orario chiesto se il
-  turno non è ancora deciso: "✓ Rossi · 4 persone · sab 31/10 · 20:00").
-- Seconda riga: l'esito ("Confermata.", la proposta, la domanda, "Modificata.", "Annullata.").
-- **Mai il numero del tavolo** nella conferma: può ancora cambiare. Se hai spostato qualcuno: "Ho cambiato tavolo a 1
-  prenotazione già confermata dello stesso turno (lo vedi nel riepilogo)."
-- In una riga, solo se serve: la regola di buonsenso non rispettata ("Seggiolone: era libero solo un tavolo vicino al
-  percorso dei camerieri.").
-- Se hai scritto il file: una riga "Controllo: PASS" (o "Controllo: FAIL" con i problemi), solo dopo aver fatto
-  C1-C15 per intero.
-- Se un turno è "non trovo posto", non scrivere frasi come "non ho rifatto le catene" o "ho riusato il risultato di
-  prima": vuol dire che la procedura non è finita. Finiscila, poi rispondi.
-- Al massimo una domanda, in fondo.
+Formato di `CLAUDE.md`. Se il turno non è ancora deciso, nella prima riga l'orario chiesto: "✓ Rossi · 4 persone ·
+sab 31/10 · 20:00".

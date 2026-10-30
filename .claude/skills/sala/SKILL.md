@@ -1,6 +1,6 @@
 ---
 name: sala
-description: Regole della sala dell'Olimpo dalla piantina (olimpo/piantina.html) — lettura del blocco JSON, unità assegnabili (tavoli, pezzi dei blocchi, unioni, tavolo lungo) e loro esclusività, posti vuoti, conteggi per soglia per un "turno pieno", rigenerazione di agente/catalogo.md. Usala all'inizio di ogni sessione e quando ti servono tavoli o posti.
+description: Regole della sala dell'Olimpo dalla piantina (olimpo/piantina.html) — lettura del blocco JSON, unità e loro esclusività, conteggi per soglia, rigenerazione di agente/catalogo.md. Usala quando la piantina è cambiata; per assegnare bastano il catalogo e assegna-tavoli.
 ---
 
 # Sala: dalla piantina alle unità assegnabili
@@ -9,7 +9,7 @@ La piantina `olimpo/piantina.html` è la **fonte unica** della sala. Non se ne f
 la cambia solo il proprietario con l'editor. Unità, soglie e liste ricavate con le regole di questo file sono in
 `agente/catalogo.md`.
 
-## 1. Come leggere la piantina (mai il file intero: è di circa 156 KB)
+## 1. Come leggere la piantina (per rigenerare il catalogo o per `mossa-tavoli`; mai intera: 156 KB)
 
 1. Grep di `id="sala"` in `olimpo/piantina.html` con i numeri di riga: prendi la **prima** riga trovata (la seconda è
    dentro il programma dell'editor e non serve).
@@ -22,12 +22,12 @@ la cambia solo il proprietario con l'editor. Unità, soglie e liste ricavate con
 
 ## 2. Versione del catalogo
 
-In testa al catalogo c'è la versione della piantina da cui è calcolato. Piantina uguale: usa il catalogo. Diversa
-(data, righe dello storico, ultima riga, oppure tavoli, posti, unioni o `separabile` che non tornano con il
-catalogo): **vale la piantina** e il catalogo va rigenerato.
-- Lo rigenera una sessione Sonnet o superiore, con le regole dei punti 3-5 (le liste con quelle di `assegna-tavoli`
-  e `mossa-tavoli`); lo scrive con Write e lo dice al proprietario in una riga ("La piantina è cambiata il …: ho
-  ricalcolato i tavoli.").
+In testa al catalogo c'è la versione della piantina da cui è calcolato; si confronta con i due Grep di `CLAUDE.md`,
+senza Read. Piantina uguale: usa il catalogo. Diversa (data, righe dello storico, ultima riga): **vale la piantina**
+e il catalogo va rigenerato.
+- Lo rigenera una sessione Sonnet o superiore, con le regole dei punti 3-5 (le liste con quelle di `assegna-tavoli`,
+  `assegna-tavoli-difficile` e `mossa-tavoli`); lo scrive con Write e lo dice al proprietario in una riga ("La
+  piantina è cambiata il …: ho ricalcolato i tavoli.").
 - Haiku non rigenera: passa il messaggio a `decisore-sala`. La skill `rigioca` rigenera prima di cominciare.
 - Se un'unità già assegnata in una serata non esiste più o ha meno posti dei coperti, segnalalo e non spostare
   nessuno senza chiedere.
@@ -62,9 +62,7 @@ che usano almeno un pezzo in comune **non possono stare nello stesso turno**.
 
 ## 4. Posti vuoti di un'unità
 
-Per un gruppo di c persone: posti vuoti = posti dell'unità − c. Eccezione del lungo: sull'intero e sulla prima metà
-sono i **posti del lungo − c**, perché è apparecchiato tutto per quel gruppo; sulla seconda metà, i posti di una
-metà − c.
+Sono nella skill `assegna-tavoli`, passo 1 (con l'eccezione del lungo).
 
 ## 5. Conteggi per soglia (per dimostrare un "turno pieno")
 
