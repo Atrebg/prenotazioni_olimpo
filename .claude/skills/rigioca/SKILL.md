@@ -34,10 +34,11 @@ scelte le fa la politica del cliente. **Non tocca mai `serate/`**: scrive solo i
 > `assegna-tavoli` sullo stato appena riletto.
 >
 > **"Le unità di adesso sono tutte occupate" non dimostra niente**: prima di mandare qualcuno all'altro turno o di
-> rifiutarlo, la skill `assegna-tavoli` va eseguita per intero (passo 2a con lo scambio lungo–tondo, catene fino a 3
+> rifiutarlo, la skill `assegna-tavoli` va eseguita per intero (passo 2a con lo scambio con il lungo, catene fino a 3
 > spostamenti, passo 3), e nel registro va scritto un `provati` specifico (controllo C15).
 
-1. Leggi la sala (skill `sala`) e il file. Ordina le prenotazioni per `prenotata_il`; a parità, l'ordine del file.
+1. Leggi la sala (skill `sala` e catalogo, da rigenerare prima di cominciare se la piantina è cambiata) e il file.
+   Ordina le prenotazioni per `prenotata_il`; a parità, l'ordine del file.
 2. Crea con Write `prove/<etichetta>/AAAA-MM-GG.json` con lo scheletro della skill `stato-serata`.
 3. Per ogni prenotazione, nell'ordine (k = 1, 2, …):
    1. `n` = k, `id`, `nome`, `coperti`, `orario`, `note` ("" se manca), `ricevuta_il` = `prenotata_il`.
@@ -89,6 +90,8 @@ Per **ogni** prenotazione, una alla volta:
    sopra). Nell'esito aggiungi quante prenotazioni ha deciso Haiku e quante `decisore-sala` (dal campo `deciso_da`).
 
 ## esito.md
+
+Esempio sulla piantina del 29/10/2026:
 
 ```
 # Rigioca olimpo_sabato-sempre

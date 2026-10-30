@@ -5,7 +5,7 @@ description: Gestisce i messaggi del proprietario dell'Olimpo che cambiano le pr
 
 # Prenotazioni: nuova, risposte, modifica, annullamento
 
-Servono: catalogo (skill `sala`), formato del file (skill `stato-serata`), procedura dei tavoli (skill
+Servono: catalogo (`agente/catalogo.md`), formato del file (skill `stato-serata`), procedura dei tavoli (skill
 `assegna-tavoli`), regole (`agente/regole.md`).
 
 **Modalità mista** (sessione su Haiku): Haiku fa i punti 1-3, le risposte brevi, gli annullamenti e i casi che al
@@ -140,8 +140,9 @@ domanda sola, su quello che manca.
 1. Trova la prenotazione (nome e data; se è ambigua, chiedi).
 2. La riga diventa `annullata`: `unita` `null`, `turno` resta, `motivo` = "annullata dal proprietario". Registro
    `annullata` con `da` = l'unità liberata. Vale anche per una `in_attesa` (lì `turno` e `da` restano `null`).
-3. Se si libera "11-1" e "11-2" è occupato: chi era su 11-2 passa a 11-1 (stesso tavolo): aggiorna la sua riga e
-   scrivi `cambio tavolo` da 11-2 a 11-1, motivo "annullato il primo gruppo del lungo".
+3. Se si libera "`<id>`-1" del lungo e "`<id>`-2" è occupato: chi era su "`<id>`-2" passa a "`<id>`-1" (stesso
+   tavolo): aggiorna la sua riga e scrivi `cambio tavolo` da "`<id>`-2" a "`<id>`-1", motivo "annullato il primo
+   gruppo del lungo".
 4. Gli altri non si spostano. Risposta: "✓ Annullata: Rossi · 4 persone · sab 31/10 · primo turno."
 
 ## 8. Risposte

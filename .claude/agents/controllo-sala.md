@@ -17,16 +17,16 @@ regole qui sotto.
    - tavolo che non è un blocco né il lungo: unità = `id`, con i suoi `posti`;
    - blocco con `"separabile": false`: unità = `id`, con i suoi `posti`;
    - blocco con `"separabile": true` di m `moduli`, quadrati a, b, c in ordine: intero = `id` (posti del blocco, usa
-     tutti i quadrati); pezzo contiguo di j ≥ 2 quadrati non intero = `id` + lettere ("5ab"), 2j + 2 posti; quadrato
+     tutti i quadrati); pezzo contiguo di j ≥ 2 quadrati non intero = `id` + lettere (es. "5ab"), 2j + 2 posti; quadrato
      da solo = `id` + lettera ("5a"), `posti_quadrato_separato` posti; niente pezzi non contigui;
-   - tavolo `lungo`: "11" = un gruppo fino ai suoi posti (usa le due metà); "11-1" e "11-2" = due gruppi fino a 8
-     (come dice la sua nota), "11-2" solo se "11-1" è occupato nello stesso turno;
+   - tavolo `lungo`: "`<id>`" = un gruppo fino ai suoi posti (usa le due metà); "`<id>`-1" e "`<id>`-2" = due
+     gruppi fino ai posti di una metà (dalla sua nota), "`<id>`-2" solo se "`<id>`-1" è occupato nello stesso turno;
    - unione con `"stato": "confermata"`: unità "A+B" con i `posti` dell'unione, usa tutti i pezzi di A e di B; le
      altre unioni non esistono;
    - mossa del file con `"stato": "confermata"`: unità solo nei suoi `turni`, con i pezzi in `usa`, che devono
      esistere ed essere di tavoli con `"fisso": false`.
 3. Conta tavoli, posti con i blocchi interi e quadrati mobili (tavoli `quadrato` con `"fisso": false` più i
-   `moduli` dei blocchi con `"fisso": false`). I quadrati mobili devono essere 29.
+   `moduli` dei blocchi con `"fisso": false`).
 
 ## 2. Il file della serata
 
@@ -41,17 +41,17 @@ una `domanda`; non occupa tavoli.
 
 | # | controllo |
 |---|---|
-| V1 | JSON valido, tutti i campi; `n` tutti diversi. `deciso_da` nelle righe di registro è facoltativo (assente nei file vecchi: nessun avviso); se c'è è un nome di modello. Avviso se "haiku" ha deciso un `rifiutata`, una `proposta` per mancanza di posto o un `cambio tavolo` (tranne 11-2 → 11-1 dopo un annullamento): in modalità mista li decide `decisore-sala` |
+| V1 | JSON valido, tutti i campi; `n` tutti diversi. `deciso_da` nelle righe di registro è facoltativo (assente nei file vecchi: nessun avviso); se c'è è un nome di modello. Avviso se "haiku" ha deciso un `rifiutata`, una `proposta` per mancanza di posto o un `cambio tavolo` (tranne seconda → prima metà del lungo dopo un annullamento): in modalità mista li decide `decisore-sala` |
 | V2 | `piantina` del file uguale alla piantina letta (`aggiornata`, numero di righe dello `storico`); se diversa è un avviso, ma ogni unità assegnata deve esistere ancora |
-| V3 | ogni `confermata`: `coperti` presente, `domanda` nulla, `turno` "primo" o "secondo", `unita` esistente, coperti ≤ posti; da 11 coperti in su solo "11"; 9 o 10 solo "10" o "11" |
-| V4 | in ogni turno nessun pezzo usato da due prenotazioni; "11-2" solo con "11-1" |
+| V3 | ogni `confermata`: `coperti` presente, `domanda` nulla, `turno` "primo" o "secondo", `unita` esistente, coperti ≤ posti |
+| V4 | in ogni turno nessun pezzo usato da due prenotazioni; la seconda metà del lungo solo con la prima |
 | V5 | `in_attesa`: `unita` e `turno` nulli, `proposta` oppure `domanda` presente (con `domanda`: una riga `domanda` nel registro; solo qui `coperti` o `orario` possono essere nulli); `rifiutata`: `unita` e `turno` nulli, `motivo` presente; `annullata`: `unita` nulla, con una riga `annullata` nel registro |
 | V6 | nessuna prenotazione con una riga `confermata` o `accettata su proposta` nel registro è ora `rifiutata` |
 | V7 | per ogni `confermata`: `turno` = turno dell'ultima riga `confermata` / `accettata su proposta` / `modifica` del suo `n`; `unita` = ultima unità del registro (contando `cambio tavolo`, campo `a`); se ha una `proposta`, `turno` = turno della proposta |
 | V8 | ogni prenotazione ha almeno una riga nel registro e la prima riga di ogni `n` compare in ordine di `n` |
-| V9 | ogni parte di un motivo (di un rifiuto o di una proposta) che dice "pieno (dimostrato: …)": ricontrolla tu che, nel turno detto, le prenotazioni confermate in quel turno dalle righe di registro che vengono prima di quella riga, più quella prenotazione, superino davvero un limite: per una soglia s, più prenotazioni da almeno s coperti delle unità da almeno s posti che possono stare insieme (calcolalo tu, per famiglie di pezzi che si escludono), oppure più di 151 posti. Se nel frattempo c'è stato un annullamento in quel turno, segnalalo come avviso |
-| V10 | 29 quadrati mobili nella piantina; nessun quadrato in due unità nello stesso turno |
-| V11 | ogni riga di registro `proposta` o `rifiutata` con un turno "non trovo posto (non dimostrato)" nel motivo ha un `provati` specifico per quel turno: schemi fissi guardati (divisioni e scambio lungo–tondo, cioè "11" con un gruppo da 9-10 e "10" con uno fino a 8), prima e ultima unità provata per le catene da 1, 2 e 3 spostamenti, esito dei due giri di riassegnazione. Mancante, vuoto o generico ("nessuna catena") = FAIL. Se dalla sala ricavata da te vedi uno schema che entrava (per esempio lo scambio lungo–tondo applicabile e "11-2" sufficiente), segnalalo come FAIL |
+| V9 | ogni parte di un motivo (di un rifiuto o di una proposta) che dice "pieno (dimostrato: …)": ricontrolla tu che, nel turno detto, le prenotazioni confermate in quel turno dalle righe di registro che vengono prima di quella riga, più quella prenotazione, superino davvero un limite: per una soglia s, più prenotazioni da almeno s coperti delle unità da almeno s posti che possono stare insieme (calcolalo tu, per famiglie di pezzi che si escludono), oppure più posti del massimo della sala in un turno. Se nel frattempo c'è stato un annullamento in quel turno, segnalalo come avviso |
+| V10 | nessun quadrato in due unità nello stesso turno |
+| V11 | ogni riga di registro `proposta` o `rifiutata` con un turno "non trovo posto (non dimostrato)" nel motivo ha un `provati` specifico per quel turno: schemi fissi guardati (divisioni e scambio con il lungo: chi è sul lungo intero, più grande di una metà, va su un'unità di un pezzo il cui gruppo sta in una metà), prima e ultima unità provata per le catene da 1, 2 e 3 spostamenti, esito dei due giri di riassegnazione. Mancante, vuoto o generico ("nessuna catena") = FAIL. Se dalla sala ricavata da te vedi uno schema che entrava (per esempio lo scambio con il lungo applicabile e la seconda metà sufficiente), segnalalo come FAIL |
 
 ## 4. Esito
 

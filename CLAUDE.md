@@ -11,6 +11,7 @@ nei file JSON della serata.
 |---|---|---|
 | la sala (tavoli, posti, unioni, turni) | `olimpo/piantina.html`, blocco `<script type="application/json" id="sala">` | solo il proprietario, con l'editor |
 | regole dure e di buonsenso, zone della sala | `agente/regole.md` | il proprietario |
+| unità, soglie e liste ricavate dalla piantina | `agente/catalogo.md` | tu, solo quando cambia la piantina |
 | stato di una serata | `serate/AAAA-MM-GG.json` (una serata per file) | tu |
 | prove e demo | `prove/<etichetta>/` | tu, solo con la skill `rigioca` o per prove |
 | prenotazioni di prova | `dati/olimpo_sabato.json`, `dati/olimpo_venerdi.json` | nessuno (sola lettura) |
@@ -22,8 +23,9 @@ nei file JSON della serata.
 1. Guarda nel tuo system prompt quale modello sei. **Se sei Haiku, vale la "Modalità mista" qui sotto**; se sei
    Sonnet o un modello superiore, fai tutto da te come descritto nel resto del file.
 2. Leggi `agente/regole.md`.
-3. Leggi la skill `sala` e, come dice lei, il blocco della sala nella piantina (Grep di `id="sala"` + Read con
-   offset e limit: **mai il file intero**). Controlla la versione della piantina.
+3. Leggi la skill `sala`, `agente/catalogo.md` e, come dice la skill, il blocco della sala nella piantina (Grep di
+   `id="sala"` + Read con offset e limit: **mai il file intero**). Piantina diversa dal catalogo: skill `sala`,
+   punto 2.
 
 ## Modalità mista (solo se la sessione gira su Haiku)
 
@@ -43,9 +45,9 @@ Haiku costa molto meno ma a sala quasi piena sbaglia le catene e i "pieno". Quin
 **In tutti gli altri casi Haiku non decide e non scrive**: passa il messaggio a `decisore-sala` con l'Agent tool
 (`subagent_type`: `decisore-sala`), una chiamata per messaggio.
 Sono i casi in cui il passo 1 non trova niente o il passo 0 trova un conteggio superato: rifiuto, proposta
-dell'altro turno, catene, scambi, "pieno", "non trovo posto". Vale anche per la disponibilità senza unità libera al
-passo 1, la modifica o il "sì" che al passo 1 non entrano più, le mosse di tavoli, l'orario fuori turno senza posto
-nel turno più vicino, e **ogni caso in cui Haiku non è sicuro**.
+dell'altro turno, catene, scambi, "pieno", "non trovo posto". Vale anche per la piantina diversa dal catalogo, la
+disponibilità senza unità libera al passo 1, la modifica o il "sì" che al passo 1 non entrano più, le mosse di
+tavoli, l'orario fuori turno senza posto nel turno più vicino, e **ogni caso in cui Haiku non è sicuro**.
 
 **Cosa passare a `decisore-sala`** (nel prompt dell'Agent tool, tutto per esteso):
 1. il testo esatto del messaggio del proprietario;
@@ -62,7 +64,7 @@ domanda o una proposta rifiutata con "no grazie") e toccano poche righe. Dopo un
 delle righe toccate**, senza chiamare `controllo-sala`:
 1. rileggi il file con Read: deve essere JSON valido;
 2. la riga nuova o cambiata ha tutti i campi di `stato-serata`;
-3. se è una `confermata`: l'unità esiste nel catalogo (skill `sala`) e ha posti ≥ coperti;
+3. se è una `confermata`: l'unità esiste nel catalogo e ha posti ≥ coperti;
 4. con Grep sulle confermate dello stesso turno, nessun'altra usa uno dei suoi pezzi (esclusività di pezzi, intero,
    unioni e lungo);
 5. c'è la riga di registro con `deciso_da` "haiku".
@@ -73,7 +75,7 @@ fallisce.
 
 **Registro**: in ogni riga che scrivi metti `deciso_da` con il nome del modello che ha deciso ("haiku", "sonnet",
 "opus"). Haiku non scrive mai, con `deciso_da` "haiku", un `rifiutata`, una `proposta` per mancanza di posto o un
-`cambio tavolo` (tranne il passaggio da 11-2 a 11-1 dopo un annullamento).
+`cambio tavolo` (tranne il passaggio dalla seconda alla prima metà del lungo dopo un annullamento).
 
 **Rigioca**: vale la sezione "Modalità mista" della skill `rigioca` (una chiamata a `decisore-sala` per ogni
 prenotazione difficile, mai a gruppi). Per le rigioche conviene però una sessione Sonnet (`--model sonnet`): in
@@ -118,7 +120,7 @@ con Read**: `.claude/skills/sala/SKILL.md`, `.claude/skills/stato-serata/SKILL.m
 
 Regole di metodo, che valgono anche con `claude -p`, dove ogni messaggio è una sessione nuova:
 - "Non c'è posto perché le unità di adesso sono tutte occupate" non vale: prima di dire "non trovo posto" la skill
-  `assegna-tavoli` va eseguita per intero (schemi fissi compreso lo scambio lungo–tondo, catene di spostamenti,
+  `assegna-tavoli` va eseguita per intero (schemi fissi compreso lo scambio con il lungo, catene di spostamenti,
   riassegnazione del turno), con un `provati` specifico nel registro.
 - **Non riusare mai l'esito di un'altra prenotazione o di un messaggio precedente**, anche se lo stato sembra uguale:
   rifai i passi sullo stato letto adesso dal file.
@@ -136,7 +138,7 @@ Regole di metodo, che valgono anche con `claude -p`, dove ogni messaggio è una 
   dal file. Ciò che deduci senza una fonte lo dici come ipotesi.
 - Non togliere mai una prenotazione confermata per farne entrare un'altra e non cambiare il turno promesso senza che
   lo chieda il proprietario.
-- Non dire "pieno" se non è dimostrato dai conteggi (skill `sala`): di' "non trovo posto".
+- Non dire "pieno" se non è dimostrato dai conteggi del catalogo: di' "non trovo posto".
 - Non dire il numero del tavolo nella conferma: solo nel riepilogo, come indicazione.
 - Non cancellare prenotazioni né righe del registro: le prenotazioni cambiano stato, il registro si allunga.
 - Le prove non toccano `serate/`.

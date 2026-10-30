@@ -7,12 +7,12 @@ tra loro, vince quella più in alto nell'elenco. Come si applicano nella scelta 
 ## Regole dure
 
 1. **I tavoli sono quelli della piantina** (`olimpo/piantina.html`). Non si inventano e non spariscono: si dividono
-   solo i blocchi con `"separabile": true`, si uniscono solo le unioni con `"stato": "confermata"`. I 29 quadrati
+   solo i blocchi con `"separabile": true`, si uniscono solo le unioni con `"stato": "confermata"`. I quadrati
    mobili restano tutti in sala.
 2. **Posti**: a un tavolo (unità) non si siedono più persone dei suoi posti.
 3. **Un turno, un gruppo per tavolo**: in ogni turno ogni unità ha al più una prenotazione; un'unione esclude i suoi
-   tavoli, un blocco intero esclude i suoi pezzi; il lungo ospita un gruppo fino a 20 oppure due gruppi fino a 8
-   (il secondo solo se c'è il primo).
+   tavoli, un blocco intero esclude i suoi pezzi; il lungo ospita un gruppo fino ai suoi posti oppure due gruppi,
+   uno per metà (il secondo solo se c'è il primo).
 4. **Due turni**: 20:00 e 21:30. Il primo lascia il tavolo alle 21:30, il secondo resta fino alla chiusura (24:00).
    Ogni prenotazione sta in un turno e occupa il tavolo per tutto il turno; ogni turno arriva tutto insieme.
 5. **Orario → turno**: un orario va nel turno più vicino; a pari distanza (20:45) nel primo. Un orario a più di 45
@@ -35,7 +35,7 @@ d'ora: ogni turno arriva tutto insieme.
 ## Regole di buonsenso (in ordine di priorità)
 
 1. **Accessibilità e sicurezza.** Chi ha difficoltà a camminare, è anziano o è in carrozzina va vicino all'ingresso,
-   senza attraversare la sala e mai al tavolo alto 6 (sgabelli). Passeggino e seggiolone mai vicino al percorso dei
+   senza attraversare la sala e mai a un tavolo alto (sgabelli). Passeggino e seggiolone mai vicino al percorso dei
    camerieri verso la cucina né lungo il passaggio dei bagni.
 2. **Il tavolo giusto per il gruppo.** Meno posti vuoti possibile: una coppia non va a un tavolo da 6 o più se c'è
    altro; un tavolo da 4 per 2 persone va bene se non c'è altro. Il lungo e il tondo da 10 restano per i gruppi grandi.
@@ -64,6 +64,9 @@ Le posizioni di 7-12 sono ancora da confermare anche nella piantina.
 | contro una parete | 1, 4 (bancone), 12, 14-19, 20-24, 25-29 | muro storto accanto all'ingresso, bancone di sinistra, muro a L, muri della striscia di destra |
 | percorso dei camerieri | 3, 4, 13A | vicino all'apertura e alla strettoia verso la porta della cucina |
 | passaggio dei bagni | 15, 16, 17, 18, 19 | lungo il passaggio che porta alla porta dei bagni |
+
+Un tavolo che non è in tabella (nuovo o spostato) non ha zona finché il proprietario non la conferma: niente
+spareggi di zona per lui.
 
 Uso nelle regole: per la regola 1 "vicino all'ingresso" = 1, 2, 5, 3 (non 6), e "da evitare" = percorso dei
 camerieri, passaggio dei bagni e saletta (ci si passa vicino alla cucina); per la regola 4 prima "in fondo o in un

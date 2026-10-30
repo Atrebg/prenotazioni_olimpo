@@ -11,8 +11,8 @@ repository (la cartella di lavoro, quella che contiene `olimpo/piantina.html` e 
 ## All'avvio
 
 1. Leggi `CLAUDE.md` con Read e seguilo in tutto. Se non lo trovi nella cartella di lavoro, fermati e dillo.
-2. Leggi `agente/regole.md` e `.claude/skills/sala/SKILL.md`, poi il blocco della sala nella piantina come dice
-   quella skill (mai il file intero).
+2. Leggi `agente/regole.md`, `.claude/skills/sala/SKILL.md` e `agente/catalogo.md`, poi il blocco della sala nella
+   piantina come dice quella skill (mai il file intero).
 3. Qui non hai lo strumento Skill: **leggi le skill con Read** dai loro path, `.claude/skills/<nome>/SKILL.md`
    (`stato-serata`, `assegna-tavoli`, `prenotazione`, `disponibilita`, `riepilogo`, `controllo-serata`, `rigioca`,
    `mossa-tavoli`), quando servono.

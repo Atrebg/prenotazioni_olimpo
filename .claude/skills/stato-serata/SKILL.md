@@ -24,6 +24,7 @@ prima scrittura, partendo dallo scheletro qui sotto.
 
 - `piantina`: data `aggiornata` e numero di righe dello `storico` della piantina usata per assegnare i tavoli. Se
   la piantina di oggi è diversa, vedi la skill `sala` (punto 2) e aggiungi al registro un evento "piantina cambiata".
+- Scheletro ed esempio sono sulla piantina del 29/10/2026.
 
 ## Una prenotazione (una riga per prenotazione)
 
@@ -36,7 +37,7 @@ prima scrittura, partendo dallo scheletro qui sotto.
 | `turno_chiesto` | "primo", "secondo", oppure `null` (orario fuori dai turni, 20:45 senza turno, dato mancante) |
 | `turno` | turno **promesso**: "primo" o "secondo" per `confermata`; per `annullata` quello che aveva (`null` se era in attesa); `null` per `in_attesa` e `rifiutata` |
 | `stato` | `confermata`, `in_attesa` (aspetta una risposta: a una proposta o a una domanda), `rifiutata`, `annullata` |
-| `unita` | unità del catalogo (skill `sala`) solo per `confermata`; `null` negli altri stati |
+| `unita` | unità del catalogo solo per `confermata`; `null` negli altri stati |
 | `proposta` | `null`, oppure l'ultima proposta fatta: `{"turno": "secondo", "motivo": "primo turno: pieno (dimostrato: …)"}` |
 | `domanda` | `null`, oppure il testo della domanda che aspetta risposta ("Primo turno (20:00) o secondo (21:30)?"). Torna `null` quando arriva la risposta. Nei file vecchi senza questo campo vale `null`. |
 | `note` | note del cliente ("" se non ce ne sono): compleanno, seggiolone, allergie, "tavolo tranquillo"… |

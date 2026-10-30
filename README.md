@@ -87,7 +87,9 @@ Con Sonnet (o un modello superiore) la sessione fa tutto da sé, come sopra.
 
 - `CLAUDE.md`: ruolo dell'assistente, quale skill per quale messaggio, divieti, formato delle risposte.
 - `agente/regole.md`: regole dure, regole di buonsenso in ordine di priorità, zone della sala (IPOTESI da confermare).
-- `.claude/skills/`: `sala` (catalogo dei tavoli dalla piantina, conteggi), `stato-serata` (formato del file),
+- `agente/catalogo.md`: unità, soglie del "pieno" e liste ricavate dalla piantina, con la versione della piantina da
+  cui vengono. Lo rigenera l'assistente solo quando la piantina cambia.
+- `.claude/skills/`: `sala` (come si ricavano le unità e il catalogo dalla piantina), `stato-serata` (formato del file),
   `assegna-tavoli` (la procedura centrale), `prenotazione`, `disponibilita`, `riepilogo`, `controllo-serata`,
   `rigioca`, `mossa-tavoli`.
 - `.claude/agents/`: `sala-olimpo` (l'assistente come sub-agent), `decisore-sala` (Sonnet, i casi difficili in
@@ -109,8 +111,11 @@ git checkout motore/main -- olimpo/piantina.html
 ```
 
 (da un'altra cartella: `git -C C:\repos\olimpo-agente fetch motore` e
-`git -C C:\repos\olimpo-agente checkout motore/main -- olimpo/piantina.html`). Alla sessione successiva l'assistente
-vede che la data o lo storico sono cambiati, ricalcola i tavoli con le regole della skill `sala` e lo dice.
+`git -C C:\repos\olimpo-agente checkout motore/main -- olimpo/piantina.html`). Al primo messaggio dopo il cambio
+l'assistente vede che la versione della piantina non è quella di `agente/catalogo.md` e rigenera il catalogo una
+volta sola, con le regole della skill `sala`, poi lo dice. Su Haiku la rigenerazione passa a `decisore-sala` (Sonnet).
+Le regole non hanno numeri o nomi di tavoli scritti a mano: stanno tutti nel catalogo. Il catalogo nuovo va poi
+salvato nel git, come la piantina.
 
 ## Riferimento atteso dei test
 
@@ -272,7 +277,33 @@ proprietario cosa ha capito l'assistente.
 
 Quindi: per i messaggi conviene la modalità mista, per le rigioche una sessione Sonnet.
 
+### Sala diversa (30/10/2026, regole generalizzate, `claude -p` senza istruzioni personali)
+
+Le regole parlano di tipi di tavolo (blocco separabile, pezzo, unione, lungo); numeri e nomi sono in
+`agente/catalogo.md`. Il catalogo rifatto per la sala vera coincide con il CP-SAT esterno: 50 unità, soglie
+36/29/28/14/6/2/1, e le stesse righe di "dividi chi siede largo" e dello scambio di prima. Le istruzioni restano
+lunghe uguali (17.485 → 17.482 parole).
+
+Sala di prova B, ricavata dalla vera: tondo 10 da 12 posti, 13B e l'unione 13A+13B tolti, 9 divisibile, un quadrato
+mobile 30 nuovo, lungo rinominato "L" e portato a 18 posti. Il motore sulla sala B dà 63/67, 242 coperti, 9 su
+proposta, rifiutati Marini ×10, Palumbo ×2, Sala ×4, Rossetti ×2, 42 posti vuoti.
+
+| prova | esito | costo |
+|---|---|---|
+| rigioca del sabato, sala vera (Sonnet) | come il motore: 63/67, 242 coperti, stessi 6 su proposta e stessi 4 rifiutati, 34/119 e 29/123 per turno; CP-SAT PASS, 0 pieni falsi | 5,28 $ · 25 min |
+| rigioca del sabato, sala B (Sonnet) | catalogo rigenerato da sé prima di cominciare; come il motore: 63/67, 242 coperti, stessi 9 su proposta e stessi 4 rifiutati, 33/121 e 30/121 per turno, 42 posti vuoti; CP-SAT PASS, 0 pieni falsi | 5,77 $ · 29 min |
+| un messaggio su Haiku, sala B con il catalogo vecchio | passa a `decisore-sala`, che rigenera il catalogo, conferma e avvisa che il lungo L, il 30 e il 9 diviso non hanno zona | 0,30 $ · 3 min |
+
+I due cataloghi rigenerati per la sala B sono giusti tutti e due al CP-SAT: unità, soglie, variante del lungo a un
+gruppo (36/28/27/12/4) e 151 posti al massimo. Però raggruppano diversamente le colonne grandi delle soglie: 9-10 e
+11-20 in uno, 9-12 e 13-18 nell'altro. È la ragione per cui il catalogo si rigenera una volta e si salva, invece di
+ricalcolarlo a ogni messaggio.
+
 ## Limiti noti
+
+- **Sala nuova**: i posti di una metà del lungo vengono dalla sua nota (testo libero; il motore usa 8 fisso). I
+  tavoli nuovi o spostati non hanno zona finché il proprietario non la conferma in `agente/regole.md`. Le serate già
+  scritte con un tavolo che non esiste più vengono segnalate, e nessuno viene spostato senza chiedere.
 
 - **"Pieno" dimostrato solo dai conteggi per soglia** (condizioni necessarie): un turno davvero pieno ma non coperto
   dai conteggi risulta "non trovo posto (non dimostrato)".

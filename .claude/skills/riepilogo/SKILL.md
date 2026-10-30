@@ -5,10 +5,11 @@ description: Riepilogo di una serata dell'Olimpo per il proprietario ("riepilogo
 
 # Riepilogo di una serata
 
-Non scrive niente. I numeri dei tavoli qui si dicono, ma **come indicazione**: possono ancora cambiare.
+Non scrive niente. I numeri dei tavoli qui si dicono, ma **come indicazione**: possono ancora cambiare. Esempi sulla
+piantina del 29/10/2026.
 
 1. Ricava la data come nella skill `prenotazione` (punto 2). Leggi il file della serata (skill `stato-serata`) e il
-   catalogo (skill `sala`). Se il file non c'è: "Per sab 31/10 non ci sono prenotazioni."
+   catalogo (`agente/catalogo.md`). Se il file non c'è: "Per sab 31/10 non ci sono prenotazioni."
 2. Prima di scrivere il riepilogo applica la skill `controllo-serata` (a mente, senza scrivere): se è FAIL, dillo in
    testa al riepilogo con i problemi trovati.
 
@@ -43,9 +44,9 @@ Cambi di tavolo: Verdi ×7 da 10 a 13A+13B (per far posto a Costa ×10)
   note`. Prenotazioni e coperti sono il loro numero e la somma.
 - **Liberi**: i tavoli e i pezzi che nessuno usa nel turno. Blocco tutto libero: il suo id ("8"); blocco usato in
   parte: i quadrati liberi ("5c"); un'unione con tutti e due i tavoli liberi: i due tavoli ("24, 29"); lungo con un
-  gruppo fino a 8: "11-2". **Posti liberi**: blocco libero intero = i suoi posti; pezzo libero = i posti del pezzo
-  (2 quadrati attaccati 6, quadrato da solo 4); lungo libero 20, metà libera 8.
-- **Posti vuoti ai tavoli occupati**: somma di (posti dell'unità − coperti); per il lungo, 20 meno tutti i seduti.
+  gruppo sulla prima metà: la seconda metà. **Posti liberi**: i posti di quelle unità nel catalogo.
+- **Posti vuoti ai tavoli occupati**: somma di (posti dell'unità − coperti); per il lungo, i suoi posti meno tutti i
+  seduti.
 - **Da preparare in sala**, per ogni turno, ricavato dalle unità assegnate (le divisioni non sono scritte nel file):
   - blocco diviso: i suoi pezzi = le unità assegnate + i quadrati liberi rimasti ("dividi 8 in 8a + 8bc");
   - unione: "unisci 25 al 20", "unisci 13A e 13B";

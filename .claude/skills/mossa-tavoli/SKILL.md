@@ -1,6 +1,6 @@
 ---
 name: mossa-tavoli
-description: Proposte di spostamenti veri dei tavoli mobili dell'Olimpo (attaccare un quadrato a un blocco, spostare un tavolo) quando un gruppo verrebbe rifiutato in tutti e due i turni — regole (solo tavoli mobili, 29 quadrati sempre in sala, mai in passaggi, porte e ingresso, posti 2k+2), come proporla, come registrarla dopo il sì del proprietario. Usala solo dopo un rifiuto nei due turni o se il proprietario chiede come far entrare un gruppo.
+description: Proposte di spostamenti veri dei tavoli mobili dell'Olimpo (attaccare un quadrato a un blocco, spostare un tavolo) quando un gruppo verrebbe rifiutato in tutti e due i turni — regole (solo tavoli mobili, quadrati sempre in sala, mai in passaggi, porte e ingresso, posti 2k+2), come proporla, come registrarla dopo il sì del proprietario. Usala solo dopo un rifiuto nei due turni o se il proprietario chiede come far entrare un gruppo.
 ---
 
 # Mosse: spostare tavoli veri (solo come proposta)
@@ -11,9 +11,8 @@ mai: lì si scrive solo "mossa possibile: …" nell'esito.
 
 ## Regole
 
-1. **Solo tavoli mobili** (`"fisso": false` nella piantina): quadrati 3, 4, 25-29 e blocchi 5, 7, 8, 9, 12, 20-24.
-   Panche, 6, 10, 11, 13A e 13B non si muovono.
-2. **I 29 quadrati restano in sala**: si attaccano o si spostano, non si tolgono.
+1. **Solo tavoli mobili**: quelli con `"fisso": false` nella piantina. Gli altri non si muovono.
+2. **I quadrati mobili restano in sala**: si attaccano o si spostano, non si tolgono.
 3. **Mai nei passaggi** (`passaggi` della piantina: passaggio, apertura, strettoia verso la cucina) e **mai davanti
    a porte e ingresso** (`porte`, `ingresso`: lasciano 90 cm liberi, cioè 36 unità del disegno).
 4. **Posti**: k quadrati in fila = **2k + 2**. IPOTESI: una testa contro un muro o un altro tavolo non ha la sedia
@@ -30,8 +29,8 @@ mai: lì si scrive solo "mossa possibile: …" nell'esito.
    - meno pezzi da muovere (un quadrato da attaccare in testa a un blocco è la mossa più piccola);
    - pezzi già vicini (stessa zona di `agente/regole.md`);
    - pezzi che nell'altro turno non servono al loro posto.
-   Esempi: per 10 persone, il blocco 5 (3 quadrati) più un quadrato libero in testa = 4 quadrati = 10 posti; il
-   blocco 7 (2 quadrati) più due quadrati = 10 posti.
+   Esempi (piantina del 29/10/2026): per 10 persone, il blocco 5 (3 quadrati) più un quadrato libero in testa = 4
+   quadrati = 10 posti; il blocco 7 (2 quadrati) più due quadrati = 10 posti.
 3. Controlla il posto: leggi `passaggi`, `porte` e `ingresso` nel blocco della piantina (skill `sala`, punto 1) e
    scrivi dove andrebbe il pezzo ("in testa al blocco 5, dal lato del 6"). Se quella zona tocca un passaggio o i 90 cm
    davanti a una porta o all'ingresso, scarta la mossa. Se non riesci a dirlo dalle coordinate, scrivilo nella

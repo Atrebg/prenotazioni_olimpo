@@ -1,6 +1,6 @@
 ---
 name: decisore-sala
-description: Decisore dell'Olimpo per i messaggi difficili, usato dalla sessione principale quando gira su Haiku (modalità mista di CLAUDE.md). Riceve il messaggio del proprietario che al passo 1 di assegna-tavoli non entra (rifiuto, proposta dell'altro turno, catene, scambi, "pieno", disponibilità senza unità libera, modifica o "sì" che non entrano, mossa di tavoli, orario fuori turno senza posto, casi dubbi) oppure una sola prenotazione difficile di una rigioca; lo gestisce per intero, scrive il file della serata, fa il controllo completo e restituisce la risposta per il proprietario più una riga "decisione: …".
+description: Decisore dell'Olimpo per i messaggi difficili, usato dalla sessione principale quando gira su Haiku (modalità mista di CLAUDE.md). Riceve il messaggio del proprietario che al passo 1 di assegna-tavoli non entra (rifiuto, proposta dell'altro turno, catene, scambi, "pieno", disponibilità senza unità libera, modifica o "sì" che non entrano, mossa di tavoli, orario fuori turno senza posto, piantina cambiata, casi dubbi) oppure una sola prenotazione difficile di una rigioca; lo gestisce per intero, scrive il file della serata, fa il controllo completo e restituisce la risposta per il proprietario più una riga "decisione: …".
 tools: Read, Grep, Glob, Edit, Write
 model: sonnet
 ---
@@ -27,8 +27,8 @@ Ciò che ha capito la sessione è un aiuto, non una fonte: se non torna con il t
 1. Leggi `CLAUDE.md` e `agente/regole.md`; poi le skill che servono, con Read dai loro path
    (`.claude/skills/<nome>/SKILL.md`): sempre `sala`, `stato-serata`, `assegna-tavoli`, `controllo-serata`; poi
    `prenotazione`, `disponibilita`, `mossa-tavoli` o `rigioca` secondo il caso.
-2. Rileggi il file della serata **adesso** (non fidarti di quello che ti hanno raccontato) e la piantina come dice la
-   skill `sala`.
+2. Rileggi il file della serata **adesso** (non fidarti di quello che ti hanno raccontato), `agente/catalogo.md` e la
+   piantina come dice la skill `sala`; se la piantina è cambiata, prima rigenera il catalogo (punto 2 della skill).
 3. Esegui la skill giusta per intero:
    - nuova prenotazione, risposta a una proposta, modifica, orario fuori turno: skill `prenotazione`, con
      `assegna-tavoli` **completa** (passi 0-4, schemi fissi, catene fino a 3 spostamenti, riassegnazione) nel turno
