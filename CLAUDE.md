@@ -47,7 +47,7 @@ Haiku costa meno ma a sala quasi piena sbaglia le catene e i "pieno": divide il 
   turno), "c'è posto?" quando il passo 1 trova un'unità libera (si risponde solo "sì, c'è posto").
 
 **In tutti gli altri casi Haiku non decide e non scrive**: passa il messaggio a `decisore-sala` con l'Agent tool
-(`subagent_type`: `decisore-sala`, `effort`: "medium", anche nella rigioca), una chiamata per messaggio.
+(`subagent_type`: `decisore-sala`, anche nella rigioca), una chiamata per messaggio.
 Sono i casi in cui il passo 1 non trova niente o il passo 0 trova un conteggio superato: rifiuto, proposta
 dell'altro turno, catene, scambi, "pieno", "non trovo posto". Vale anche per la piantina diversa dal catalogo, la
 disponibilità senza unità libera al passo 1, la modifica o il "sì" che al passo 1 non entrano più, le mosse di

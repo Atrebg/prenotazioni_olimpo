@@ -73,7 +73,7 @@ sessione è Haiku, `CLAUDE.md` divide il lavoro:
   passo 1 di `assegna-tavoli` trovano un'unità libera nel turno chiesto, senza spostare nessuno.
 - **Tutto il resto passa all'agente `decisore-sala` (Sonnet)**: Haiku gli manda il testo del messaggio, la data, il
   path del file della serata, ciò che ha capito e l'eventuale riga in attesa, poi riporta la sua risposta così com'è.
-  La chiamata chiede `effort` "medium".
+  Lo sforzo di Sonnet ("medium") sta nel frontmatter dell'agente, non nella chiamata.
   **Haiku non decide mai un rifiuto, una proposta dell'altro turno per mancanza di posto né un "pieno"**, e non sposta
   nessuno.
 - Il controllo completo dopo ogni scrittura resta obbligatorio; se Haiku non riesce a farlo per intero, lo passa a
@@ -286,7 +286,7 @@ Quindi: per i messaggi conviene la modalità mista, per le rigioche una sessione
 Cambiato per spendere meno, senza regole nuove: il registro fuori dal file della serata (un file per evento), la
 procedura divisa in `assegna-tavoli` (base, l'unica che legge Haiku) e `assegna-tavoli-difficile` (solo Sonnet), le
 letture iniziali tutte in un turno, la versione della piantina con due Grep invece del Read, `decisore-sala` che
-legge solo i file che gli servono, la chiamata a `decisore-sala` con `effort` "medium".
+legge solo i file che gli servono, `decisore-sala` con `effort` "medium".
 
 | voce | prima (29/10) | dopo (30/10) |
 |---|---|---|
@@ -298,8 +298,27 @@ legge solo i file che gli servono, la chiamata a `decisore-sala` con `effort` "m
 | casi limite, esito e costo | — | 61/64, 265 coperti, 0 pieni falsi · 5,73 $ |
 
 - **Il risparmio viene da Haiku** (metà del costo a messaggio) e dal contesto più corto di Sonnet. L'`effort`
-  "medium" non ha cambiato il ragionamento di Sonnet: circa 20 mila token di output a chiamata prima e dopo (88%
-  ragionamento).
+  "medium" non ha cambiato il ragionamento di Sonnet: era già il valore predefinito (le trascrizioni del 29/10
+  dicono "medium" anche senza chiederlo), circa 20 mila token di output a chiamata prima e dopo (88% ragionamento).
+- **`effort` "low" provato e scartato** (31/10/2026, nel frontmatter di `decisore-sala`; le trascrizioni confermano
+  "low" in tutte le chiamate):
+
+  | voce | medium (30/10) | low (31/10) |
+  |---|---|---|
+  | sabato, costo | 5,58 $ · Sonnet 0,409 $ a chiamata (11) | 5,67 $ · Sonnet 0,417 $ a chiamata (11) |
+  | sabato, output di Sonnet a chiamata | circa 20K token | circa 21K token |
+  | sabato, esito | 63/67, 244 coperti, 0 pieni falsi | 63/67, 242 coperti, 4 rifiutati come il motore, 0 pieni falsi |
+
+  Il sabato con "low" è datato 7/11 (vedi sotto) e ha dovuto riprendere due volte dopo una sospensione del PC.
+  | casi limite, costo | 5,73 $ · Sonnet 0,373 $ a chiamata (12) | 4,72 $ · Sonnet 0,345 $ a chiamata (10) |
+  | casi limite, esito | 61/64, 265 coperti, mossa per Barone ×12 | 61/64, 255 coperti, Barone ×12 rifiutato (valido al CP-SAT) |
+
+  Sul sabato non risparmia niente; nei casi limite il 7% a chiamata (il resto sono 2 chiamate in meno) e non
+  propone la mossa di tavoli. Resta "medium".
+- **La serata di oggi blocca gli spostamenti**: il sabato del 31/10 simulato il 31/10 ha dato 5 proposte del secondo
+  turno dove nel primo bastavano 2 cambi di tavolo (regola "per la serata di oggi non si sposta nessuno senza
+  chiederlo"), e 2 domande "posso spostarli?" rimaste aperte perché il simulatore non le capisce. Le prove si datano
+  quindi a un giorno futuro.
 - **Il primo giro aveva perso righe**: Haiku contava il registro con un Glob di `serate/*`, che non entra nella
   cartella, e riscriveva `001-confermata.json` (9 righe di registro perse in due serate); una volta non ha letto il
   file della serata e l'ha ricreato, perdendo la prima prenotazione. Corretto in `stato-serata`: il Glob indica la
