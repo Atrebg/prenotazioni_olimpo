@@ -44,7 +44,7 @@ per file: `dimostrato` per motivi e `provati`; per ordine, turni e unità `-o` c
 
 | # | controllo |
 |---|---|
-| V1 | JSON valido, tutti i campi; `n` tutti diversi. `deciso_da` nelle righe di registro è facoltativo (assente nei file vecchi: nessun avviso); se c'è è un nome di modello. Avviso se "haiku" ha deciso un `rifiutata`, una `proposta` per mancanza di posto o un `cambio tavolo` (tranne seconda → prima metà del lungo dopo un annullamento): in modalità mista li decide `decisore-sala` |
+| V1 | JSON valido, tutti i campi; `n` tutti diversi. `deciso_da` nelle righe di registro è facoltativo (assente nei file vecchi: nessun avviso); se c'è è un nome di modello o "python" (lo script). Avviso se "haiku" ha deciso un `rifiutata`, una `proposta` per mancanza di posto o un `cambio tavolo` (tranne seconda → prima metà del lungo dopo un annullamento): in modalità mista li decide `decisore-sala` |
 | V2 | `piantina` del file uguale alla piantina letta (`aggiornata`, numero di righe dello `storico`); se diversa è un avviso, ma ogni unità assegnata deve esistere ancora |
 | V3 | ogni `confermata`: `coperti` presente, `domanda` nulla, `turno` "primo" o "secondo", `unita` esistente, coperti ≤ posti |
 | V4 | in ogni turno nessun pezzo usato da due prenotazioni; la seconda metà del lungo solo con la prima |
@@ -54,7 +54,7 @@ per file: `dimostrato` per motivi e `provati`; per ordine, turni e unità `-o` c
 | V8 | ogni prenotazione ha almeno una riga nel registro e la prima riga di ogni `n` compare in ordine di `n` |
 | V9 | ogni parte di un motivo (di un rifiuto o di una proposta) che dice "pieno (dimostrato: …)": ricontrolla tu che, nel turno detto, le prenotazioni confermate in quel turno dalle righe di registro che vengono prima di quella riga, più quella prenotazione, superino davvero un limite: per una soglia s, più prenotazioni da almeno s coperti delle unità da almeno s posti che possono stare insieme (calcolalo tu, per famiglie di pezzi che si escludono), oppure più posti del massimo della sala in un turno. Se nel frattempo c'è stato un annullamento in quel turno, segnalalo come avviso |
 | V10 | nessun quadrato in due unità nello stesso turno |
-| V11 | ogni riga di registro `proposta` o `rifiutata` con un turno "non trovo posto (non dimostrato)" nel motivo ha un `provati` specifico per quel turno: schemi fissi guardati (divisioni e scambio con il lungo: chi è sul lungo intero, più grande di una metà, va su un'unità di un pezzo il cui gruppo sta in una metà), prima e ultima unità provata per le catene da 1, 2 e 3 spostamenti, esito dei due giri di riassegnazione. Mancante, vuoto o generico ("nessuna catena") = FAIL. Se dalla sala ricavata da te vedi uno schema che entrava (per esempio lo scambio con il lungo applicabile e la seconda metà sufficiente), segnalalo come FAIL |
+| V11 | ogni riga di registro `proposta` o `rifiutata` con un turno "non trovo posto (non dimostrato)" nel motivo ha un `provati` specifico per quel turno: schemi fissi guardati (divisioni e scambio con il lungo: chi è sul lungo intero, più grande di una metà, va su un'unità di un pezzo il cui gruppo sta in una metà), prima e ultima unità provata per le catene da 1, 2 e 3 spostamenti, esito dei due giri di riassegnazione (con `deciso_da` "python": la verifica esatta e il tempo scaduto). Mancante, vuoto o generico ("nessuna catena") = FAIL. Se dalla sala ricavata da te vedi uno schema che entrava (per esempio lo scambio con il lungo applicabile e la seconda metà sufficiente), segnalalo come FAIL |
 
 ## 4. Esito
 

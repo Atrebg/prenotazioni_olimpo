@@ -7,6 +7,10 @@ prove/
 # Temporanei
 *.tmp
 
+# Ambiente Python dello script (motore/decidi.py): si rifà con uv da requirements.txt
+.venv/
+__pycache__/
+
 # Editor
 .vscode/
 .idea/

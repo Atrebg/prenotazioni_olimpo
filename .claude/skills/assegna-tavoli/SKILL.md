@@ -70,7 +70,7 @@ candidate che lo soddisfano e, se nessuna lo soddisfa, le tiene tutte:
 Se c'è almeno una candidata: ENTRA, senza cambi. Altrimenti passo 2.
 
 **Modalità mista**: Haiku qui si ferma. ENTRA al passo 1 → scrive; qualsiasi altro esito (conteggio superato al
-passo 0, nessuna candidata, dubbio) → `decisore-sala` (vedi `CLAUDE.md`), che fa i passi 2-4.
+passo 0, nessuna candidata) → lo script `motore/decidi.py`; un dubbio → `decisore-sala` (vedi `CLAUDE.md`).
 
 Il costo copre la regola di buonsenso 2 (posti vuoti) e la 3 (poche divisioni). Non serve a decidere se entrare: si
 entra sempre se c'è un'unità libera adatta.

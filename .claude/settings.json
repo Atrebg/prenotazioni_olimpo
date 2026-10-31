@@ -1,3 +1,6 @@
 {
-  "claudeMdExcludes": ["**/.claude/CLAUDE.md"]
+  "claudeMdExcludes": ["**/.claude/CLAUDE.md"],
+  "permissions": {
+    "allow": ["Bash(.venv/Scripts/python.exe motore/decidi.py:*)"]
+  }
 }

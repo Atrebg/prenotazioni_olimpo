@@ -3,7 +3,8 @@
 Gestionale delle prenotazioni del ristorante Olimpo fatto **solo di istruzioni per Claude Code**: aprendo Claude
 Code in questa cartella, la sessione diventa l'assistente di sala. Legge il messaggio del proprietario (formato
 compatto o testo libero), decide chi entra, in quale turno (20:00 o 21:30) e a quale tavolo, e scrive lo stato della
-serata in un file JSON. Non c'è codice: solo file markdown (`CLAUDE.md`, skill, agenti), la piantina e i dati.
+serata in un file JSON. Le istruzioni sono file markdown (`CLAUDE.md`, skill, agenti), con la piantina e i dati; il
+solo codice è `motore/decidi.py`, che in modalità mista (Haiku) decide i casi a sala piena.
 
 È una variante del repository con il motore CP-SAT in Python (remote `motore`), da cui viene la piantina.
 
@@ -11,7 +12,7 @@ serata in un file JSON. Non c'è codice: solo file markdown (`CLAUDE.md`, skill,
 
 | | motore (Python, CP-SAT) | questa versione |
 |---|---|---|
-| installazione | Python, venv, OR-Tools, un processo acceso per la chat | solo Claude Code |
+| installazione | Python, venv, OR-Tools, un processo acceso per la chat | Claude Code; per la modalità mista anche un `.venv` con OR-Tools, senza processi accesi |
 | chi decide | il solver, su tutte le disposizioni possibili | il modello, seguendo le procedure delle skill |
 | "turno pieno" | dimostrato dal solver | dimostrato solo se lo dicono i conteggi per soglia; altrimenti "non trovo posto (non dimostrato)" |
 | ripetibilità | stesso ingresso, stesso risultato | i risultati possono cambiare tra un'esecuzione e l'altra |
@@ -35,7 +36,8 @@ riepilogo sab
 rigioca dati/olimpo_sabato.json
 ```
 
-Un messaggio solo, senza sessione aperta (le scritture dei file vanno permesse, Bash resta escluso):
+Un messaggio solo, senza sessione aperta (le scritture dei file vanno permesse; Bash è permesso solo per lo script
+della modalità mista):
 
 ```
 claude -p "Rossi 4 sab 20:30" --permission-mode acceptEdits
@@ -57,7 +59,7 @@ claude -p "Rossi 4 sab 20:30" --model haiku --permission-mode acceptEdits --sett
 Su questo computer, il 29/10/2026, il contesto iniziale passa da circa 46.300 token a 36.700 con la sola
 impostazione, e a 30.500 con le due opzioni. Le impostazioni gestite dall'azienda restano comunque attive.
 
-## Modalità mista (Haiku + Sonnet)
+## Modalità mista (Haiku + script)
 
 Per spendere meno si può far girare la sessione su Haiku:
 
@@ -71,16 +73,33 @@ sessione è Haiku, `CLAUDE.md` divide il lavoro:
 
 - **Haiku fa da sé**: lettura del messaggio, domande, risposte brevi, annullamenti, riepilogo, e le conferme che al
   passo 1 di `assegna-tavoli` trovano un'unità libera nel turno chiesto, senza spostare nessuno.
-- **Tutto il resto passa all'agente `decisore-sala` (Sonnet)**: Haiku gli manda il testo del messaggio, la data, il
-  path del file della serata, ciò che ha capito e l'eventuale riga in attesa, poi riporta la sua risposta così com'è.
-  Lo sforzo di Sonnet ("medium") sta nel frontmatter dell'agente, non nella chiamata.
+- **A sala piena decide lo script `motore/decidi.py`** (dal 31/10/2026): Haiku lo lancia con il tool Bash e riporta
+  la sua risposta così com'è. Lo script legge unità e soglie da `agente/catalogo.md` e le zone da
+  `agente/regole.md`. Cerca con un CP-SAT esatto il minor numero di cambi di tavolo nel turno chiesto; se non entra
+  propone l'altro turno o rifiuta. Scrive serata e registro (`deciso_da` "python") e fa il controllo C1-C15. Un
+  "pieno" è dimostrato quando il CP-SAT prova che non c'è disposizione; se scade il tempo (20 s per turno) scrive
+  "non trovo posto (non dimostrato)". Per la serata di oggi non sposta nessuno: restituisce i cambi da chiedere.
+- **All'agente `decisore-sala` (Sonnet) resta il resto**: piantina diversa dal catalogo, mosse di tavoli chieste dal
+  proprietario, dubbi, e i casi che lo script non decide (esito `decisore`: nome doppio, file non valido, OR-Tools
+  mancante). Lo sforzo di Sonnet ("medium") sta nel frontmatter dell'agente.
   **Haiku non decide mai un rifiuto, una proposta dell'altro turno per mancanza di posto né un "pieno"**, e non sposta
   nessuno.
 - Il controllo completo dopo ogni scrittura resta obbligatorio; se Haiku non riesce a farlo per intero, lo passa a
   `controllo-sala`.
-- Ogni riga del registro dice chi ha deciso (`deciso_da`: "haiku" o "sonnet"), così si misura quante decisioni passano
-  a Sonnet. Nella rigioca in modalità mista Haiku chiama `decisore-sala` una volta per ogni prenotazione difficile, mai
-  a gruppi.
+- Ogni riga del registro dice chi ha deciso (`deciso_da`: "haiku", "python" o "sonnet"). La rigioca in modalità
+  mista usa ancora `decisore-sala`, una chiamata per prenotazione difficile; per le rigioche conviene Sonnet.
+
+Preparare lo script una volta (con [uv](https://docs.astral.sh/uv/); la versione di OR-Tools è quella del motore):
+
+```
+uv venv --python 3.12 .venv
+uv pip install --python .venv -r requirements.txt
+```
+
+**Permesso**: `.claude/settings.json` permette solo `.venv/Scripts/python.exe motore/decidi.py …`, lanciato dalla
+cartella (anche dopo `cd` nella cartella stessa). Claude Code applica i permessi di progetto solo in una cartella
+fidata: va aperta almeno una volta in Claude Code e accettata. In una cartella mai aperta, o con il path assoluto
+dello script, il comando viene negato e Haiku passa il messaggio a `decisore-sala` (verificato il 31/10/2026).
 
 Con Sonnet (o un modello superiore) la sessione fa tutto da sé, come sopra.
 
@@ -94,8 +113,9 @@ Con Sonnet (o un modello superiore) la sessione fa tutto da sé, come sopra.
   `assegna-tavoli` (la procedura centrale: conteggi, incastro tra le unità libere, spareggi) e
   `assegna-tavoli-difficile` (ritocchi, catene, scambi e "pieno", solo per Sonnet), `prenotazione`, `disponibilita`,
   `riepilogo`, `controllo-serata`, `rigioca`, `mossa-tavoli`.
-- `.claude/agents/`: `sala-olimpo` (l'assistente come sub-agent), `decisore-sala` (Sonnet, i casi difficili in
+- `.claude/agents/`: `sala-olimpo` (l'assistente come sub-agent), `decisore-sala` (Sonnet, i casi dubbi in
   modalità mista), `controllo-sala` (verificatore indipendente).
+- `motore/decidi.py` e `requirements.txt`: lo script CP-SAT della modalità mista; il `.venv` è fuori dal git.
 - `olimpo/piantina.html`: la sala vera, fonte unica (blocco JSON `id="sala"`); si cambia solo con l'editor.
 - `dati/olimpo_sabato.json`, `dati/olimpo_venerdi.json`: serate di prova.
 - `serate/AAAA-MM-GG.json`: lo stato reale, una serata per file. Il registro sta accanto, in
@@ -308,12 +328,10 @@ legge solo i file che gli servono, `decisore-sala` con `effort` "medium".
   | sabato, costo | 5,58 $ · Sonnet 0,409 $ a chiamata (11) | 5,67 $ · Sonnet 0,417 $ a chiamata (11) |
   | sabato, output di Sonnet a chiamata | circa 20K token | circa 21K token |
   | sabato, esito | 63/67, 244 coperti, 0 pieni falsi | 63/67, 242 coperti, 4 rifiutati come il motore, 0 pieni falsi |
-
-  Il sabato con "low" è datato 7/11 (vedi sotto) e ha dovuto riprendere due volte dopo una sospensione del PC.
   | casi limite, costo | 5,73 $ · Sonnet 0,373 $ a chiamata (12) | 4,72 $ · Sonnet 0,345 $ a chiamata (10) |
   | casi limite, esito | 61/64, 265 coperti, mossa per Barone ×12 | 61/64, 255 coperti, Barone ×12 rifiutato (valido al CP-SAT) |
 
-  Sul sabato non risparmia niente; nei casi limite il 7% a chiamata (il resto sono 2 chiamate in meno) e non
+  Il sabato con "low" è datato 7/11 (vedi sotto) e ha dovuto riprendere due volte dopo una sospensione del PC. Sul sabato non risparmia niente; nei casi limite il 7% a chiamata (il resto sono 2 chiamate in meno) e non
   propone la mossa di tavoli. Resta "medium".
 - **La serata di oggi blocca gli spostamenti**: il sabato del 31/10 simulato il 31/10 ha dato 5 proposte del secondo
   turno dove nel primo bastavano 2 cambi di tavolo (regola "per la serata di oggi non si sposta nessuno senza
@@ -332,6 +350,33 @@ legge solo i file che gli servono, `decisore-sala` con `effort` "medium".
 - **Un nome confuso**: Ferraro ×4 scambiato per Ferrara ×14 (come Caputo per Caruso il 29/10), con la domanda "è
   un'altra o la modifico?". Il simulatore rispondeva "primo" a quella domanda; corretto dopo la prova. Al suo arrivo
   Ferraro entrava in tutti e due i turni.
+
+### Sala piena decisa dallo script (31/10/2026, stesso simulatore, serate datate 7/11 e 14/11)
+
+Haiku lancia `motore/decidi.py` dove prima chiamava `decisore-sala`. Verifica con il CP-SAT esterno e i riferimenti
+del motore.
+
+| voce | Haiku + Sonnet (30-31/10) | Haiku + script (31/10) |
+|---|---|---|
+| sabato, costo totale | 5,58 $ (Haiku 1,23, Sonnet 4,35) | **1,06 $**, solo Haiku |
+| sabato, esito | 63/67, 244 coperti | 63/67, 242 coperti, stessi 4 rifiutati del motore, 0 pieni falsi |
+| casi limite, costo totale | 5,73 $ | **0,98 $**, solo Haiku |
+| casi limite, esito | 61/64, 265 coperti (mossa per Barone ×12) | 61/64, 255 coperti, stessi 3 rifiutati del motore, 0 pieni falsi |
+| chi ha deciso (righe di registro) | Sonnet 11-12 messaggi | sabato: script 30, Haiku 51 · casi limite: script 37, Haiku 46 · Sonnet mai |
+| messaggio medio | Haiku 0,016 $ · 70 s, Sonnet 0,409 $ · 208 s | 0,012-0,014 $ · 87-91 s, il più lento 185 s |
+
+- **Lo script da solo** (73 e 72 chiamate senza Claude, una per messaggio): uguale al motore nelle due serate,
+  turno per turno; 0,6-0,7 s di calcolo a decisione (2,4 s per quelle difficili), circa 4 s con l'avvio di Python.
+- **Un errore di Haiku, non dello script**: nel sabato Martinelli ×4 alle 21:15 è stato preso per fuori turno e ha
+  avuto la proposta del secondo invece della conferma (stesso turno alla fine, una domanda in più; `turno_chiesto`
+  vuoto, segnalato dal CP-SAT). Nel giro interrotto poco prima lo stesso messaggio era stato confermato subito.
+- **Niente mosse di tavoli**: lo script non le cerca, quindi Barone ×12 è rifiutato come nel motore, mentre
+  `decisore-sala` lo aveva fatto entrare con una mossa.
+- **Permessi**: il primo giro è caduto sui permessi. Le copie del simulatore non sono cartelle fidate, quindi il
+  permesso di progetto non valeva e Haiku passava a Sonnet. Il simulatore ora passa la stessa regola con
+  `--allowedTools` (provato: passano la forma relativa e `cd` nella cartella, il path assoluto no, come nel fork
+  vero). Una copia dentro `prove/` del fork non va bene: Haiku vede `prove/` nel path, scrive la serata fuori da
+  `serate/` e cerca i file nella cartella madre.
 
 ### Sala diversa (30/10/2026, regole generalizzate, `claude -p` senza istruzioni personali)
 
@@ -362,7 +407,11 @@ ricalcolarlo a ogni messaggio.
   scritte con un tavolo che non esiste più vengono segnalate, e nessuno viene spostato senza chiedere.
 
 - **"Pieno" dimostrato solo dai conteggi per soglia** (condizioni necessarie): un turno davvero pieno ma non coperto
-  dai conteggi risulta "non trovo posto (non dimostrato)".
+  dai conteggi risulta "non trovo posto (non dimostrato)". In modalità mista lo script lo dimostra anche con il
+  CP-SAT esatto.
+- **Lo script non cerca mosse di tavoli** (servono passaggi, porte e il sì del proprietario): rifiuta dove
+  `decisore-sala` ne proporrebbe una. Per la serata di oggi chiede i cambi di tavolo ma non salva la domanda, quindi
+  un "sì" in un `claude -p` successivo non la ritrova.
 - **Procedura a passi** (miglior incastro, divisione di chi siede largo e scambio lungo–tondo, catene fino a 3
   spostamenti, riassegnazione del turno): può rifiutare un gruppo che il motore, cercando tra tutte le disposizioni,
   farebbe entrare. Ogni "non trovo posto" porta nel registro l'elenco specifico di ciò che è stato provato.

@@ -78,7 +78,7 @@ Non sta nel file: ogni riga è un file a sé in `registro-AAAA-MM-GG/` accanto a
 
 Ogni riga: `{"quando": "…", "n": …, "evento": "…", …altri campi…, "testo": "…", "deciso_da": "…"}`. `testo` è una
 frase breve per il proprietario (es. "Rossi ×4"). `deciso_da` è il modello che ha preso la decisione e scritto la riga:
-"haiku", "sonnet", "opus" (in modalità mista, le righe scritte da `decisore-sala` hanno "sonnet"). Va messo in ogni
+"haiku", "sonnet", "opus" (in modalità mista "sonnet" per `decisore-sala`, "python" per lo script). Va messo in ogni
 riga nuova; nei file vecchi può mancare. Campi per evento:
 
 | evento | campi in più |
