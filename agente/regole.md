@@ -20,7 +20,7 @@ Si rispettano quando è possibile; se litigano tra loro, vince quella che sta pi
 
 1. **Il tavolo giusto per il gruppo.** Non mettere un gruppo a un tavolo con 4 o più posti vuoti se a quell'ora è libero un tavolo più adatto. Una coppia non va a un tavolo da 6 o più. Un tavolo da 4 per 2 persone va bene se non c'è altro.
 2. **Pochi spostamenti di tavoli.** Gli accostamenti per i gruppi si montano prima del servizio. Durante il servizio si spostano tavoli solo se serve a far entrare una prenotazione.
-3. **Passaggio del cameriere.** Quando si dividono i blocchi o si spostano i tavoli, tra i tavoli deve restare un passaggio libero di almeno 60 cm (valore da confermare con il proprietario) per il cameriere, calcolato sulle misure in centimetri della piantina.
+3. **Passaggio del cameriere.** Quando si dividono i blocchi o si spostano i tavoli, tra i tavoli deve restare un passaggio libero di almeno 80 cm per il cameriere, calcolato sulle misure in centimetri della piantina.
 
 ## Come comportarsi
 
