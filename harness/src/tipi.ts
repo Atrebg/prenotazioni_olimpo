@@ -24,6 +24,7 @@ export interface Bozza {
   dettagli: Record<string, unknown>; // quello che ha già capito
   mancano: string[]; // quello che manca
   domanda: string; // l'ultima domanda posta
+  opzioni?: string[]; // risposte brevi da mostrare come pulsanti
   creata_il: string; // ISO
 }
 

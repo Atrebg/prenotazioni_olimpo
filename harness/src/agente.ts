@@ -70,7 +70,17 @@ function esito(e: unknown): string {
   return JSON.stringify(e);
 }
 
+export interface Risposta {
+  testo: string;
+  opzioni?: string[]; // pulsanti per la domanda in sospeso, se l'agente ne ha dati
+}
+
+/** Come `rispondi`, ma restituisce solo il testo. */
 export async function gestisciMessaggio(dip: Dipendenze, mittente: string, testo: string): Promise<string> {
+  return (await rispondi(dip, mittente, testo)).testo;
+}
+
+export async function rispondi(dip: Dipendenze, mittente: string, testo: string): Promise<Risposta> {
   const adesso = dip.adesso ?? (() => new Date());
   const maxGiri = dip.maxGiri ?? 8;
   const storiaMax = dip.storiaMax ?? 12;
@@ -126,7 +136,7 @@ export async function gestisciMessaggio(dip: Dipendenze, mittente: string, testo
     }
   } catch (e) {
     dip.traccia?.({ strumento: "(errore)", args: {}, esito: String(e) });
-    return MSG_ERRORE;
+    return { testo: MSG_ERRORE };
   }
 
   // la storia tiene solo il testo scambiato: gli stati veri stanno negli strumenti
@@ -134,5 +144,6 @@ export async function gestisciMessaggio(dip: Dipendenze, mittente: string, testo
   dopo.storia = [...conv.storia, { role: "user" as const, content: testo }, { role: "assistant" as const, content: risposta }].slice(-storiaMax);
   if (scaduta && dopo.bozza?.creata_il === bozzaScadutaDel) delete dopo.bozza; // quella scaduta se ne va, una nuova resta
   await dip.store.salvaConversazione(mittente, dopo);
-  return risposta;
+  const nuova = dopo.bozza && dopo.bozza.creata_il !== conv.bozza?.creata_il;
+  return { testo: risposta, ...(nuova && dopo.bozza?.opzioni?.length ? { opzioni: dopo.bozza.opzioni } : {}) };
 }

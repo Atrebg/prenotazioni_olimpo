@@ -29,4 +29,10 @@ export class FileStore implements Store {
   async salvaConversazione(mittente: string, c: Conversazione): Promise<void> {
     this.scrivi(join(this.cartella, "conversazioni", `${encodeURIComponent(mittente)}.json`), c);
   }
+  async ultimoUpdate(): Promise<number> {
+    return this.leggi(join(this.cartella, "ultimo_update.json"), () => 0);
+  }
+  async salvaUltimoUpdate(n: number): Promise<void> {
+    this.scrivi(join(this.cartella, "ultimo_update.json"), n);
+  }
 }

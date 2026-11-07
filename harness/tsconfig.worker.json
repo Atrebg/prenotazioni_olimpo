@@ -1,0 +1,6 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": { "types": ["@cloudflare/workers-types"], "lib": ["ES2022"] },
+  "include": ["src/worker.ts", "src/app.ts", "src/generato"],
+  "exclude": ["src/cli.ts", "src/telegram-polling.ts", "src/store-file.ts"]
+}

@@ -6,6 +6,9 @@ export interface Store {
   salvaSerata(s: Serata): Promise<void>;
   conversazione(mittente: string): Promise<Conversazione>;
   salvaConversazione(mittente: string, c: Conversazione): Promise<void>;
+  /** Id dell'ultimo aggiornamento Telegram già preso in carico (0 se nessuno): scarta i duplicati. */
+  ultimoUpdate(): Promise<number>;
+  salvaUltimoUpdate(n: number): Promise<void>;
 }
 
 export const serataVuota = (data: string): Serata => ({ data, versione: 0, prenotazioni: [], prossimo_id: 1 });
@@ -14,6 +17,7 @@ export const conversazioneVuota = (): Conversazione => ({ storia: [] });
 export class MemoriaStore implements Store {
   private serate = new Map<string, Serata>();
   private conv = new Map<string, Conversazione>();
+  private ultimo = 0;
 
   async serata(data: string): Promise<Serata> {
     return structuredClone(this.serate.get(data) ?? serataVuota(data));
@@ -26,5 +30,11 @@ export class MemoriaStore implements Store {
   }
   async salvaConversazione(mittente: string, c: Conversazione): Promise<void> {
     this.conv.set(mittente, structuredClone(c));
+  }
+  async ultimoUpdate(): Promise<number> {
+    return this.ultimo;
+  }
+  async salvaUltimoUpdate(n: number): Promise<void> {
+    this.ultimo = n;
   }
 }

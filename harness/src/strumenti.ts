@@ -24,6 +24,7 @@ export interface Strumento {
 
 type Args = Record<string, any>;
 
+export const URL_PIANTINA = "https://atrebg.github.io/prenotazioni_olimpo/olimpo/piantina.html";
 const MAX_OPZIONI = 5;
 const MAX_SPOSTAMENTI_PROVATI = 1;
 
@@ -455,6 +456,7 @@ export const STRUMENTI: Strumento[] = [
         dettagli: { type: "object", description: "Quello che hai già capito (nome, coperti, data, turno, posti...)" },
         mancano: { type: "array", items: { type: "string" } },
         domanda: { type: "string" },
+        opzioni: { type: "array", items: { type: "string" }, description: "Facoltativo: risposte brevi (max 6, ognuna sotto i 30 caratteri) mostrate come pulsanti" },
       },
       required: ["azione", "domanda"],
     },
@@ -465,11 +467,20 @@ export const STRUMENTI: Strumento[] = [
         dettagli: (a.dettagli as Record<string, unknown>) ?? {},
         mancano: (a.mancano as string[]) ?? [],
         domanda: String(a.domanda),
+        opzioni: Array.isArray(a.opzioni) ? (a.opzioni as unknown[]).map(String).filter((o) => o && o.length <= 30).slice(0, 6) : undefined,
         creata_il: ctx.adesso().toISOString(),
       };
       c.bozza = bozza;
       await ctx.store.salvaConversazione(ctx.mittente, c);
       return { salvata: true };
+    },
+  },
+  {
+    name: "link_piantina",
+    description: "Indirizzo della piantina della sala (si apre nel browser): i tavoli hanno i numeri. Da dare al proprietario quando deve indicare un tavolo.",
+    parameters: { type: "object", properties: {} },
+    async esegui() {
+      return { url: URL_PIANTINA };
     },
   },
   {
