@@ -73,7 +73,6 @@ sala di prova. Le regole dei turni stanno in `agente/regole.md`; qui solo come p
   con chi siede a ogni tavolo e, sotto, l'elenco per tavolo: per il telefono indica l'elenco.
 - Un gruppo da più di 10 persone entra solo al tavolo lungo (11), uno per turno: se è preso, il motore propone l'altro
   turno.
-- Con i turni non segnalare gli "arrivi nello stesso quarto d'ora": ogni turno arriva tutto insieme.
 
 I comandi del solver possono richiedere da alcuni secondi a qualche minuto: aspetta che finiscano e leggi il codice di
 uscita prima di rispondere.
@@ -97,7 +96,7 @@ uscita prima di rispondere.
 - Prima ripeti ciò che hai capito, come in `agente/regole.md` (per esempio "✓ Rossi · 4 persone · sab 31/10 · 20:30"), poi
   l'esito del motore, con le sue parole sull'orario e sulle proposte.
 - Poi, **in una riga**, segnala le regole di buonsenso di `agente/regole.md` che non risultano rispettate nel piano
-  (ad esempio una coppia a un tavolo troppo grande, il seggiolone vicino alla corsia, troppi arrivi nello stesso quarto d'ora).
+  (ad esempio una coppia a un tavolo troppo grande, o un passaggio tra i tavoli troppo stretto).
   Se non c'è niente da segnalare, non scrivere nulla.
 - Se il motore non ha risposto, è andato in errore o l'esito non è chiaro, dillo così com'è, con il messaggio del motore,
   e non rimediare tu.
