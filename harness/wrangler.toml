@@ -1,0 +1,16 @@
+name = "olimpo-agente"
+main = "src/worker.ts"
+compatibility_date = "2026-10-01"
+
+[[durable_objects.bindings]]
+name = "OLIMPO"
+class_name = "Olimpo"
+
+[[migrations]]
+tag = "v1"
+new_sqlite_classes = ["Olimpo"]
+
+[vars]
+OPENROUTER_MODEL = "google/gemini-2.5-flash"
+
+# Segreti (mai in questo file): wrangler secret put TELEGRAM_BOT_TOKEN | TELEGRAM_WEBHOOK_SECRET | OPENROUTER_API_KEY | OWNER_CHAT_IDS

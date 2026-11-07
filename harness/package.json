@@ -1,0 +1,24 @@
+{
+  "name": "olimpo-harness",
+  "private": true,
+  "type": "module",
+  "description": "Harness dell'agente di sala dell'Olimpo: strumenti, validatore e giro con il modello (OpenRouter).",
+  "scripts": {
+    "genera": "node scripts/genera.mjs",
+    "pretest": "npm run genera",
+    "test": "vitest run",
+    "typecheck": "npm run genera && tsc --noEmit && tsc --noEmit -p tsconfig.worker.json",
+    "chat": "npm run genera && tsx src/cli.ts",
+    "telegram": "npm run genera && tsx src/telegram-polling.ts",
+    "dev": "npm run genera && wrangler dev",
+    "deploy": "npm run genera && wrangler deploy"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "^5.20261107.1",
+    "@types/node": "^22.10.0",
+    "tsx": "^4.19.0",
+    "typescript": "^5.6.0",
+    "vitest": "^2.1.0",
+    "wrangler": "^4.158.0"
+  }
+}
